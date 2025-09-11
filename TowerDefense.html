@@ -347,6 +347,76 @@
                 opacity: 1;
             }
         }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+                transform: none;
+            }
+
+            .game-container {
+                padding: 12px;
+                border-radius: 16px;
+            }
+
+            .game-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .game-title {
+                font-size: 20px;
+            }
+
+            .game-stats {
+                gap: 16px;
+                font-size: 16px;
+                flex-wrap: wrap;
+            }
+
+            .game-content {
+                flex-direction: column;
+            }
+
+            .game-board {
+                width: 100%;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .game-sidebar {
+                width: 100%;
+            }
+
+            .tower-shop,
+            .game-controls {
+                padding: 12px;
+            }
+
+            /* Two-column tower shop on mobile */
+            .tower-cards {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .tower-card {
+                padding: 10px;
+            }
+
+            .tower-name { font-size: 14px; }
+            .tower-stats { font-size: 11px; }
+            .tower-cost { font-size: 12px; }
+
+            .btn {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+        }
     </style>
 </head>
 
@@ -356,10 +426,10 @@
             <div class="game-title">🏰 Tower Defense</div>
             <div class="game-stats">
                 <div class="stat">
-                    <div class="stat-icon">❤️</div><span id="health">20</span>
+                    <div class="stat-icon">❤️</div><span>Health <span id="health">20</span></span>
                 </div>
                 <div class="stat">
-                    <div class="stat-icon">💰</div><span id="gold">200</span>
+                    <div class="stat-icon">💰</div><span>Gold <span id="gold">200</span></span>
                 </div>
                 <div class="stat">
                     <div class="stat-icon">🌊</div><span>Wave <span id="wave">1</span></span>
