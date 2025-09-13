@@ -230,6 +230,16 @@
             box-shadow: 0 5px 15px rgba(245, 101, 101, .4);
         }
 
+        .btn-warning {
+            background: linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%);
+            color: #4a5568;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(246, 224, 94, .4);
+        }
+
         .btn:disabled {
             opacity: .5;
             cursor: not-allowed;
@@ -408,9 +418,17 @@
                 padding: 10px;
             }
 
-            .tower-name { font-size: 14px; }
-            .tower-stats { font-size: 11px; }
-            .tower-cost { font-size: 12px; }
+            .tower-name {
+                font-size: 14px;
+            }
+
+            .tower-stats {
+                font-size: 11px;
+            }
+
+            .tower-cost {
+                font-size: 12px;
+            }
 
             .btn {
                 padding: 12px 16px;
@@ -433,6 +451,10 @@
                 </div>
                 <div class="stat">
                     <div class="stat-icon">🌊</div><span>Wave <span id="wave">1</span></span>
+                </div>
+                <div class="stat">
+                    <div class="stat-icon">⚡</div>
+                    <span>Difficulty <span id="difficultyLabel">-</span></span>
                 </div>
             </div>
         </div>
@@ -661,6 +683,7 @@
                 this.selectedTowerType = null; this.hoveredTower = null;
                 this.isPaused = true; this.isWaveActive = false; this.enemySpawnQueue = [];
                 this.waveStartTime = 0; this.lastTime = 0; this.gameOver = false; this.autoPlay = true;
+                this.goldMultiplier = 1.0;
                 this.loadState();
                 this.init();
             }
@@ -713,6 +736,7 @@
                 document.getElementById('newGameBtn').addEventListener('click', () => {
                     localStorage.removeItem('towerDefenseSave'); // clear saved state
                     location.reload(); // reload page to start from scratch
+                    this.showDifficultyModal();
                 });
                 document.getElementById('backBtn').addEventListener('click', () => {
                     window.location.href = "/";   // navigate to previous page
@@ -837,6 +861,27 @@
                 this.refreshShopAffordability();
             }
 
+            showDifficultyModal() {
+                const modal = document.getElementById('difficultyModal');
+                modal.style.display = "flex";
+
+                modal.querySelectorAll('button[data-diff]').forEach(btn => {
+                    btn.onclick = () => {
+                        const diff = btn.dataset.diff;
+                        let multiplier = 1.0;
+                        let label = "Easy";
+                        if (diff === "medium") { multiplier = 0.5; label = "Medium"; }
+                        if (diff === "hard") { multiplier = 0.25; label = "Hard"; }
+
+                        modal.style.display = "none";
+                        this.goldMultiplier = multiplier;
+                        this.difficulty = label;
+                        document.getElementById('difficultyLabel').textContent = label;
+                    };
+                });
+            }
+
+
             refreshShopAffordability() {
                 const container = document.getElementById('towerCards');
                 [...container.children].forEach(card => {
@@ -863,7 +908,7 @@
                 this.refreshShopAffordability();
             }
 
-            addGold(amount) { this.gold += amount; this.updateUI(); }
+            addGold(amount) { this.gold += Math.floor(amount * this.goldMultiplier); this.updateUI(); }
             takeDamage(amount) {
                 this.health -= amount;
                 if (this.health <= 0) { this.health = 0; this.endGame(); }
@@ -1008,25 +1053,53 @@
 
             saveState() {
                 const save = {
-                    health: this.health, gold: this.gold, wave: this.wave,
-                    isPaused: this.isPaused, autoPlay: this.autoPlay, isWaveActive: this.isWaveActive,
+                    difficulty: this.difficulty || "Easy",
+                    goldMultiplier: this.goldMultiplier,
+                    health: this.health,
+                    gold: this.gold,
+                    wave: this.wave,
+                    isPaused: this.isPaused,
+                    autoPlay: this.autoPlay,
+                    isWaveActive: this.isWaveActive,
                     enemies: this.enemies.map(e => ({
-                        typeName: Object.keys(ENEMY_TYPES).find(k => ENEMY_TYPES[k] === e.type),
-                        position: e.position, pathIndex: e.pathIndex, maxHealth: e.maxHealth,
-                        health: e.health, speed: e.speed, reward: e.reward, damage: e.damage,
-                        color: e.color, size: e.size, alive: e.alive, distanceTraveled: e.distanceTraveled
+                        typeKey: Object.keys(ENEMY_TYPES).find(k => ENEMY_TYPES[k] === e.type),
+                        position: { x: e.position.x, y: e.position.y },
+                        pathIndex: e.pathIndex,
+                        maxHealth: e.maxHealth,
+                        health: e.health,
+                        speed: e.speed,
+                        reward: e.reward,
+                        damage: e.damage,
+                        color: e.color,
+                        size: e.size,
+                        alive: e.alive,
+                        distanceTraveled: e.distanceTraveled
                     })),
                     towers: this.towers.map(t => ({
-                        typeName: Object.keys(TOWER_TYPES).find(k => TOWER_TYPES[k] === t.type),
-                        position: t.position, level: t.level, damage: t.damage, range: t.range,
-                        fireRate: t.fireRate, upgradeCost: t.upgradeCost
+                        typeKey: Object.keys(TOWER_TYPES).find(k => TOWER_TYPES[k] === t.type),
+                        position: { x: t.position.x, y: t.position.y },
+                        level: t.level,
+                        damage: t.damage,
+                        range: t.range,
+                        fireRate: t.fireRate,
+                        upgradeCost: t.upgradeCost,
+                        lastShot: t.lastShot
                     })),
                     projectiles: this.projectiles.map(p => ({
-                        position: p.position, damage: p.damage, speed: p.speed,
-                        color: p.color, size: p.size, alive: p.alive
+                        position: { x: p.position.x, y: p.position.y },
+                        damage: p.damage,
+                        speed: p.speed,
+                        color: p.color,
+                        size: p.size,
+                        alive: p.alive
                     })),
                     enemySpawnQueue: this.enemySpawnQueue,
-                    waveStartTime: this.waveStartTime
+                    waveStartTime: this.waveStartTime,
+
+                    // ⬅️ Save current tower type prices
+                    towerCosts: Object.fromEntries(
+                        Object.entries(TOWER_TYPES).map(([k, v]) => [k, v.cost])
+                    )
                 };
                 localStorage.setItem("towerDefenseSave", JSON.stringify(save));
             }
@@ -1036,28 +1109,66 @@
                 if (!data) return;
                 try {
                     const s = JSON.parse(data);
-                    this.health = s.health; this.gold = s.gold; this.wave = s.wave;
-                    this.isPaused = s.isPaused; this.autoPlay = s.autoPlay; this.isWaveActive = (s.enemies.length > 0 || s.enemySpawnQueue.length > 0);
-                    this.enemies = s.enemies.map(e => {
-                        const type = ENEMY_TYPES[e.typeName]; return new Enemy(type, this.path, this.wave, e);
-                    });
+
+                    this.difficulty = s.difficulty || "Easy";
+                    this.goldMultiplier = s.goldMultiplier || 1.0;
+                    document.getElementById('difficultyLabel').textContent = this.difficulty;
+
+                    this.health = s.health;
+                    this.gold = s.gold;
+                    this.wave = s.wave;
+                    this.isPaused = s.isPaused;
+                    this.autoPlay = s.autoPlay;
+                    this.isWaveActive = s.isWaveActive;
+
+                    // ⬅️ Restore tower type prices
+                    if (s.towerCosts) {
+                        for (const key in s.towerCosts) {
+                            if (TOWER_TYPES[key]) TOWER_TYPES[key].cost = s.towerCosts[key];
+                        }
+                    }
+
+                    this.enemies = s.enemies.map(e =>
+                        new Enemy(ENEMY_TYPES[e.typeKey], this.path, this.wave, e)
+                    );
+
                     this.towers = s.towers.map(t => {
-                        const type = TOWER_TYPES[t.typeName];
+                        const type = TOWER_TYPES[t.typeKey];
                         const tower = new Tower(type, new Vector2(t.position.x, t.position.y));
-                        tower.level = t.level; tower.damage = t.damage; tower.range = t.range;
-                        tower.fireRate = t.fireRate; tower.upgradeCost = t.upgradeCost;
+                        tower.level = t.level;
+                        tower.damage = t.damage;
+                        tower.range = t.range;
+                        tower.fireRate = t.fireRate;
+                        tower.upgradeCost = t.upgradeCost;
+                        tower.lastShot = t.lastShot || 0;
                         return tower;
                     });
-                    this.projectiles = s.projectiles.map(p => new Projectile(p.position, null, p.damage, p.speed, p.color, p.size, p));
-                    this.enemySpawnQueue = s.enemySpawnQueue; this.waveStartTime = s.waveStartTime;
-                } catch (e) { console.error("Load failed", e); }
+
+                    this.projectiles = s.projectiles.map(p =>
+                        new Projectile(new Vector2(p.position.x, p.position.y), null, p.damage, p.speed, p.color, p.size, p)
+                    );
+
+                    this.enemySpawnQueue = s.enemySpawnQueue || [];
+                    this.waveStartTime = s.waveStartTime || performance.now();
+
+                    this.updateUI();
+                } catch (e) {
+                    console.error("Load failed", e);
+                }
             }
-
-
         }
 
         let game = null;
-        window.addEventListener('DOMContentLoaded', () => { game = new Game(); });
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem("towerDefenseSave");
+            if (!saved) {
+                game = new Game();
+                game.showDifficultyModal();
+            } else {
+                game = new Game();
+            }
+        });
+
     </script>
     <div class="upgrade-modal-overlay" id="upgradeModal">
         <div class="upgrade-modal">
@@ -1069,6 +1180,17 @@
             </div>
         </div>
     </div>
+    <div class="upgrade-modal-overlay" id="difficultyModal">
+        <div class="upgrade-modal">
+            <h2>Choose Difficulty</h2>
+            <div class="upgrade-actions" style="flex-direction: column; gap: 10px;">
+                <button class="btn btn-primary" data-diff="easy">Easy</button>
+                <button class="btn btn-warning" data-diff="medium">Medium</button>
+                <button class="btn btn-danger" data-diff="hard">Hard</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
