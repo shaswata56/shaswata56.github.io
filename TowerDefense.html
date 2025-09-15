@@ -868,10 +868,10 @@
                 modal.querySelectorAll('button[data-diff]').forEach(btn => {
                     btn.onclick = () => {
                         const diff = btn.dataset.diff;
-                        let multiplier = 1.0;
+                        let multiplier = 0.99;
                         let label = "Easy";
-                        if (diff === "medium") { multiplier = 0.5; label = "Medium"; }
-                        if (diff === "hard") { multiplier = 0.25; label = "Hard"; }
+                        if (diff === "medium") { multiplier = 0.66; label = "Medium"; }
+                        if (diff === "hard") { multiplier = 0.33; label = "Hard"; }
 
                         modal.style.display = "none";
                         this.goldMultiplier = multiplier;
