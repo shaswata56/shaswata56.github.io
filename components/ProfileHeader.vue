@@ -3,9 +3,9 @@
     <div class="left-side">
       <h2 class="text-3xl font-bold name" @click="onNameClick" style="cursor:default;user-select:none">Shaswata Das</h2>
       <div class="mini-content">
-        <p class="text-base">Software Engineer & Hacker</p>
-        <p class="tagline">{{ typedTagline }}<span class="cursor" v-if="typing">|</span></p>
-        <p class="items-center gap-1.5 inline-flex location">
+        <p class="text-base sm:text-left text-center">Software Engineer & Hacker</p>
+        <p class="tagline sm:text-left text-center">{{ typedTagline }}<span class="cursor" v-if="typing">|</span></p>
+        <p class="items-center gap-1.5 inline-flex justify-center location">
           <font-awesome-icon icon="fa-solid fa-location-dot" />
           Dhaka, Bangladesh
         </p>
@@ -214,7 +214,7 @@ export default {
 
 .tagline {
   font-size: 0.85rem;
-  color: var(--accent-text-color);
+  color: #d4c9bb;
   font-style: italic;
   margin: 0 0 0.25rem;
   font-family: "Fira Mono", "Courier New", monospace;
@@ -259,7 +259,11 @@ export default {
   margin-bottom: 0.25rem;
 }
 
-@media (max-width: 768px) {
+.mini-content p.tagline {
+  color: #d4c9bb;
+}
+
+@media (max-width: 640px) {
   .home {
     padding: 2rem;
   }
@@ -285,6 +289,10 @@ export default {
     align-items: center;
     text-align: center;
     margin-bottom: 1rem;
+  }
+
+  .mini-content {
+    text-align: center;
   }
 
   .tech-buttons {

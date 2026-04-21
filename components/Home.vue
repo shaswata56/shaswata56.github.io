@@ -48,7 +48,7 @@ export default {
 
 <style scoped>
 .home {
-  max-width: 760px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 4rem 2rem;
 }
