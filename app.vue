@@ -42,6 +42,9 @@ onMounted(() => {
   // Triple-click name → matrix rain
   window.addEventListener('portfolio:matrix', () => triggerMatrixRain());
 
+  // Right-click profile picture → liquid metal
+  window.addEventListener('portfolio:liquidmetal', () => showWallpaperForced());
+
   // Type "sudo" anywhere → matrix rain
   let sudoBuffer = '';
   window.addEventListener('keydown', (e) => {
@@ -116,6 +119,31 @@ onMounted(() => {
 
     document.body.classList.add('wallpaper-active');
     showGlobalToast('all sections aligned.');
+
+    setTimeout(() => {
+      wp.style.opacity = '0';
+      document.body.classList.remove('wallpaper-active');
+      setTimeout(() => {
+        removeWallpaperEl();
+        wallpaperActive.value = false;
+      }, 600);
+    }, 10000);
+  };
+
+  const showWallpaperForced = () => {
+    if (wallpaperActive.value) return;
+    wallpaperActive.value = true;
+
+    const wp = document.createElement('shader-wallpaper');
+    wp.id = 'wallpaper-element';
+    wp.setAttribute('preset', 'metal');
+    wp.setAttribute('intensity', '0.7');
+    wp.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;opacity:0;transition:opacity 0.6s ease;pointer-events:auto';
+    document.body.appendChild(wp);
+    requestAnimationFrame(() => { wp.style.opacity = '1'; });
+
+    document.body.classList.add('wallpaper-active');
+    showGlobalToast('liquid metal activated.');
 
     setTimeout(() => {
       wp.style.opacity = '0';

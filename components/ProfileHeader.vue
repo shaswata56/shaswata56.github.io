@@ -70,6 +70,8 @@
         title="click me"
         style="cursor: pointer"
         @click="cycleTagline"
+        @contextmenu="onImageContextMenu"
+        @dragstart="onImageDragStart"
       />
     </div>
   </header>
@@ -134,6 +136,18 @@ export default {
       this.imageBounce = true;
       setTimeout(() => { this.imageBounce = false; }, 300);
       this.typeTagline();
+    },
+    onImageContextMenu(event) {
+      // Prevent default context menu
+      event.preventDefault();
+      // Dispatch event to activate liquid metal
+      window.dispatchEvent(new CustomEvent('portfolio:liquidmetal'));
+    },
+    onImageDragStart(event) {
+      // Prevent default drag behavior
+      event.preventDefault();
+      // Dispatch event to activate liquid metal
+      window.dispatchEvent(new CustomEvent('portfolio:liquidmetal'));
     },
   },
 };
