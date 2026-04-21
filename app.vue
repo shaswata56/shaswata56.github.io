@@ -4,7 +4,7 @@
     id="wallpaper-element"
     preset="plasma"
     intensity="0.7"
-    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.6s ease"
+    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0; transition: opacity 0.6s ease; pointer-events: none"
   ></shader-wallpaper>
   <Home style="position: relative; z-index: 2" />
 </template>
@@ -109,7 +109,16 @@ onMounted(() => {
       if (wp && !wallpaperActive.value) {
         wallpaperActive.value = true;
         wp.style.opacity = '1';
+        wp.style.pointerEvents = 'auto';
+        document.body.classList.add('hide-text');
         showGlobalToast('all sections aligned.');
+
+        setTimeout(() => {
+          wp.style.opacity = '0';
+          wp.style.pointerEvents = 'none';
+          document.body.classList.remove('hide-text');
+          wallpaperActive.value = false;
+        }, 20000);
       }
     }
   };
@@ -119,6 +128,8 @@ onMounted(() => {
     if (wp && wallpaperActive.value) {
       wallpaperActive.value = false;
       wp.style.opacity = '0';
+      wp.style.pointerEvents = 'none';
+      document.body.classList.remove('hide-text');
     }
   };
 
@@ -464,6 +475,10 @@ section.revealed .education-item {
 
 .education-item:nth-child(1) { transition-delay: 0.05s; }
 .education-item:nth-child(2) { transition-delay: 0.12s; }
+
+body.hide-text, body.hide-text * {
+  color: transparent !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
