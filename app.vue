@@ -95,12 +95,22 @@ onMounted(() => {
   };
   document.head.appendChild(scriptTag);
 
+  const checkAllSectionsMoved = () => {
+    const allSectionIds = Array.from(document.querySelectorAll('section[id]')).map(s => (s as HTMLElement).id);
+    return allSectionIds.length > 0 && allSectionIds.every(id => {
+      const pos = savedPos[id];
+      return pos && (pos.x !== 0 || pos.y !== 0);
+    });
+  };
+
   const showWallpaper = () => {
-    const wp = document.getElementById('wallpaper-element') as HTMLElement;
-    if (wp && !wallpaperActive.value) {
-      wallpaperActive.value = true;
-      wp.style.opacity = '1';
-      showGlobalToast('creating...');
+    if (checkAllSectionsMoved()) {
+      const wp = document.getElementById('wallpaper-element') as HTMLElement;
+      if (wp && !wallpaperActive.value) {
+        wallpaperActive.value = true;
+        wp.style.opacity = '1';
+        showGlobalToast('all sections aligned.');
+      }
     }
   };
 
@@ -200,6 +210,7 @@ onMounted(() => {
     localStorage.setItem('section-positions', JSON.stringify(savedPos));
     activeDrag = null;
     updateResetBtn();
+    showWallpaper();
   });
 
   // Idle 60s toast
