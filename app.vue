@@ -158,7 +158,8 @@ onMounted(() => {
     if (init.x || init.y) section.style.transform = `translate(${init.x}px,${init.y}px)`;
 
     handle.style.cursor = 'grab';
-    handle.title = 'drag to move · double-click to reset';
+    const anchor = handle.closest('a');
+    if (anchor) anchor.removeAttribute('href');
 
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -476,6 +477,10 @@ section.revealed .education-item {
 
 .education-item:nth-child(1) { transition-delay: 0.05s; }
 .education-item:nth-child(2) { transition-delay: 0.12s; }
+
+body.wallpaper-active {
+  overflow: hidden !important;
+}
 
 body.wallpaper-active > *:not(#wallpaper-element) {
   visibility: hidden !important;
