@@ -478,7 +478,8 @@ section.revealed .education-item {
 .education-item:nth-child(1) { transition-delay: 0.05s; }
 .education-item:nth-child(2) { transition-delay: 0.12s; }
 
-body.wallpaper-active {
+body.wallpaper-active,
+html:has(body.wallpaper-active) {
   overflow: hidden !important;
 }
 

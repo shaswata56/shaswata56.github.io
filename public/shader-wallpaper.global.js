@@ -1,4 +1,4 @@
-/*! shader-wallpaper (global build) - works from file:// */
+/*! shader-wallpaper (global build) */
 (function(global){
 'use strict';
 /*!
@@ -47,102 +47,96 @@ uniform float uClick; uniform vec2 uClickPos;
 uniform float uIntens; uniform float uQuality;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
-float noise(vec2 p){
-  vec2 i=floor(p); vec2 f=fract(p);
-  float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
-  vec2 u=f*f*(3.0-2.0*f);
-  return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
-}
-float fbm(vec2 p){
-  float v=0.0, a=0.5;
-  int N = uQuality > 0.5 ? 5 : 3;
-  for(int i=0;i<5;i++){ if(i>=N) break; v+=a*noise(p); p*=2.02; a*=0.5; }
-  return v;
-}
-float blob(vec2 p, vec2 c, float r){ float d = length(p-c); return r*r/(d*d + 0.02); }
 
-// autonomous blob path: lissajous-style orbit, unique per seed
-vec2 blobPath(float seed, float phase, float speed){
-  float t = uTime*speed + phase;
-  float a = seed*3.1 + 1.7;
-  float b = seed*2.3 + 0.9;
-  float rx = 0.45 + 0.25*sin(seed*5.3);
-  float ry = 0.35 + 0.20*cos(seed*4.1);
-  return vec2(
-    sin(t*a)*rx + 0.10*cos(t*a*2.3 + seed),
-    cos(t*b)*ry + 0.10*sin(t*b*1.9 - seed)
-  );
+// cheap metaball contribution
+float blob(vec2 p, vec2 c, float r2){ vec2 d = p-c; return r2/(dot(d,d) + 0.02); }
+
+// 6 blob positions in a single function, deterministic animation
+void blobAt(int i, float t, out vec2 p, out float r2){
+  float s = float(i)*1.37 + 0.2;
+  float ph = float(i)*2.09;
+  float sp = 0.55 + fract(s*0.91)*0.35;
+  float tt = t*sp + ph;
+
+  // orbit CENTER offset: spread blobs in a ring so they don't all converge at origin
+  float centerAng = float(i) * 1.0472; // 60° apart (2π/6)
+  vec2 center = vec2(cos(centerAng), sin(centerAng)) * 0.32;
+  // slowly rotate the ring of centers
+  float cRot = t*0.04;
+  center = vec2(center.x*cos(cRot)-center.y*sin(cRot),
+                center.x*sin(cRot)+center.y*cos(cRot));
+
+  float rx = 0.22 + 0.04*sin(s*3.1);
+  float ry = 0.18 + 0.03*cos(s*4.7);
+
+  float ax = 0.85 + fract(s*1.31)*0.5;
+  float ay = 0.75 + fract(s*2.17)*0.5;
+
+  p = center + vec2(sin(tt*ax + s)*rx, cos(tt*ay - s)*ry)
+    + vec2(sin(tt*0.31+s), cos(tt*0.27-s))*0.06;
+
+  float rBase = 0.28 + 0.03*sin(s*5.9);
+  r2 = rBase*rBase;
 }
 
 void main(){
   vec2 uv = (gl_FragCoord.xy - 0.5*uRes)/min(uRes.x,uRes.y);
   vec2 m  = (uMouse - 0.5*uRes)/min(uRes.x,uRes.y);
   vec2 cp = (uClickPos - 0.5*uRes)/min(uRes.x,uRes.y);
+  float t = uTime;
 
-  // compute autonomous positions for 6 blobs
-  const int NB = 6;
-  vec2 pos[NB];
-  float rad[NB];
-  pos[0] = blobPath(0.17, 0.0, 0.30); rad[0] = 0.24;
-  pos[1] = blobPath(0.53, 2.1, 0.38); rad[1] = 0.20;
-  pos[2] = blobPath(0.82, 4.7, 0.26); rad[2] = 0.22;
-  pos[3] = blobPath(1.24, 1.3, 0.42); rad[3] = 0.18;
-  pos[4] = blobPath(1.67, 5.8, 0.34); rad[4] = 0.16;
-  pos[5] = blobPath(2.01, 3.2, 0.22); rad[5] = 0.26;
-
-  // find nearest blob to mouse
-  int nearest = 0;
+  // PASS A: find nearest blob index (as float)
   float minD = 9999.0;
-  for(int i=0;i<NB;i++){
-    float d = length(pos[i] - m);
-    if(d < minD){ minD = d; nearest = i; }
+  float nearestF = 0.0;
+  for(int i=0;i<6;i++){
+    vec2 p; float r2;
+    blobAt(i, t, p, r2);
+    float d = length(p - m);
+    if(d < minD){ minD = d; nearestF = float(i); }
   }
 
-  // gravitate nearest blob toward mouse; strength fades with distance so
-  // mouse only captures when "close enough"
-  float gravStr = (0.65 + 0.35*uIntens) * exp(-minD*0.9);
-  for(int i=0;i<NB;i++){
-    if(i == nearest){
-      pos[i] = mix(pos[i], m, gravStr);
-      // slight size boost when captured
-      rad[i] *= 1.0 + 0.25*gravStr;
-    }
-  }
+  float gravStr = (0.75 + 0.25*uIntens) * exp(-minD*0.8);
 
-  // accumulate metaball field
+  // PASS B: accumulate metaball field with gravity on nearest
   float f = 0.0;
-  for(int i=0;i<NB;i++){
-    f += blob(uv, pos[i], rad[i]);
+  vec2 capPos = vec2(0.0);
+  for(int i=0;i<6;i++){
+    vec2 p; float r2;
+    blobAt(i, t, p, r2);
+    float isNear = step(abs(float(i) - nearestF), 0.5);
+    vec2 pp = mix(p, m, gravStr*isNear);
+    float rr2 = r2 * (1.0 + 0.55*gravStr*isNear);
+    f += blob(uv, pp, rr2);
+    capPos = mix(capPos, pp, isNear);
   }
-  // click pulse blob
-  f += blob(uv, cp, 0.28*uClick) * (0.9+uClick);
+  f += blob(uv, cp, 0.06*uClick) * (1.0+uClick);
 
-  vec2 q = uv*2.0 + vec2(uTime*0.1, uTime*0.07);
-  float n = fbm(q + f*0.3);
-  f += (n-0.5)*0.6;
+  // anti-blob at origin to cancel convergence hot-spot
+  f -= blob(uv, vec2(0.0), 0.18) * 0.20;
+
+  // subtle surface shimmer (not origin-centered)
+  float shimmer = sin(uv.x*8.0 + uv.y*5.0 - t*0.9)*0.04;
+  f += shimmer;
 
   float rim  = smoothstep(1.0, 1.08, f) - smoothstep(1.08, 1.22, f);
-  float core = smoothstep(1.15, 2.2, f);
+  float core = smoothstep(1.15, 2.0, f);
 
-  vec3 c1 = vec3(0.04, 0.05, 0.08);
-  vec3 c2 = vec3(0.35, 0.42, 0.55);
-  vec3 c3 = vec3(0.85, 0.72, 0.95);
-  vec3 c4 = vec3(1.0, 0.95, 0.88);
+  vec3 c1 = vec3(0.04, 0.05, 0.09);
+  vec3 c2 = vec3(0.38, 0.44, 0.58);
+  vec3 c3 = vec3(0.85, 0.72, 0.98);
+  vec3 c4 = vec3(1.0, 0.95, 0.90);
 
-  vec3 col = mix(c1, c2, smoothstep(0.2, 0.9, f));
-  col = mix(col, c3, smoothstep(1.0, 1.3, f)*0.8);
-  col = mix(col, c4, core*0.6);
-  col += vec3(0.15,0.1,0.2)*sin(f*24.0 - uTime*1.2 + n*3.0)*smoothstep(0.6,1.4,f);
-  col += rim * vec3(0.9, 0.75, 1.0) * 0.6;
+  vec3 col = mix(c1, c2, smoothstep(0.05, 0.5, f));
+  col = mix(col, c3, smoothstep(0.5, 1.0, f)*0.85);
+  col = mix(col, c4, core*0.7);
+  col += vec3(0.15,0.1,0.2)*sin(f*20.0 - t*1.2)*smoothstep(0.6,1.4,f);
+  col += rim * vec3(0.92, 0.75, 1.0) * 0.65;
 
-  // captured-blob highlight: warm glow around nearest blob when it's being pulled
-  float capD = length(uv - pos[nearest]);
-  float capGlow = exp(-capD*4.0) * gravStr;
-  col += vec3(1.0, 0.7, 0.95) * capGlow * 0.35;
+  float capD = length(uv - capPos);
+  col += vec3(1.0, 0.7, 0.95) * exp(-capD*4.0) * gravStr * 0.4;
 
-  float v = 1.0 - length(uv)*0.6;
-  col *= mix(0.5, 1.0, clamp(v,0.0,1.0));
-  col += (hash(gl_FragCoord.xy+uTime)-0.5)*0.02;
+  col *= 0.55 + 0.45*(1.0 - length(uv)*0.7);
+  col += (hash(gl_FragCoord.xy+t)-0.5)*0.02;
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -636,21 +630,26 @@ class ShaderWallpaper {
     this._ro.observe(target);
     window.addEventListener('resize', this._onResize = () => this._resize());
 
-    // set mouse to center initially
+    // set mouse far off-canvas initially so no blob is "captured" before any real interaction
+    this._mouse = [-9999, -9999];
+    this._target = [-9999, -9999];
     const r = this.canvas.getBoundingClientRect();
-    this._mouse = [r.width * 0.5 * this._dpr, r.height * 0.5 * this._dpr];
-    this._target = this._mouse.slice();
-    this._clickPos = this._mouse.slice();
+    this._clickPos = [r.width * 0.5 * this._dpr, r.height * 0.5 * this._dpr];
 
     // pointer
     if (opts.pointer) {
       this._onMove = (e) => this._setMouseFromEvent(e);
       canvas.addEventListener('pointermove', this._onMove);
       canvas.addEventListener('pointerenter', this._onMove);
+      canvas.addEventListener('pointerleave', () => {
+        // push mouse far off-canvas so no blob is captured while pointer is away
+        this._target = [-9999, -9999];
+      });
       canvas.addEventListener('touchmove', (e) => {
         const t = e.touches[0]; if (!t) return;
         this._setMouseFromEvent(t);
       }, { passive: true });
+      canvas.addEventListener('touchend', () => { this._target = [-9999, -9999]; });
     }
     if (opts.clicks) {
       this._onDown = (e) => {
@@ -786,9 +785,15 @@ class ShaderWallpaper {
     const now = performance.now();
     const dt = Math.min(0.05, (now - this._lastT) / 1000);
     this._lastT = now;
-    // ease mouse
-    this._mouse[0] += (this._target[0] - this._mouse[0]) * 0.14;
-    this._mouse[1] += (this._target[1] - this._mouse[1]) * 0.14;
+    // ease mouse - snap instantly if coming back from offscreen
+    const inactive = this._mouse[0] < -5000 || this._target[0] < -5000;
+    if (this._mouse[0] < -5000 && this._target[0] > -5000) {
+      this._mouse[0] = this._target[0];
+      this._mouse[1] = this._target[1];
+    } else {
+      this._mouse[0] += (this._target[0] - this._mouse[0]) * 0.14;
+      this._mouse[1] += (this._target[1] - this._mouse[1]) * 0.14;
+    }
     // decay click
     this._clickStrength *= Math.pow(0.015, dt);
 
