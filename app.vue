@@ -1,11 +1,5 @@
 <template>
   <NuxtRouteAnnouncer />
-  <shader-wallpaper
-    id="wallpaper-element"
-    preset="liquid-metal"
-    intensity="0.7"
-    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0; transition: opacity 0.6s ease; pointer-events: none"
-  ></shader-wallpaper>
   <Home style="position: relative; z-index: 2" />
 </template>
 
@@ -103,34 +97,41 @@ onMounted(() => {
     });
   };
 
-  const showWallpaper = () => {
-    if (checkAllSectionsMoved()) {
-      const wp = document.getElementById('wallpaper-element') as HTMLElement;
-      if (wp && !wallpaperActive.value) {
-        wallpaperActive.value = true;
-        wp.style.opacity = '1';
-        wp.style.pointerEvents = 'auto';
-        document.body.classList.add('wallpaper-active');
-        showGlobalToast('all sections aligned.');
+  const removeWallpaperEl = () => {
+    const existing = document.getElementById('wallpaper-element');
+    if (existing) existing.remove();
+  };
 
-        setTimeout(() => {
-          wp.style.opacity = '0';
-          wp.style.pointerEvents = 'none';
-          document.body.classList.remove('wallpaper-active');
-          wallpaperActive.value = false;
-        }, 10000);
-      }
-    }
+  const showWallpaper = () => {
+    if (!checkAllSectionsMoved() || wallpaperActive.value) return;
+    wallpaperActive.value = true;
+
+    const wp = document.createElement('shader-wallpaper');
+    wp.id = 'wallpaper-element';
+    wp.setAttribute('preset', 'metal');
+    wp.setAttribute('intensity', '0.7');
+    wp.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9998;opacity:0;transition:opacity 0.6s ease;pointer-events:auto';
+    document.body.appendChild(wp);
+    requestAnimationFrame(() => { wp.style.opacity = '1'; });
+
+    document.body.classList.add('wallpaper-active');
+    showGlobalToast('all sections aligned.');
+
+    setTimeout(() => {
+      wp.style.opacity = '0';
+      document.body.classList.remove('wallpaper-active');
+      setTimeout(() => {
+        removeWallpaperEl();
+        wallpaperActive.value = false;
+      }, 600);
+    }, 10000);
   };
 
   const hideWallpaper = () => {
-    const wp = document.getElementById('wallpaper-element') as HTMLElement;
-    if (wp && wallpaperActive.value) {
-      wallpaperActive.value = false;
-      wp.style.opacity = '0';
-      wp.style.pointerEvents = 'none';
-      document.body.classList.remove('wallpaper-active');
-    }
+    if (!wallpaperActive.value) return;
+    wallpaperActive.value = false;
+    document.body.classList.remove('wallpaper-active');
+    removeWallpaperEl();
   };
 
   // Draggable sections — drag by h2 heading
@@ -476,12 +477,8 @@ section.revealed .education-item {
 .education-item:nth-child(1) { transition-delay: 0.05s; }
 .education-item:nth-child(2) { transition-delay: 0.12s; }
 
-body.wallpaper-active * {
+body.wallpaper-active > *:not(#wallpaper-element) {
   visibility: hidden !important;
-}
-
-body.wallpaper-active #wallpaper-element {
-  visibility: visible !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
