@@ -1,6 +1,5 @@
 <template>
   <section class="about" id="about">
-    <p class="section-label">About</p>
     <a href="#about">
       <h2 class="text-2xl font-bold name">About Me</h2>
     </a>

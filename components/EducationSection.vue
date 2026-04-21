@@ -1,6 +1,5 @@
 <template>
   <section class="education" id="education">
-    <p class="section-label">Education</p>
     <a href="#education">
       <h2 class="text-2xl font-bold name">Education</h2>
     </a>

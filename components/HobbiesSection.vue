@@ -1,6 +1,5 @@
 <template>
   <section class="hobbies" id="hobbies">
-    <p class="section-label">Interests</p>
     <a href="#hobbies">
       <h2 class="text-2xl font-bold name">Hobbies</h2>
     </a>

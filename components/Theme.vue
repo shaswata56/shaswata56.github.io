@@ -53,27 +53,26 @@ export default {
 }
 
 .theme-button {
-  background-color: transparent;
+  background-color: var(--accent-color);
   color: var(--accent-text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  width: 28px;
-  height: 28px;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: color var(--transition-duration) ease, border-color var(--transition-duration) ease;
+  transition: color var(--transition-duration) ease, box-shadow var(--transition-duration) ease;
 }
 
 .theme-button:hover {
   color: var(--link-color-hover);
-  border-color: var(--link-color-hover);
+  box-shadow: 0 0 8px var(--border-color);
   transform: none;
-  box-shadow: none;
 }
 
 .theme-button svg {
-  font-size: 13px;
+  font-size: 16px;
 }
 </style>

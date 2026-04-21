@@ -103,7 +103,7 @@ export default {
 }
 
 .social-link {
-  font-size: 1.1rem;
+  font-size: 1.4rem;
   background-color: transparent;
   color: var(--accent-text-color);
   margin: 0 0.75rem 0 0;

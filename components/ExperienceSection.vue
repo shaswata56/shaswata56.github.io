@@ -1,6 +1,5 @@
 <template>
   <section class="experience" id="experience">
-    <p class="section-label">Experience</p>
     <a href="#experience">
       <h2 class="text-2xl font-bold name">Experience</h2>
     </a>
