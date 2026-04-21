@@ -86,8 +86,8 @@ export class Tower {
     }
 
     draw(ctx) {
-        // Highlight if hovered
-        if (typeof game !== "undefined" && game && game.hoveredTower === this) {
+        // Highlight if hovered (use global reference)
+        if (typeof window !== 'undefined' && window.towerGameRef && window.towerGameRef.hoveredTower === this) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -130,8 +130,9 @@ export class Tower {
     }
 }
 
-// Forward declaration for game reference
-let game = null;
-export function setGameReference(gameRef) {
-    game = gameRef;
+// Set up global reference for tower drawing
+if (typeof window !== 'undefined') {
+    window.setTowerGameRef = function(gameRef) {
+        window.towerGameRef = gameRef;
+    };
 }

@@ -2,7 +2,7 @@
 import { Vector2 } from './vector.js';
 import { Enemy, ENEMY_TYPES } from './enemy.js';
 import { Projectile } from './projectile.js';
-import { Tower, setGameReference } from './tower.js';
+import { Tower } from './tower.js';
 
 // Tower type definitions
 export const TOWER_TYPES = {
@@ -104,7 +104,7 @@ export class Game {
         this.goldMultiplier = 1.0;
 
         // Set up game reference for towers
-        setGameReference(this);
+        window.towerGameRef = this;
 
         this.init();
     }
@@ -612,25 +612,25 @@ export class Game {
         this.towers.forEach(tower => tower.update(deltaTime, this.enemies, this.projectiles));
         this.projectiles.forEach(projectile => projectile.update(deltaTime));
 
-        // Clean up dead objects
-        this.enemies = this.enemies.filter(enemy => enemy.alive);
+        // Process dead enemies before cleanup
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (!enemy.alive) {
+                // Check if reached end
+                if (enemy.pathIndex >= enemy.path.length - 1) {
+                    this.takeDamage(enemy.damage);
+                }
+                // Award gold if killed
+                if (enemy.health <= 0) {
+                    this.addGold(enemy.reward);
+                }
+                // Remove from array
+                this.enemies.splice(i, 1);
+            }
+        }
+
+        // Clean up dead projectiles
         this.projectiles = this.projectiles.filter(projectile => projectile.alive);
-
-        // Check for enemies reaching the end
-        this.enemies.forEach(enemy => {
-            if (!enemy.alive && enemy.pathIndex >= enemy.path.length - 1) {
-                this.takeDamage(enemy.damage);
-            }
-        });
-
-        // Award gold for killed enemies
-        this.enemies = this.enemies.filter(enemy => {
-            if (!enemy.alive && enemy.health <= 0) {
-                this.addGold(enemy.reward);
-                return false;
-            }
-            return true;
-        });
 
         // Check wave completion
         this.checkWaveComplete();

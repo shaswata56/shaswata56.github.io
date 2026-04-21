@@ -43,7 +43,7 @@ export class Enemy {
 
         const target = this.path[this.pathIndex + 1];
         const direction = new Vector2(target.x - this.position.x, target.y - this.position.y);
-        const distance = direction.distance(new Vector2(0, 0));
+        const distance = Math.hypot(direction.x, direction.y);
 
         if (distance < 2) {
             this.pathIndex++;
