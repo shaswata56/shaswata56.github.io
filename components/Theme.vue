@@ -47,59 +47,33 @@ export default {
 <style scoped>
 .theme-switcher {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 1000;
 }
 
 .theme-button {
-  background-color: var(--accent-color);
+  background-color: transparent;
   color: var(--accent-text-color);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
+  transition: color var(--transition-duration) ease, border-color var(--transition-duration) ease;
 }
 
 .theme-button:hover {
-  transform: scale(1.1);
-  transition: all 0.7s ease;
-  box-shadow: 0 0 10px var(--accent-color);
+  color: var(--link-color-hover);
+  border-color: var(--link-color-hover);
+  transform: none;
+  box-shadow: none;
 }
 
 .theme-button svg {
-  font-size: 23px;
-}
-
-@media (max-width: 920px) {
-  .theme-switcher {
-    top: 10px;
-    right: 10px;
-  }
-}
-
-@media (max-width: 768px) {
-  .theme-button {
-    width: 29px;
-    height: 29px;
-  }
-
-  .theme-button svg {
-    font-size: 19px;
-  }
-}
-
-@media (max-width: 430px) {
-  .theme-button {
-    width: 19px;
-    height: 19px;
-  }
-
-  .theme-button svg {
-    font-size: 13px;
-  }
+  font-size: 13px;
 }
 </style>

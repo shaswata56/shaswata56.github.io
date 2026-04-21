@@ -27,44 +27,31 @@ export default {
 </script>
 
 <style scoped>
-/* Styles for footer section */
 .footer {
   text-align: center;
-  margin-top: 2rem;
-  padding-top: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.25rem;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #ffffff;
+  font-size: 0.85rem;
+  color: var(--accent-text-color);
+  gap: 0.35rem;
 }
 
-[data-theme="light"] .footer {
-  text-align: center;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #000000;
+.footer b,
+.footer a {
+  color: var(--accent-text-color);
+  margin: 0 0.1rem;
 }
 
-.footer b {
-  color: #ffffff;
-  margin-right: 0.5rem;
-  margin-left: 0.5rem;
-}
-
-[data-theme="light"] .footer b {
-  color: #000000;
-  margin-right: 0.5rem;
-  margin-left: 0.5rem;
+.footer a:hover b {
+  color: var(--link-color-hover);
 }
 
 img {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
+  margin: 0 0.25rem;
   vertical-align: middle;
 }
 </style>

@@ -1,5 +1,6 @@
 <template>
   <section class="experience" id="experience">
+    <p class="section-label">Experience</p>
     <a href="#experience">
       <h2 class="text-2xl font-bold name">Experience</h2>
     </a>
@@ -58,6 +59,16 @@ export default {
 </script>
 
 <style scoped>
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
 .experience {
   margin-bottom: 2rem;
 }
@@ -69,7 +80,12 @@ export default {
 }
 
 .experience-item {
-  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 0;
+}
+
+.experience-item:last-child {
+  border-bottom: none;
 }
 
 .experience-header {
@@ -108,7 +124,7 @@ export default {
 }
 
 .description {
-  line-height: 1.4;
+  line-height: 1.8;
   margin: 0.5rem 0 0;
 }
 </style>

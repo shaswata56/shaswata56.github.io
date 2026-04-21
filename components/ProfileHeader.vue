@@ -103,31 +103,31 @@ export default {
 }
 
 .social-link {
-  font-size: 27px;
-  background-color: var(--accent-color);
+  font-size: 1.1rem;
+  background-color: transparent;
   color: var(--accent-text-color);
-  margin: 0 4px 0 0;
-  border-radius: 5px;
-  display: flex;
-  min-height: 36px;
-  min-width: 36px;
-  justify-content: center;
-  align-content: center;
-  flex-wrap: wrap;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 0 0.75rem 0 0;
+  border-radius: 0;
+  min-height: unset;
+  min-width: unset;
+  display: inline-flex;
+  align-items: center;
+  transition: color var(--transition-duration) ease;
 }
 
 .social-link:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--box-shadow);
-  background-color: var(--link-color-hover);
-  color: var(--accent-color);
+  color: var(--link-color-hover);
+  transform: none;
+  box-shadow: none;
+  background-color: transparent;
 }
 
 .social-links {
   list-style-type: none;
   display: flex;
   flex-direction: row;
+  padding: 0;
+  margin-top: 0.5rem;
 }
 
 .profile-image {
@@ -135,6 +135,22 @@ export default {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+}
+
+.left-side h2 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+}
+
+.mini-content p {
+  font-size: 0.9rem;
+  color: var(--accent-text-color);
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
 }
 
 @media (max-width: 768px) {

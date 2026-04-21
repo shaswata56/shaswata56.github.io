@@ -1,5 +1,6 @@
 <template>
   <section class="about" id="about">
+    <p class="section-label">About</p>
     <a href="#about">
       <h2 class="text-2xl font-bold name">About Me</h2>
     </a>
@@ -39,6 +40,14 @@ export default {
 </script>
   
 <style scoped>
-/* Styling specific to the about section */
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
 </style>
   

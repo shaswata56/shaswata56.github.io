@@ -44,30 +44,33 @@ useSeoMeta({
 
 
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
 @import url("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css");
 
 :root {
-  --background-color: #1c1b19;
-  --accent-color: #3a3432;
-  --border-color: #6d4f3a;
-  --link-color: #9e8a6d;
-  --text-color: #d3c8bd;
-  --accent-text-color: #d3c8bd;
-  --link-color-hover: #c4a67a;
-  --box-shadow: 0 5px 10px rgba(210, 190, 170, 0.2);
-  --transition-duration: 0.3s;
+  --background-color: #1a1917;
+  --accent-color: #242220;
+  --border-color: #4a4440;
+  --link-color: #c4a67a;
+  --text-color: #d4c9bb;
+  --accent-text-color: #7a6a5a;
+  --link-color-hover: #d9bc94;
+  --text-color-secondary: #7a6a5a;
+  --box-shadow: none;
+  --transition-duration: 0.2s;
 }
 
 [data-theme="light"] {
-  --background-color: #f7f9fb; /* Soft light blue for a clean base */
-  --accent-color: #dce7f2; /* Muted cool blue for accents */
-  --border-color: #a5c3dc; /* Mid-tone blue for subtle contrast */
-  --link-color: #7894ac; /* Deep blue for links */
-  --text-color: #35475a; /* Dark blue-gray for readable text */
-  --accent-text-color: #5c7d99; /* Cool, muted blue-gray for emphasis */
-  --link-color-hover: #4685ac;
-  --box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  --background-color: #faf9f7;
+  --accent-color: #f0ece6;
+  --border-color: #d6cfc8;
+  --link-color: #a07840;
+  --text-color: #2a2420;
+  --accent-text-color: #7a6a5a;
+  --link-color-hover: #c4891e;
+  --text-color-secondary: #7a6a5a;
+  --box-shadow: none;
 }
 
 html,
@@ -75,9 +78,9 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  font-family: "Fira Mono", Consolas, Liberation Mono, monospace;
+  font-family: "Merriweather", Georgia, serif;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-color);
   background-color: var(--background-color);
   scroll-behavior: smooth;
@@ -114,35 +117,29 @@ a:hover {
 h1,
 h2,
 h3 {
-  color: var(--link-color-hover);
+  color: var(--text-color);
   margin-bottom: 1rem;
   font-weight: 600;
 }
 
-h2 {
-  color: #ffffff;
-}
-
-[data-theme="light"] h2 {
-  color: #000000;
-}
-
 p {
   color: var(--text-color);
-  line-height: 1.3;
-  font-size: 14px;
-  margin: 0 0 10px;
-  text-align: justify;
+  line-height: 1.8;
+  font-size: 1rem;
+  margin: 0 0 1rem;
+  text-align: left;
 }
 
 section {
   margin-bottom: 2rem;
 }
 
-.name,
+.name {
+  font-family: "Merriweather", Georgia, serif;
+}
+
 h3 {
-  font-family: "ui-sans-serif", system-ui, sans-serif, Apple Color Emoji,
-    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
 }
 
 ::-webkit-scrollbar-track

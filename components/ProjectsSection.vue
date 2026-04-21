@@ -1,5 +1,6 @@
 <template>
   <section class="projects" id="projects">
+    <p class="section-label">Projects</p>
     <a href="#projects">
       <h2 class="text-2xl font-bold name">Projects</h2>
     </a>
@@ -92,6 +93,16 @@ export default {
 </script>
 
 <style scoped>
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
 .projects {
   margin-bottom: 2rem;
 }
@@ -105,26 +116,16 @@ export default {
 .project-card {
   display: flex;
   justify-content: space-between;
-  background-color: var(--accent-color);
+  background-color: transparent;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   padding: 1rem;
   gap: 1rem;
-  transition: background-color var(--transition-duration) ease,
-    color var(--transition-duration) ease,
-    transform var(--transition-duration) ease,
-    box-shadow var(--transition-duration) ease;
+  transition: border-color var(--transition-duration) ease;
 }
 
 .project-card:hover {
-  box-shadow: var(--box-shadow);
-  background-color: var(--link-color);
-}
-
-.project-card:hover .project-title,
-.project-card:hover .project-description,
-.project-card:hover .project-year {
-  color: var(--accent-color);
+  border-color: var(--link-color);
 }
 
 .project-info {
@@ -149,14 +150,15 @@ export default {
 }
 
 .project-year {
-  font-size: 0.9rem;
-  color: var(--text-color);
+  font-size: 0.85rem;
+  font-family: "Inter", sans-serif;
+  color: var(--accent-text-color);
   margin-left: 1rem;
 }
 
 .project-description {
-  font-size: 1.1rem;
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.7;
   margin-bottom: 1rem;
   color: var(--text-color);
 }

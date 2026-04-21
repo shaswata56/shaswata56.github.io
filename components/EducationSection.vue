@@ -1,5 +1,6 @@
 <template>
   <section class="education" id="education">
+    <p class="section-label">Education</p>
     <a href="#education">
       <h2 class="text-2xl font-bold name">Education</h2>
     </a>
@@ -50,6 +51,16 @@ export default {
 </script>
   
   <style scoped>
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
 .education {
   margin-bottom: 2rem;
 }
@@ -88,21 +99,21 @@ export default {
 }
 
 .degree {
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--accent-text-color);
 }
 
 .timeframe {
-  font-size: 1.1rem;
-  color: var(--text-color-secondary);
+  font-size: 1rem;
+  color: var(--accent-text-color);
   margin: 0;
 }
 
 .education-body {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--text-color);
-  line-height: 1.4;
+  line-height: 1.8;
   margin-top: 0.5rem;
 }
 </style>

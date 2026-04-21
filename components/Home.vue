@@ -45,9 +45,9 @@ export default {
 
 <style scoped>
 .home {
-  max-width: 900px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 5rem;
+  padding: 4rem 2rem;
 }
 
 .content-wrapper {
@@ -67,14 +67,13 @@ header {
 
 @media (max-width: 768px) {
   .home {
-    padding: 4rem 1.5rem;
+    padding: 3rem 1.25rem;
   }
 
   .content-wrapper {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding: 0 5%;
   }
 
   header {

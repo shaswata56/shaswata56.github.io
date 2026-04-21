@@ -1,5 +1,6 @@
 <template>
   <section class="technologies" id="technologies">
+    <p class="section-label">Technologies</p>
     <a href="#technologies">
       <h2 class="text-2xl font-bold name">Technologies</h2>
     </a>
@@ -131,6 +132,16 @@ export default {
 </script>
 
 <style scoped>
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
 /* Styles related specifically to the technologies section */
 
 .tech-buttons {
@@ -152,8 +163,9 @@ export default {
 
 .tech-buttons button:hover,
 .tech-buttons button.active {
-  background-color: var(--link-color);
-  color: var(--background-color);
+  border-color: var(--link-color);
+  color: var(--link-color);
+  background-color: transparent;
 }
 
 .tech-list {
@@ -162,15 +174,11 @@ export default {
   gap: 1rem;
 }
 
-span {
+.tech-text {
   padding-top: 5px;
   max-width: 90px;
-  font-family: "ui-sans-serif", system-ui, sans-serif, Apple Color Emoji,
-    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-}
-
-.tech-text {
-  color: var(--background-color) !important;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  color: var(--text-color);
 }
 
 .tech-item {
@@ -179,20 +187,19 @@ span {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  width: 100px;
+  min-width: 80px;
+  width: auto;
   font-size: 13px;
   justify-content: center;
   cursor: default;
   border: 1px solid var(--border-color);
-  background-color: var(--link-color);
-  border-radius: 9px;
-  transition: all var(--transition-duration) ease;
+  background-color: transparent;
+  border-radius: 6px;
+  transition: border-color var(--transition-duration) ease;
 }
 
 .tech-item:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--box-shadow);
-  background-color: var(--link-color-hover);
+  border-color: var(--link-color);
 }
 
 .tech-icon {

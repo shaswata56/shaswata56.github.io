@@ -1,5 +1,6 @@
 <template>
   <section class="hobbies" id="hobbies">
+    <p class="section-label">Interests</p>
     <a href="#hobbies">
       <h2 class="text-2xl font-bold name">Hobbies</h2>
     </a>
@@ -41,6 +42,16 @@ export default {
   
 
 <style scoped>
+.section-label {
+  font-size: 0.7rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-text-color);
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
 .hobbies {
   margin-bottom: 2rem;
 }
@@ -57,28 +68,22 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  background-color: var(--accent-color);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background-color: transparent;
+  transition: border-color var(--transition-duration) ease;
 }
 
 .hobby-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--box-shadow);
-  background-color: var(--link-color);
-}
-
-.hobby-item:hover .hobby-text {
-  color: var(--background-color) !important;
+  border-color: var(--link-color);
 }
 
 .hobby-icon {
-  font-size: 1.2rem;
-  color: var(--text-color);
-  height: 50px;
+  height: 28px;
+  width: 28px;
+  opacity: 0.75;
   justify-content: center;
   align-content: center;
 }
