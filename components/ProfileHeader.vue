@@ -1,9 +1,10 @@
 <template>
   <header class="flex items-start sm:items-center justify-between">
     <div class="left-side">
-      <h2 class="text-3xl font-bold name">Shaswata Das</h2>
+      <h2 class="text-3xl font-bold name" @click="onNameClick" style="cursor:default;user-select:none">Shaswata Das</h2>
       <div class="mini-content">
         <p class="text-base">Software Engineer & Hacker</p>
+        <p class="tagline">{{ typedTagline }}<span class="cursor" v-if="typing">|</span></p>
         <p class="items-center gap-1.5 inline-flex location">
           <font-awesome-icon icon="fa-solid fa-location-dot" />
           Dhaka, Bangladesh
@@ -58,12 +59,17 @@
         <font-awesome-icon icon="fa-solid fa-dice" title="Game: Tower Defense" titleId="game-icon-title"/>
         </a>
       </div>
+      <span class="status-pill">⬡ Polyglot Systems Engineer · Orbitax</span>
     </div>
     <div class="image-container">
       <img
         src="@/assets/images/profile_picture.jpg"
         alt="Shaswata Das"
         class="profile-image"
+        :class="{ bounce: imageBounce }"
+        title="click me"
+        style="cursor: pointer"
+        @click="cycleTagline"
       />
     </div>
   </header>
@@ -72,6 +78,64 @@
 <script>
 export default {
   name: "ProfileHeader",
+  data() {
+    return {
+      taglines: [
+        'bits to emergence.',
+        "git commit -m 'fixed everything'",
+        'It works on my machine.',
+        'sudo make me a pizza',
+        'Have you tried turning it off and on again?',
+      ],
+      taglineIndex: 0,
+      typedTagline: '',
+      typing: false,
+      imageBounce: false,
+      _typeTimer: null,
+      _nameClicks: 0,
+      _nameTimer: null,
+    };
+  },
+  mounted() {
+    this.typeTagline();
+  },
+  beforeUnmount() {
+    clearTimeout(this._typeTimer);
+  },
+  methods: {
+    typeTagline() {
+      const full = this.taglines[this.taglineIndex];
+      this.typedTagline = '';
+      this.typing = true;
+      let i = 0;
+      const tick = () => {
+        if (i < full.length) {
+          this.typedTagline += full[i++];
+          this._typeTimer = setTimeout(tick, 45);
+        } else {
+          this.typing = false;
+        }
+      };
+      tick();
+    },
+    onNameClick() {
+      clearTimeout(this._nameTimer);
+      this._nameClicks++;
+      if (this._nameClicks >= 3) {
+        this._nameClicks = 0;
+        window.dispatchEvent(new CustomEvent('portfolio:matrix'));
+      } else {
+        this._nameTimer = setTimeout(() => { this._nameClicks = 0; }, 500);
+      }
+    },
+    cycleTagline() {
+      this.taglineIndex = (this.taglineIndex + 1) % this.taglines.length;
+      clearTimeout(this._typeTimer);
+      this.imageBounce = true;
+      setTimeout(() => { this.imageBounce = false; }, 300);
+      this.typeTagline();
+    },
+  },
 };
 </script>
 
@@ -91,8 +155,8 @@ export default {
 .image-container {
   display: flex;
   flex-direction: row;
-  width: 150px;
-  height: 150px;
+  width: 180px;
+  height: 180px;
   align-items: flex-end;
 }
 
@@ -112,12 +176,12 @@ export default {
   min-width: unset;
   display: inline-flex;
   align-items: center;
-  transition: color var(--transition-duration) ease;
+  transition: color var(--transition-duration) ease, transform 0.15s ease;
 }
 
 .social-link:hover {
   color: var(--link-color-hover);
-  transform: none;
+  transform: translateY(-3px);
   box-shadow: none;
   background-color: transparent;
 }
@@ -135,6 +199,48 @@ export default {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  border: 2px solid var(--border-color);
+  box-shadow: 0 0 0 2px var(--border-color);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.profile-image:hover {
+  box-shadow: 0 0 0 3px var(--link-color);
+}
+
+.profile-image.bounce {
+  transform: scale(1.08);
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--accent-text-color);
+  font-style: italic;
+  margin: 0 0 0.25rem;
+  font-family: "Fira Mono", "Courier New", monospace;
+}
+
+.cursor {
+  display: inline-block;
+  animation: blink 0.7s step-end infinite;
+  color: var(--link-color);
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.status-pill {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-size: 0.72rem;
+  color: var(--accent-text-color);
+  background: var(--accent-color);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 0.2rem 0.65rem;
+  letter-spacing: 0.03em;
 }
 
 .left-side h2 {
@@ -164,9 +270,10 @@ export default {
 
   .image-container {
     position: static;
-    width: 150px;
-    height: 150px;
-    margin: 0 auto 2rem;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 1.5rem;
+    order: -1;
   }
 
   header {

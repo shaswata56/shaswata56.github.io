@@ -3,21 +3,22 @@
     <a href="#education">
       <h2 class="text-2xl font-bold name">Education</h2>
     </a>
-    <div class="education-list">
+    <div class="timeline">
       <div
         class="education-item"
         v-for="(edu, index) in educations"
         :key="index"
       >
-        <div class="education-header">
+        <div class="timeline-dot" />
+        <div class="education-content">
           <div class="education-details">
             <h3 class="institution">{{ edu.institution }}</h3>
             <p class="degree">{{ edu.degree }}</p>
             <p class="timeframe">{{ edu.timeframe }}</p>
           </div>
-        </div>
-        <div class="education-body" v-if="edu.activities">
-          <p class="activities">{{ edu.activities }}</p>
+          <div class="education-body" v-if="edu.activities">
+            <p class="activities">{{ edu.activities }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -64,22 +65,38 @@ export default {
   margin-bottom: 2rem;
 }
 
-.education-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.timeline {
+  position: relative;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--border-color);
 }
 
 .education-item {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  display: flex;
 }
 
-.education-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding-bottom: 0.5rem;
+.timeline-dot {
+  position: absolute;
+  left: -6px;
+  top: 0.45rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color);
+  border: 2px solid var(--background-color);
+  flex-shrink: 0;
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+section.revealed .timeline-dot { transform: scale(1); }
+section.revealed .education-item:nth-child(1) .timeline-dot { transition-delay: 0.10s; }
+section.revealed .education-item:nth-child(2) .timeline-dot { transition-delay: 0.17s; }
+
+.education-content {
+  padding: 0 0 1.75rem 1rem;
+  flex: 1;
 }
 
 .education-details {

@@ -16,20 +16,22 @@
       </button>
     </div>
 
-    <!-- Tech List -->
-    <div
-      v-for="(tech, index) in technologies"
-      :key="index"
-      v-show="activeTech === index"
-      class="tech-list"
-    >
-      <div v-for="item in tech.items" :key="item.name" class="tech-item">
-        <i :class="item.logo + ' tech-icon'" :title="item.name"></i>
-        <b>
-          <span class="tech-text">{{ item.name }}</span>
-        </b>
+    <!-- Tech List with fade transition -->
+    <transition name="tab-fade" mode="out-in">
+      <div :key="activeTech" class="tech-list">
+        <div
+          v-for="(item, i) in technologies[activeTech].items"
+          :key="item.name"
+          class="tech-item"
+          :title="item.name"
+        >
+          <i :class="item.logo + ' tech-icon'"></i>
+          <b>
+            <span class="tech-text">{{ item.name }}</span>
+          </b>
+        </div>
       </div>
-    </div>
+    </transition>
   </section>
 </template>
 
@@ -71,44 +73,26 @@ export default {
           category: "Databases",
           items: [
             { name: "MongoDB", logo: "devicon-mongodb-plain colored" },
-            {
-              name: "Microsoft SQL Server",
-              logo: "devicon-microsoftsqlserver-plain colored",
-            },
+            { name: "Microsoft SQL Server", logo: "devicon-microsoftsqlserver-plain colored" },
             { name: "Qdrant", logo: "qdrant-icon" },
           ],
         },
         {
           category: "DevOps",
           items: [
-            {
-              name: "GitHub Actions",
-              logo: "devicon-githubactions-plain colored",
-            },
+            { name: "GitHub Actions", logo: "devicon-githubactions-plain colored" },
             { name: "Docker", logo: "devicon-docker-plain colored" },
             { name: "Kubernetes", logo: "devicon-kubernetes-plain colored" },
-            {
-              name: "Google Cloud Platform",
-              logo: "devicon-googlecloud-plain colored",
-            },
-            {
-              name: "Amazon Web Services",
-              logo: "devicon-amazonwebservices-plain-wordmark colored",
-            },
+            { name: "Google Cloud Platform", logo: "devicon-googlecloud-plain colored" },
+            { name: "Amazon Web Services", logo: "devicon-amazonwebservices-plain-wordmark colored" },
             { name: "Azure", logo: "devicon-azure-plain colored" },
           ],
         },
         {
           category: "Development Tools",
           items: [
-            {
-              name: "Visual Studio",
-              logo: "devicon-visualstudio-plain colored",
-            },
-            {
-              name: "Visual Studio Code",
-              logo: "devicon-vscode-plain colored",
-            },
+            { name: "Visual Studio", logo: "devicon-visualstudio-plain colored" },
+            { name: "Visual Studio Code", logo: "devicon-vscode-plain colored" },
             { name: "IntelliJ IDEA", logo: "devicon-intellij-plain colored" },
             { name: "Postman", logo: "devicon-postman-plain colored" },
             { name: "Chrome DevTools", logo: "devicon-chrome-plain colored" },
@@ -131,18 +115,6 @@ export default {
 </script>
 
 <style scoped>
-.section-label {
-  font-size: 0.7rem;
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-text-color);
-  margin-bottom: 0.75rem;
-  margin-top: 0;
-}
-
-/* Styles related specifically to the technologies section */
-
 .tech-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -170,7 +142,7 @@ export default {
 .tech-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .tech-text {
@@ -181,37 +153,52 @@ export default {
 }
 
 .tech-item {
+  position: relative;
   padding-top: 7px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-width: 80px;
+  min-width: 70px;
   width: auto;
-  font-size: 13px;
+  font-size: 11px;
   justify-content: center;
   cursor: default;
   border: 1px solid var(--border-color);
   background-color: transparent;
   border-radius: 6px;
-  transition: border-color var(--transition-duration) ease;
+  transition: border-color var(--transition-duration) ease, opacity 0.35s ease, transform 0.35s ease;
 }
 
 .tech-item:hover {
   border-color: var(--link-color);
 }
 
-.tech-icon {
-  font-size: 70px;
-  padding-bottom: 4px;
+.tech-item:hover .tech-icon,
+.tech-item:hover i {
+  filter: drop-shadow(0 0 5px var(--link-color));
+  transform: scale(1.1);
 }
+
+.tech-icon {
+  font-size: 48px;
+  padding-bottom: 4px;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
 
 .qdrant-icon {
   background: url("@/assets/icons/qdrant.svg");
   background-repeat: no-repeat;
   background-size: contain;
   display: inline-block;
-  height: 77px;
-  width: 64px;
+  height: 56px;
+  width: 48px;
 }
+
+/* Tab fade transition */
+.tab-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.tab-fade-leave-active { transition: opacity 0.15s ease; }
+.tab-fade-enter-from   { opacity: 0; transform: translateY(4px); }
+.tab-fade-leave-to     { opacity: 0; }
 </style>

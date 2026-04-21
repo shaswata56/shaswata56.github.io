@@ -4,49 +4,106 @@
       <h2 class="text-2xl font-bold name">About Me</h2>
     </a>
     <p>
-      Hello! I’m a passionate software engineer with a love for solving
-      challenging problems and building impactful solutions. I thrive on
-      creativity and curiosity, always looking for ways to learn, grow, and make
-      a meaningful difference through technology.
+      Software engineer based in Dhaka. I've been writing code since high school,
+      started with C and Linux, and gradually worked my way up the stack.
+      These days I work on backend systems, security, and AI tooling — mostly
+      in C#, Python, and Go.
     </p>
     <p>
-      My journey in software development has been shaped by a deep fascination
-      with the intricate workings of systems, from backend architectures to
-      cutting-edge AI models. I enjoy crafting efficient, scalable solutions and
-      believe in the power of technology to transform ideas into reality. Over
-      the years, I’ve explored various domains, including cloud computing,
-      distributed systems, web technologies, and machine learning, constantly
-      pushing the boundaries of what I can achieve.
+      I enjoy understanding how things work at a low level, and equally how
+      different systems integrate, communicate, and give rise to something new.
+      Outside of work I'm into the outdoors, reading, and the occasional
+      late-night rabbit hole.
     </p>
-    <p>
-      Outside of work, I’m always experimenting with new tools, learning about
-      emerging tech, or contributing to open-source projects. I also enjoy
-      sharing knowledge and connecting with like-minded individuals who share a
-      passion for innovation and problem-solving.
-    </p>
-    <p>
-      If you’re interested in discussing technology, collaborating on projects,
-      or just geeking out about the latest trends, feel free to connect with me
-      and see what we can create together!
-    </p>
+    <div class="stats-row" ref="statsRow">
+      <div class="stat">
+        <span class="stat-num">{{ displayStats[0] }}+</span>
+        <span class="stat-label">Years Exp</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ displayStats[1] }}+</span>
+        <span class="stat-label">Projects</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">{{ displayStats[2] }}+</span>
+        <span class="stat-label">Languages</span>
+      </div>
+    </div>
   </section>
 </template>
-  
+
 <script>
 export default {
   name: "AboutSection",
+  data() {
+    return {
+      targets: [4, 15, 10],
+      displayStats: [0, 0, 0],
+      _animated: false,
+    };
+  },
+  mounted() {
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !this._animated) {
+        this._animated = true;
+        this.runCountUp();
+        obs.disconnect();
+      }
+    }, { threshold: 0.5 });
+    obs.observe(this.$refs.statsRow);
+  },
+  methods: {
+    runCountUp() {
+      const duration = 800;
+      const start = performance.now();
+      const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+      const tick = (now) => {
+        const t = Math.min((now - start) / duration, 1);
+        const e = easeOut(t);
+        this.displayStats = this.targets.map(v => Math.floor(e * v));
+        if (t < 1) requestAnimationFrame(tick);
+        else this.displayStats = [...this.targets];
+      };
+      requestAnimationFrame(tick);
+    },
+  },
 };
 </script>
-  
+
 <style scoped>
-.section-label {
-  font-size: 0.7rem;
+p {
   font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.stats-row {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stat-num {
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--link-color);
+  line-height: 1;
+}
+
+.stat-label {
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--accent-text-color);
-  margin-bottom: 0.75rem;
-  margin-top: 0;
 }
 </style>
-  

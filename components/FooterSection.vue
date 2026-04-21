@@ -10,12 +10,14 @@
         <b>Shaswata Das</b>
       </a>
       with Nuxt 3 and
-      <img
-        src="@/assets/icons/RedHeart.png"
-        alt="Red Heart"
-        width="23"
-        height="23"
-      />
+      <span class="heart">
+        <img
+          src="@/assets/icons/RedHeart.png"
+          alt="Red Heart"
+          width="23"
+          height="23"
+        />
+      </span>
     </div>
   </footer>
 </template>
@@ -53,5 +55,18 @@ export default {
 img {
   margin: 0 0.25rem;
   vertical-align: middle;
+}
+
+.heart {
+  display: inline-flex;
+  align-items: center;
+  animation: heartbeat 1.8s ease infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.25); }
+  28%       { transform: scale(1); }
+  42%       { transform: scale(1.1); }
 }
 </style>

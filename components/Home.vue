@@ -1,6 +1,7 @@
 <template>
   <div class="home">
     <Theme />
+    <SectionPill />
     <div class="content-wrapper">
       <div class="main-content">
         <ProfileHeader />
@@ -26,11 +27,13 @@ import ProjectsSection from "./ProjectsSection.vue";
 import FooterSection from "./FooterSection.vue";
 import EducationSection from "./EducationSection.vue";
 import HobbiesSection from "./HobbiesSection.vue";
+import SectionPill from "./SectionPill.vue";
 
 export default {
   name: "Home",
   components: {
     Theme,
+    SectionPill,
     ProfileHeader,
     AboutSection,
     TechnologiesSection,
