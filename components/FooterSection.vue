@@ -37,6 +37,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.85rem;
   color: var(--accent-text-color);
   gap: 0.35rem;

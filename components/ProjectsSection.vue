@@ -167,7 +167,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -260,9 +260,10 @@ export default {
 }
 
 .project-description {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.9rem;
   color: var(--accent-text-color);
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0.25rem 0 0.5rem;
 }
 

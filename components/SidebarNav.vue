@@ -72,6 +72,7 @@ export default {
   gap: 1.25rem;
   z-index: 100;
   padding-right: 20px;
+  will-change: transform;
 }
 
 @media (max-width: 1199px) {
@@ -116,7 +117,7 @@ a.active .dot {
 
 .label {
   font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   opacity: 0;

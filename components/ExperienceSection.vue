@@ -119,8 +119,7 @@ section.revealed .experience-item:nth-child(3) .timeline-dot { transition-delay:
 .experience-header .company,
 .experience-header .timeframe {
   color: var(--accent-text-color);
-  font-family: "ui-sans-serif", system-ui, sans-serif, Apple Color Emoji,
-    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
 }
 
 .experience-header .role {
@@ -135,16 +134,18 @@ section.revealed .experience-item:nth-child(3) .timeline-dot { transition-delay:
 
 .company {
   margin: 0.25rem 0 0;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .timeframe {
-  font-size: 1rem;
+  font-size: 0.9rem;
   text-align: right;
 }
 
 .description {
-  line-height: 1.8;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.75;
   margin: 0.5rem 0 0;
 }
 </style>

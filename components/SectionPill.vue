@@ -80,7 +80,7 @@ export default {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
-  backdrop-filter: blur(8px);
+  will-change: transform, opacity;
 }
 
 .section-pill.visible {
@@ -89,8 +89,8 @@ export default {
 }
 
 .pill-label {
-  font-family: "Inter", sans-serif;
-  font-size: 0.68rem;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--link-color);

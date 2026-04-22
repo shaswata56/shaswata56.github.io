@@ -32,11 +32,17 @@ onMounted(() => {
   // Scroll progress bar
   const bar = document.createElement('div');
   bar.id = 'scroll-progress';
-  bar.style.cssText = 'position:fixed;top:0;left:0;height:2px;width:0%;background:var(--link-color);z-index:9999;transition:width 0.1s linear;pointer-events:none';
+  bar.style.cssText = 'position:fixed;top:0;left:0;height:2px;width:100%;background:var(--link-color);z-index:9999;transform-origin:0 0;transform:scaleX(0);will-change:transform;pointer-events:none';
   document.body.appendChild(bar);
+  let barTicking = false;
   window.addEventListener('scroll', () => {
-    const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100;
-    bar.style.width = Math.min(pct, 100) + '%';
+    if (barTicking) return;
+    barTicking = true;
+    requestAnimationFrame(() => {
+      const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+      bar.style.transform = `scaleX(${Math.min(pct, 1)})`;
+      barTicking = false;
+    });
   }, { passive: true });
 
   // Triple-click name → matrix rain
@@ -358,13 +364,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   font-family: "Merriweather", Georgia, serif;
   font-weight: 400;
   font-size: 16px;
   color: var(--text-color);
   background-color: var(--background-color);
-  scroll-behavior: smooth;
   box-sizing: border-box;
 }
 
@@ -401,6 +406,12 @@ h3 {
   color: var(--text-color);
   margin-bottom: 1rem;
   font-weight: 600;
+}
+
+.section > a > h2,
+section > a > h2 {
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
 }
 
 p {

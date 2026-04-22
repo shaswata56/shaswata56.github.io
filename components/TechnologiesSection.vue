@@ -126,6 +126,8 @@ export default {
   background-color: var(--accent-color);
   color: var(--accent-text-color);
   border: 1px solid var(--border-color);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.85rem;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;

@@ -107,29 +107,31 @@ section.revealed .education-item:nth-child(2) .timeline-dot { transition-delay: 
 
 .institution {
   color: var(--link-color-hover);
-  font-family: "ui-sans-serif", system-ui, sans-serif, Apple Color Emoji,
-    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
   font-size: 1.3rem;
   font-weight: bold;
   margin: 0;
 }
 
 .degree {
-  font-size: 1rem;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
   margin: 0;
   color: var(--accent-text-color);
 }
 
 .timeframe {
-  font-size: 1rem;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9rem;
   color: var(--accent-text-color);
   margin: 0;
 }
 
 .education-body {
-  font-size: 1rem;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
   color: var(--text-color);
-  line-height: 1.8;
+  line-height: 1.75;
   margin-top: 0.5rem;
 }
 </style>

@@ -137,6 +137,7 @@ export default {
   z-index: 1000;
   user-select: none;
   touch-action: none;
+  will-change: transform;
 }
 
 .theme-button {
