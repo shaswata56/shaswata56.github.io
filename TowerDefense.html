@@ -677,8 +677,8 @@
                 this.canvas.addEventListener('pointerleave', () => { this.mouse.inside = false; this.hoveredTower = null; });
                 document.getElementById('playPauseBtn').addEventListener('click', () => { this.sfx.ensure(); this.togglePlayPause(); });
                 document.getElementById('newGameBtn').addEventListener('click', () => this.newGame());
-                document.getElementById('backBtn').addEventListener('click', () => { window.location.href = "/"; });
-                document.getElementById('goBackBtn').addEventListener('click', () => { window.location.href = "/"; });
+                document.getElementById('backBtn').addEventListener('click', () => { window.location.href = "arcade.html"; });
+                document.getElementById('goBackBtn').addEventListener('click', () => { window.location.href = "arcade.html"; });
                 document.getElementById('playAgainBtn').addEventListener('click', () => this.newGame());
                 document.getElementById('muteBtn').addEventListener('click', () => this.toggleMute());
                 document.getElementById('speedSeg').querySelectorAll('button').forEach(b => {
