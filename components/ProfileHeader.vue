@@ -52,11 +52,12 @@
         <font-awesome-icon icon="fa-solid fa-file-pdf" title="Résumé" titleId="resume-icon-title"/>
         </a>
         <a
-          href="TowerDefense.html"
+          href="arcade.html"
           target="_self"
           class="social-link"
+          @click="launchArcade"
         >
-        <font-awesome-icon icon="fa-solid fa-dice" title="Game: Tower Defense" titleId="game-icon-title"/>
+        <font-awesome-icon icon="fa-solid fa-dice" title="Arcade — play my games" titleId="game-icon-title"/>
         </a>
       </div>
       <span class="status-pill">⬡ Polyglot Systems Engineer · Orbitax</span>
@@ -148,6 +149,12 @@ export default {
       event.preventDefault();
       // Dispatch event to activate liquid metal
       window.dispatchEvent(new CustomEvent('portfolio:liquidmetal'));
+    },
+    launchArcade(event) {
+      // Intercept navigation — play warp animation first (handled in app.vue),
+      // then it redirects to arcade.html. href stays as a no-JS fallback.
+      event.preventDefault();
+      window.dispatchEvent(new CustomEvent('portfolio:arcade'));
     },
   },
 };

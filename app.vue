@@ -51,6 +51,68 @@ onMounted(() => {
   // Right-click profile picture → liquid metal
   window.addEventListener('portfolio:liquidmetal', () => showWallpaperForced());
 
+  // Game button → hyperspace warp into the arcade
+  window.addEventListener('portfolio:arcade', () => warpToArcade());
+
+  function warpToArcade() {
+    if ((window as any).__arcadeWarp) return;
+    (window as any).__arcadeWarp = true;
+    const go = () => { window.location.href = 'arcade.html'; };
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#04030e;opacity:0;transition:opacity .25s ease;overflow:hidden';
+    const label = document.createElement('div');
+    label.innerHTML = '<div class="warp-line">ENTERING&nbsp;ARCADE</div><div class="warp-sub">initializing sector //ARCADE</div>';
+    label.style.cssText = 'position:absolute;left:0;right:0;bottom:16%;text-align:center;color:#00e5ff;font-family:"Fira Mono","Courier New",monospace;letter-spacing:4px;text-shadow:0 0 18px rgba(0,229,255,.6);z-index:2';
+    overlay.appendChild(label);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTimeout(go, 320); return; }
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement('canvas');
+    c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    const ctx = c.getContext('2d')!; ctx.scale(dpr, dpr);
+    overlay.insertBefore(c, label);
+
+    const cols = ['#00e5ff', '#ff2d95', '#b14bff'];
+    const N = 340, stars: any[] = [];
+    for (let i = 0; i < N; i++) stars.push({ x: (Math.random() - 0.5) * innerWidth, y: (Math.random() - 0.5) * innerHeight, z: Math.random() * innerWidth, pz: 0, c: cols[i % 3] });
+    const t0 = performance.now(), dur = 1400;
+    const W = () => innerWidth, H = () => innerHeight, cx = () => innerWidth / 2, cy = () => innerHeight / 2;
+
+    function frame(now: number) {
+      const t = Math.min(1, (now - t0) / dur);
+      const speed = 6 + t * t * 130;
+      ctx.fillStyle = 'rgba(4,3,14,' + (0.22 + 0.22 * t) + ')'; ctx.fillRect(0, 0, W(), H());
+      ctx.lineCap = 'round';
+      for (const s of stars) {
+        s.pz = s.z; s.z -= speed;
+        if (s.z < 1) { s.z = W(); s.x = (Math.random() - 0.5) * innerWidth; s.y = (Math.random() - 0.5) * innerHeight; s.pz = s.z; }
+        const k = 130;
+        const sx = cx() + s.x / s.z * k, sy = cy() + s.y / s.z * k;
+        const px = cx() + s.x / s.pz * k, py = cy() + s.y / s.pz * k;
+        const a = Math.min(1, (1 - s.z / W()) * 1.3);
+        ctx.strokeStyle = s.c; ctx.globalAlpha = a; ctx.lineWidth = Math.max(.6, (1 - s.z / W()) * 2.6);
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const gg = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), 120 + t * 280);
+      gg.addColorStop(0, 'rgba(0,229,255,' + (0.05 + 0.55 * t) + ')'); gg.addColorStop(1, 'rgba(0,229,255,0)');
+      ctx.fillStyle = gg; ctx.fillRect(0, 0, W(), H());
+      if (t >= 1) {
+        const fl = document.createElement('div');
+        fl.style.cssText = 'position:absolute;inset:0;background:#dffaff;opacity:0;transition:opacity .16s ease;z-index:3';
+        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '1'; });
+        setTimeout(go, 170);
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
   // Type "sudo" anywhere → matrix rain
   let sudoBuffer = '';
   window.addEventListener('keydown', (e) => {
@@ -525,6 +587,10 @@ html:has(body.wallpaper-active) {
 body.wallpaper-active > *:not(#wallpaper-element) {
   visibility: hidden !important;
 }
+
+.warp-line { font-size: clamp(20px, 4vw, 34px); font-weight: 700; }
+.warp-sub { font-size: 12px; opacity: .7; margin-top: 8px; animation: warpblink 1s step-end infinite; }
+@keyframes warpblink { 50% { opacity: .2; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
