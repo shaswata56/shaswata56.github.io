@@ -666,11 +666,11 @@
             const halo = Math.max(o.diskR * 0.5, (cd * 0.012) / mf); o.glow.scale.set(halo, halo, 1);
             o.proxy.scale.set(Math.max(o.diskR, (cd * 0.045) / mf) * 1.2, Math.max(o.diskR, (cd * 0.045) / mf) * 1.2, 1);
         }
-        function focusStar(i) { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'star', i }; const o = starObjs[i], s = o.data; o.glow.getWorldPosition(_wp); want.target.copy(_wp); showInfo(s.n, s.t + ' · star', s.c, [['Distance', s.ly + ' ly'], ['Type', s.t], ['Light travel', s.ly + ' years'], ['Class', s.ly < 10 ? 'near neighbour' : 'bright star']], s.f); setActive('st' + i); }
-        function focusLG(i) { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'lg', i }; const o = lgObjs[i], g = o.data; o.glow.getWorldPosition(_wp); want.target.copy(_wp); showInfo(g.n, g.type, g.c, [['Distance', g.self ? 'you are here' : g.mly >= 1 ? g.mly + ' M ly' : Math.round(g.mly * 1000) + ' k ly'], ['Type', g.type]], g.f); setActive('lg' + i); }
+        function focusStar(i) { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'star', i, releaseOut: 320000 }; const o = starObjs[i], s = o.data; o.glow.getWorldPosition(_wp); want.target.copy(_wp); showInfo(s.n, s.t + ' · star', s.c, [['Distance', s.ly + ' ly'], ['Type', s.t], ['Light travel', s.ly + ' years'], ['Class', s.ly < 10 ? 'near neighbour' : 'bright star']], s.f); setActive('st' + i); }
+        function focusLG(i) { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'lg', i, releaseOut: 2400000 }; const o = lgObjs[i], g = o.data; o.glow.getWorldPosition(_wp); want.target.copy(_wp); showInfo(g.n, g.type, g.c, [['Distance', g.self ? 'you are here' : g.mly >= 1 ? g.mly + ' M ly' : Math.round(g.mly * 1000) + ' k ly'], ['Type', g.type]], g.f); setActive('lg' + i); }
         function starsView(i) { const mf = distOf(1) / 140; want.dist = Math.max(starObjs[i].coreR * mf * 9, MIND * 3); focusStar(i); }
         function lgView(i) { const mf = distOf(1) / 140; want.dist = lgObjs[i].diskR * mf * 2.6; focusLG(i); }
-        function webView() { const mf = distOf(1) / 140; followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'web', descend: true, releaseD: 1600000 }; want.target.set(0, 0, 0); want.dist = 2900000 * mf; showInfo('Cosmic Web', 'Large-scale structure', '#9fc0ff', [['Observable', '~93 B ly across'], ['Structure', 'filaments & voids'], ['Our group', 'Local Group'], ['Supercluster', 'Laniakea']], 'On the largest scales, galaxies clump along glowing filaments that wrap around enormous empty voids — the cosmic web. The Milky Way’s Local Group sits within the Virgo Supercluster, a lobe of the vast Laniakea Supercluster.'); setActive('web'); }
+        function webView() { const mf = distOf(1) / 140; followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'web', releaseIn: 1600000 }; want.target.set(0, 0, 0); want.dist = 2900000 * mf; showInfo('Cosmic Web', 'Large-scale structure', '#9fc0ff', [['Observable', '~93 B ly across'], ['Structure', 'filaments & voids'], ['Our group', 'Local Group'], ['Supercluster', 'Laniakea']], 'On the largest scales, galaxies clump along glowing filaments that wrap around enormous empty voids — the cosmic web. The Milky Way’s Local Group sits within the Virgo Supercluster, a lobe of the vast Laniakea Supercluster.'); setActive('web'); }
 
         function updateLadder() {
             const mf = distOf(1) / 140, D = ctrl.dist / mf;
@@ -682,10 +682,13 @@
             // when a ladder object is selected, lock its tier fully visible & suppress the others
             // (incl. the solar system) so you can fly right up to it instead of it fading out
             if (ladderFocus) {
-                // descendable foci sit on the central spine (origin = solar system). Once you
-                // zoom inward past the tier, release the lock so the next inner tier crossfades
-                // in — letting you fly all the way back down to the planets.
-                if (ladderFocus.descend && D < ladderFocus.releaseD) { ladderFocus = null; setActive(null); }
+                // the lock keeps a selected object visible while you approach it. Once you zoom
+                // past its band — inward (releaseIn) toward the next inner tier, or outward
+                // (releaseOut) toward the next outer tier — release so the natural crossfade
+                // resumes and you can travel the whole hierarchy in both directions.
+                const ri = ladderFocus.releaseIn || 0, ro = ladderFocus.releaseOut || Infinity;
+                if (D < ri) { ladderFocus = null; setActive(null); }
+                else if (D > ro) { ladderFocus = null; setActive(null); want.target.set(0, 0, 0); }
                 else { const k = ladderFocus.kind; solarVis = 0; starsVis = k === 'star' ? 1 : 0; galVis = k === 'gal' ? 1 : 0; lgVis = k === 'lg' ? 1 : 0; webVis = k === 'web' ? 1 : 0; }
             }
             gtGlobal = 1 - solarVis;
@@ -789,7 +792,14 @@
         function pickAt(cx, cy) {
             const r = el.getBoundingClientRect(), ndc = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
             ray.setFromCamera(ndc, camera);
-            if (ladderPick.length) { const h = ray.intersectObjects(ladderPick, false)[0]; if (h) { const u = h.object.userData; if (u.gal === 'sgr') focusSgrA(); else if (u.gal === 'sun') focusSun(); else if (u.starI != null) focusStar(u.starI); else if (u.lgI != null) focusLG(u.lgI); else if (u.ga) focusGA(); } return; }
+            if (ladderPick.length) {
+                // pick the object whose projected CENTRE is nearest the tap — robust against
+                // overlapping glow halos (raycasting big proxy sprites mis-selects neighbours)
+                let best = null, bestD = 1e9; const thr = Math.min(90, Math.max(r.width, r.height) * 0.12);
+                for (const p of ladderPick) { p.getWorldPosition(_wp); _wp.project(camera); if (_wp.z > 1) continue; const sx = r.left + (_wp.x * .5 + .5) * r.width, sy = r.top + (-_wp.y * .5 + .5) * r.height, d = Math.hypot(sx - cx, sy - cy); if (d < bestD) { bestD = d; best = p; } }
+                if (best && bestD < thr) { const u = best.userData; if (u.gal === 'sgr') focusSgrA(); else if (u.gal === 'sun') focusSun(); else if (u.starI != null) focusStar(u.starI); else if (u.lgI != null) focusLG(u.lgI); else if (u.ga) focusGA(); }
+                return;
+            }
             const hit = ray.intersectObjects([sunMesh, ...objs.map(o => o.mesh), ...comets.map(c => c.nuc)], false)[0];
             if (hit) { if (hit.object.userData.comet != null) focusComet(hit.object.userData.comet); else focus(hit.object.userData.pick); }
         }
@@ -873,10 +883,10 @@
         $('iClose').onclick = () => info.classList.remove('show');
 
         /* galaxy-tier focus */
-        function focusSgrA() { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal' }; want.target.copy(GAL.sgrPos); showInfo('Sagittarius A*', 'Supermassive black hole', '#ff7a1a', [['Mass', '~4.3 million M☉'], ['Distance', '~27,000 ly'], ['Event horizon', '~24 M km (~0.16 AU)'], ['Constellation', 'Sagittarius']], 'The Milky Way’s central black hole, imaged by the Event Horizon Telescope in 2022. Despite 4.3 million solar masses, its event horizon would fit inside Mercury’s orbit. (Distances here are compressed ~10¹⁰×.)'); setActive('sgr'); }
-        function focusSun() { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal', descend: true, releaseD: 290000 }; want.target.set(0, 0, 0); showInfo('Sun — you are here', 'Our star · galactic position', '#fff6e0', [['From center', '~27,000 ly'], ['Arm', 'Orion Arm'], ['Galactic year', '~230 Myr'], ['Speed', '~230 km/s']], 'Everything you explored is this single dot — one of 100–400 billion stars in the Milky Way. Scroll / pinch in to dive back to the planets.'); setActive('sun-gal'); }
+        function focusSgrA() { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal', releaseOut: 820000 }; want.target.copy(GAL.sgrPos); showInfo('Sagittarius A*', 'Supermassive black hole', '#ff7a1a', [['Mass', '~4.3 million M☉'], ['Distance', '~27,000 ly'], ['Event horizon', '~24 M km (~0.16 AU)'], ['Constellation', 'Sagittarius']], 'The Milky Way’s central black hole, imaged by the Event Horizon Telescope in 2022. Despite 4.3 million solar masses, its event horizon would fit inside Mercury’s orbit. (Distances here are compressed ~10¹⁰×.)'); setActive('sgr'); }
+        function focusSun() { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal', releaseIn: 290000, releaseOut: 820000 }; want.target.set(0, 0, 0); showInfo('Sun — you are here', 'Our star · galactic position', '#fff6e0', [['From center', '~27,000 ly'], ['Arm', 'Orion Arm'], ['Galactic year', '~230 Myr'], ['Speed', '~230 km/s']], 'Everything you explored is this single dot — one of 100–400 billion stars in the Milky Way. Scroll / pinch in to dive back to the planets.'); setActive('sun-gal'); }
         function focusGA() { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'web' }; const mf = distOf(1) / 140; window.__gaCore.getWorldPosition(_wp); want.target.copy(_wp); want.dist = 760000 * mf; showInfo('Great Attractor', 'Gravitational anomaly · Laniakea', '#ff9650', [['Distance', '~250 M ly'], ['Direction', 'Centaurus / Norma'], ['Pull', 'Local Group at ~600 km/s'], ['Supercluster', 'Laniakea core']], 'A gravitational focal point dragging the Milky Way and thousands of galaxies toward it. It hides behind our own galaxy’s disk (the “Zone of Avoidance”) at the heart of the Laniakea Supercluster. Its direction here is real; distances are heavily compressed.'); setActive('ga'); }
-        function galaxyView(which) { const mf = distOf(1) / 140; want.dist = 360000 * mf; if (which === 'sgr') focusSgrA(); else if (which === 'sun') focusSun(); else { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal', descend: true, releaseD: 290000 }; want.target.set(0, 0, 0); showInfo('Milky Way', 'Barred spiral · SBbc', '#9fc0ff', [['Diameter', '~100,000 ly'], ['Stars', '100–400 B'], ['Sun’s orbit', '~230 Myr'], ['Type', 'SBbc bar']], 'Our home galaxy: a barred spiral ~100,000 light-years across. The Sun lies ~27,000 ly from the center, in the Orion Arm. Distances here are compressed ~10¹⁰×.'); setActive('mw'); } }
+        function galaxyView(which) { const mf = distOf(1) / 140; want.dist = 360000 * mf; if (which === 'sgr') focusSgrA(); else if (which === 'sun') focusSun(); else { followIdx = -2; followComet = -1; followMoon = null; ladderFocus = { kind: 'gal', releaseIn: 290000, releaseOut: 820000 }; want.target.set(0, 0, 0); showInfo('Milky Way', 'Barred spiral · SBbc', '#9fc0ff', [['Diameter', '~100,000 ly'], ['Stars', '100–400 B'], ['Sun’s orbit', '~230 Myr'], ['Type', 'SBbc bar']], 'Our home galaxy: a barred spiral ~100,000 light-years across. The Sun lies ~27,000 ly from the center, in the Orion Arm. Distances here are compressed ~10¹⁰×.'); setActive('mw'); } }
 
         /* searchable object list */
         const entries = [];

@@ -323,6 +323,45 @@
             ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, R * 0.24, 0, Math.PI * 2); ctx.fill();
         }
 
+        // a winding track + a car casting "feeler" sensor rays (the learn-to-drive idea),
+        // with a small GENERATION progress bar + rising fitness sparkline underneath.
+        function neuroPt(cx, cy, rx, ry, a) { return [cx + Math.cos(a) * rx + Math.sin(a * 2) * rx * 0.16, cy + Math.sin(a) * ry - Math.cos(a * 3) * ry * 0.12]; }
+        function neuroThumb(ctx, w, h, t) {
+            const bg = ctx.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#08130a'); bg.addColorStop(1, '#04090a');
+            ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+            const cx = w / 2, cy = h * 0.5, rx = w * 0.32, ry = h * 0.24, lane = Math.max(11, h * 0.16);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            // tarmac corridor
+            ctx.lineWidth = lane; ctx.strokeStyle = '#111d13'; ctx.beginPath();
+            for (let a = 0; a <= 6.4; a += 0.12) { const p = neuroPt(cx, cy, rx, ry, a); a === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]); } ctx.stroke();
+            // glowing neon edges
+            ctx.shadowBlur = 7; ctx.lineWidth = 2;
+            for (const e of [[lane / 2, '#9eff5a'], [-lane / 2, '#00e5ff']]) {
+                ctx.strokeStyle = e[1]; ctx.shadowColor = e[1]; ctx.beginPath();
+                for (let a = 0; a <= 6.4; a += 0.12) { const p0 = neuroPt(cx, cy, rx, ry, a), p1 = neuroPt(cx, cy, rx, ry, a + 0.01), nx = -(p1[1] - p0[1]), ny = p1[0] - p0[0], nl = Math.hypot(nx, ny) || 1, x = p0[0] + nx / nl * e[0], y = p0[1] + ny / nl * e[0]; a === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+            // the learning car + its sensor feelers
+            const ca = t * 0.9, p = neuroPt(cx, cy, rx, ry, ca), pn = neuroPt(cx, cy, rx, ry, ca + 0.05), heading = Math.atan2(pn[1] - p[1], pn[0] - p[0]);
+            const feelers = [-1.1, -0.55, 0, 0.55, 1.1], fr = lane * 0.62;
+            for (const f of feelers) { const ang = heading + f, len = fr * (0.55 + 0.45 * Math.abs(Math.cos(f))); ctx.strokeStyle = 'rgba(158,255,90,.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0] + Math.cos(ang) * len, p[1] + Math.sin(ang) * len); ctx.stroke(); ctx.fillStyle = '#d9ff9e'; ctx.beginPath(); ctx.arc(p[0] + Math.cos(ang) * len, p[1] + Math.sin(ang) * len, 1.6, 0, Math.PI * 2); ctx.fill(); }
+            // ghost cars (the rest of the population) faintly behind
+            const gcol = ['#7ef0ff', '#ff8ad6', '#ffe06b']; for (let i = 0; i < 3; i++) { const gp = neuroPt(cx, cy, rx, ry, ca - 0.35 - i * 0.28); ctx.globalAlpha = 0.4 - i * 0.1; ctx.fillStyle = gcol[i]; ctx.beginPath(); ctx.arc(gp[0], gp[1], 2.6, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1;
+            ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(heading); ctx.fillStyle = '#9eff5a'; ctx.shadowColor = '#9eff5a'; ctx.shadowBlur = 10; ctx.fillRect(-4.5, -3, 9, 6); ctx.shadowBlur = 0; ctx.fillStyle = '#eaffd6'; ctx.fillRect(1, -2, 2.5, 4); ctx.restore();
+            // generation/fitness HUD card, top-left — reads in both the small tile and the big preview
+            const pad = Math.max(7, w * 0.04), cardW = Math.max(96, w * 0.34), cardH = Math.max(34, h * 0.22), cardY = pad, fs = Math.max(7, h * 0.052);
+            ctx.fillStyle = 'rgba(4,12,6,.55)'; ctx.strokeStyle = 'rgba(158,255,90,.3)'; ctx.lineWidth = 1;
+            ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(pad, cardY, cardW, cardH, 6); else ctx.rect(pad, cardY, cardW, cardH); ctx.fill(); ctx.stroke();
+            ctx.font = `700 ${fs}px ui-monospace, monospace`; ctx.textBaseline = 'top'; ctx.fillStyle = '#9eff5a';
+            ctx.fillText('GEN ' + (1 + Math.floor(t * 0.5) % 99) + ' · learning', pad + 7, cardY + 6);
+            const bx = pad + 7, by = cardY + cardH - 8, bw = cardW - 14, gp2 = (t * 0.12) % 1;
+            ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(bx, by, bw, 3);
+            ctx.fillStyle = '#9eff5a'; ctx.shadowColor = '#9eff5a'; ctx.shadowBlur = 6; ctx.fillRect(bx, by, bw * gp2, 3); ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(126,240,255,.9)'; ctx.lineWidth = 1.4; ctx.beginPath();
+            for (let i = 0; i <= 22; i++) { const x = bx + (i / 22) * bw, fit = 1 - Math.exp(-i / 7) * (0.85 + 0.15 * Math.sin(i + t * 2)), y = by - 5 - fit * (cardH - fs - 16); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+            ctx.textBaseline = 'alphabetic';
+        }
+
         const games = [
             { id: 'neonrun', title: 'Neon Run', href: 'NeonRun.html', badge: '3D · WebGL', accent: '#00e5ff', glow: 'rgba(0,229,255,.5)',
               tags: ['Three.js', 'Synthwave', 'Endless'], render: neonRunThumb, bestKey: 'neonrun_best', bestLabel: 'High score',
@@ -335,7 +374,10 @@
               desc: 'A real astronomical simulation — planets, moons, dwarf planets and comets at their true positions for any date, validated against NASA JPL. Set the date and watch the sky line up.' },
             { id: 'milkyway', title: 'Cosmos', href: 'Cosmos.html', badge: '3D · Three.js', accent: '#9fc0ff', glow: 'rgba(159,192,255,.5)',
               tags: ['Three.js', 'Cosmic web', 'Zoom-out'], render: galaxyThumb, stat: 'Sun → universe',
-              desc: 'One continuous zoom from the Sun to the edge of the observable universe — real planets, nearby stars, the Milky Way and Sagittarius A*, the Local Group and the Laniakea Great Attractor.' }
+              desc: 'One continuous zoom from the Sun to the edge of the observable universe — real planets, nearby stars, the Milky Way and Sagittarius A*, the Local Group and the Laniakea Great Attractor.' },
+            { id: 'neuro', title: 'Neuro Drift', href: 'NeuroDrift.html', badge: 'AI · Cars that learn', accent: '#9eff5a', glow: 'rgba(158,255,90,.5)',
+              tags: ['Neural network', 'Genetic algorithm', 'Reinforcement-style learning'], render: neuroThumb, stat: 'Learns to drive',
+              desc: 'Robot cars start out clueless and crash instantly. Each round, the ones that drove farthest “have babies” that drive a little better — so generation by generation they teach themselves the track. Nobody programs how to drive; you just watch them get good. The green feelers are how each car “sees” the walls.' }
         ];
 
         /* ---------- background ---------- */
