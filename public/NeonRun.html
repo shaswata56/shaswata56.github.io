@@ -146,6 +146,7 @@
         <button class="btn" id="startBtn">Start</button>
         <div class="controls-hint">
             Steer <kbd>←</kbd><kbd>→</kbd> / drag &nbsp;·&nbsp; <span class="jmp-word">Jump</span> <kbd>Space</kbd>/<kbd>↑</kbd> &nbsp;·&nbsp; <span class="nos-word">NOS</span> <kbd>Shift</kbd><br>
+            📱 drag = steer &nbsp;·&nbsp; <span class="jmp-word">swipe ↑ = jump</span> &nbsp;·&nbsp; <span class="nos-word">swipe ↓ = NOS</span><br>
             🟩 ramps launch you · 🟧 barriers — jump · 🟪 tunnels — stay low · 🔷 orbs refuel NOS<br>
             Skim past blocks for a <span style="color:var(--gold);font-weight:700">combo multiplier</span>. Pause: <kbd>Esc</kbd>
         </div>
@@ -160,8 +161,8 @@
         </div>
         <div class="keybinds">
             <div><span class="lbl">Steer</span><kbd>←</kbd><kbd>→</kbd> / <kbd>A</kbd><kbd>D</kbd> / drag</div>
-            <div><span class="lbl">Jump</span><kbd>Space</kbd><kbd>↑</kbd><kbd>W</kbd> / JUMP</div>
-            <div><span class="lbl">NOS boost</span><kbd>Shift</kbd> / hold NOS</div>
+            <div><span class="lbl">Jump</span><kbd>Space</kbd><kbd>↑</kbd><kbd>W</kbd> / JUMP / swipe ↑</div>
+            <div><span class="lbl">NOS boost</span><kbd>Shift</kbd> / hold NOS / swipe ↓</div>
             <div><span class="lbl">Pause</span><kbd>Esc</kbd><kbd>P</kbd></div>
             <div><span class="lbl">Mute</span><kbd>M</kbd></div>
         </div>
@@ -432,17 +433,22 @@
         });
         addEventListener('keyup', e => { keys[e.code] = false; });
 
-        let steerId = null;
+        let steerId = null, startX = 0, startY = 0, gesture = null;
         function pointerX(clientX) { const nx = (clientX / innerWidth) * 2 - 1; return Math.max(-TRACK, Math.min(TRACK, nx * (TRACK + 2))); }
         renderer.domElement.addEventListener('pointerdown', e => {
             if (state === State.MENU) { start(); return; }
             if (state === State.DEAD) { if ($('overOverlay').classList.contains('show')) start(); return; }
             if (paused) return;
-            steerId = e.pointerId; targetX = pointerX(e.clientX);
+            steerId = e.pointerId; startX = e.clientX; startY = e.clientY; gesture = null; targetX = pointerX(e.clientX);
         });
-        addEventListener('pointermove', e => { if (state === State.PLAYING && !paused && e.pointerId === steerId) targetX = pointerX(e.clientX); });
-        addEventListener('pointerup', e => { if (e.pointerId === steerId) steerId = null; });
-        addEventListener('pointercancel', e => { if (e.pointerId === steerId) steerId = null; });
+        addEventListener('pointermove', e => {
+            if (state !== State.PLAYING || paused || e.pointerId !== steerId) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (!gesture && Math.abs(dy) > 34 && Math.abs(dy) > Math.abs(dx) * 1.3) { gesture = dy < 0 ? 'up' : 'down'; if (gesture === 'up') jump(); else boostHeld = true; }  // swipe ↑ = jump, swipe ↓ = NOS
+            if (gesture !== 'down') targetX = pointerX(e.clientX);   // keep steering unless holding NOS via swipe-down
+        });
+        function endPtr(e) { if (e.pointerId === steerId) { steerId = null; if (gesture === 'down') boostHeld = false; gesture = null; } }
+        addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 
         const nosBtn = $('nosBtn');
         nosBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); SFX.ensure(); boostHeld = true; nosBtn.classList.add('active'); });

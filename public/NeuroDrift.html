@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neuro Drift · Shaswata Das</title>
+    <meta name="description" content="Cars that teach themselves to drive — neuroevolution (neural net + genetic algorithm) running live in your browser.">
+    <style>
+        :root { --acc: #9eff5a; --acc2: #00e5ff; --mag: #ff2d95; --text: #eafce4; --muted: #93b48a; --panel: rgba(10, 20, 12, .62); --border: rgba(158, 255, 90, .22); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #050a06; color: var(--text); user-select: none; -webkit-user-select: none; touch-action: none; -webkit-font-smoothing: antialiased; }
+        #c { position: fixed; inset: 0; z-index: 0; display: block; }
+        .mono { font-family: 'Fira Mono', ui-monospace, monospace; }
+
+        .ui { position: fixed; z-index: 5; }
+        .topbar { top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 18px; pointer-events: none; }
+        .title { font-weight: 800; letter-spacing: 3px; font-size: 15px; }
+        .title small { display: block; font-weight: 600; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; }
+        .actions { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; justify-content: flex-end; }
+        .btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .5px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .15s, box-shadow .15s, color .15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(158,255,90,.18); }
+        .btn.on { color: #06140a; background: var(--acc); border-color: var(--acc); }
+
+        .hud { top: 70px; left: 18px; display: flex; flex-direction: column; gap: 10px; width: 210px; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .stat-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); letter-spacing: .5px; margin: 4px 0; }
+        .stat-row b { color: #fff; font-size: 15px; font-weight: 800; font-family: 'Fira Mono', monospace; }
+        .stat-row.big b { color: var(--acc); font-size: 22px; }
+        .spark { width: 100%; height: 48px; display: block; margin-top: 6px; border-radius: 8px; background: rgba(0,0,0,.25); }
+        .cap { font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 6px; }
+
+        .controls { bottom: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 0 14px 18px; pointer-events: none; }
+        .controls-inner { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 9px 12px; backdrop-filter: blur(12px); pointer-events: auto; flex-wrap: wrap; justify-content: center; }
+        .ico { min-width: 38px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: background .15s, transform .15s; white-space: nowrap; }
+        .ico:hover { transform: translateY(-2px); }
+        .ico.play { background: var(--acc); color: #06140a; border-color: var(--acc); }
+        .ico.act { color: var(--acc); border-color: var(--acc); }
+        .seg { display: flex; gap: 4px; background: rgba(0,0,0,.25); border-radius: 10px; padding: 3px; }
+        .seg button { border: none; background: transparent; color: var(--muted); font-weight: 800; font-size: 12px; padding: 6px 9px; border-radius: 8px; cursor: pointer; font-family: 'Fira Mono', monospace; }
+        .seg button.on { background: var(--acc); color: #06140a; }
+
+        #brain { position: fixed; right: 18px; bottom: 84px; z-index: 5; width: 210px; height: 168px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; backdrop-filter: blur(12px); }
+        #brainc { width: 100%; height: 100%; display: block; border-radius: 14px; }
+        .brain-cap { position: absolute; top: 8px; left: 12px; font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 800; pointer-events: none; }
+
+        #intro { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: radial-gradient(circle at 50% 38%, rgba(158,255,90,.12), rgba(5,10,6,.84) 55%, rgba(5,10,6,.96)); backdrop-filter: blur(4px); transition: opacity .6s ease; }
+        #intro.hide { opacity: 0; pointer-events: none; }
+        .icard { width: min(560px, 100%); padding: clamp(28px,5vw,46px); background: linear-gradient(180deg, rgba(14,26,16,.8), rgba(6,12,8,.84)); border: 1px solid rgba(158,255,90,.24); border-radius: 26px; backdrop-filter: blur(22px); box-shadow: 0 40px 120px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.06); }
+        .kicker { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--acc); background: rgba(158,255,90,.08); border: 1px solid rgba(158,255,90,.3); padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; }
+        #intro h1 { font-size: clamp(34px,7vw,58px); font-weight: 900; letter-spacing: 3px; line-height: 1; background: linear-gradient(180deg, #fff, #d6ffba 55%, var(--acc)); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 50px rgba(158,255,90,.3); }
+        #intro p { color: #c8e6bb; letter-spacing: .3px; margin: 14px auto 0; font-size: clamp(13px,2.6vw,15px); line-height: 1.6; max-width: 40ch; }
+        #intro .go { margin-top: 28px; border: none; cursor: pointer; background: linear-gradient(180deg, #c4ff8e, var(--acc)); color: #06140a; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 15px; padding: 15px 44px; border-radius: 13px; box-shadow: 0 12px 32px rgba(158,255,90,.4); transition: transform .15s; }
+        #intro .go:hover { transform: translateY(-2px); }
+
+        #brain { width: 250px; height: auto; bottom: 84px; padding-bottom: 10px; }
+        #brain .brain-cap { position: static; padding: 11px 12px 4px; }
+        #brainc { height: 158px; border-radius: 0; display: block; }
+        #gene { width: calc(100% - 20px); height: 12px; margin: 8px 10px 4px; display: block; border-radius: 4px; background: rgba(0,0,0,.3); }
+        #ndata { padding: 2px 12px 2px; font-size: 9.5px; line-height: 1.45; color: var(--muted); }
+        #ndata .r { margin-bottom: 5px; }
+        #ndata .r > span:first-child { display: block; font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 1px; }
+        #ndata .v { display: block; color: var(--acc); word-spacing: 2px; }
+        #ndata b { color: #fff; }
+        @media (max-width: 720px) { .hud { width: 142px; top: 64px; } #brain { width: 176px; bottom: 96px; } #brainc { height: 120px; } #ndata { font-size: 8.5px; } .title small { display: none; } }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+
+    <div class="ui topbar">
+        <div class="title">NEURO DRIFT<small>cars that learn to drive</small></div>
+        <div class="actions">
+            <button class="btn" id="watchBtn">★ Watch best</button>
+            <button class="btn" id="trackBtn">⟳ New track</button>
+            <button class="btn" id="resetBtn">⊘ Reset evolution</button>
+            <a class="btn" href="arcade.html">⏻ Exit</a>
+        </div>
+    </div>
+
+    <div class="ui hud">
+        <div class="card">
+            <div class="stat-row big"><span>Generation</span><b id="hGen">1</b></div>
+            <div class="stat-row"><span>Alive</span><b id="hAlive">140</b></div>
+            <div class="stat-row"><span>Best ever</span><b id="hBest">0</b></div>
+            <div class="stat-row"><span>This gen</span><b id="hCur">0</b></div>
+            <div class="stat-row"><span>Laps</span><b id="hLap">0</b></div>
+        </div>
+        <div class="card">
+            <div class="cap">Best fitness / generation</div>
+            <canvas class="spark" id="spark"></canvas>
+        </div>
+    </div>
+
+    <div id="brain"><div class="brain-cap">Leader net · <span id="archTxt"></span></div><canvas id="brainc"></canvas><canvas id="gene" title="genome — every weight"></canvas><div id="ndata" class="mono"></div></div>
+
+    <div class="ui controls">
+        <div class="controls-inner">
+            <button class="ico play" id="playBtn">⏸ Pause</button>
+            <div class="seg" id="speedSeg"><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button><button data-s="8">8×</button><button data-s="16">16×</button><button data-s="32">32×</button></div>
+            <button class="ico" id="maxBtn">⚡ Turbo</button>
+            <button class="ico" id="skipBtn">⏭ Skip gen</button>
+            <button class="ico act" id="sensorBtn">⟂ Sensors</button>
+            <button class="ico" id="allBtn">◎ Show all</button>
+        </div>
+    </div>
+
+    <div id="intro">
+        <div class="icard">
+            <div class="kicker">✦ Neuroevolution · live in your browser</div>
+            <h1>NEURO DRIFT</h1>
+            <p>No driving — and no training data. Each car has a tiny neural network; a genetic algorithm breeds the best every generation. Watch them go from crashing instantly to mastering the track.</p>
+            <button class="go" id="enterBtn">▸ Begin evolving</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        const $ = id => document.getElementById(id), TAU = Math.PI * 2;
+        const cv = $('c'), ctx = cv.getContext('2d');
+        let W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+        function resize() { W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); fitTrack(); }
+        addEventListener('resize', resize);
+
+        /* ---------------- neural net (flat genome, 6 -> 8 -> 2) ---------------- */
+        const SENS = [-1.4, -0.85, -0.4, 0, 0.4, 0.85, 1.4];
+        const NIN = SENS.length + 1, NHID = 10, NOUT = 2;
+        const W1 = 0, B1 = NIN * NHID, W2 = B1 + NHID, B2 = W2 + NHID * NOUT, GLEN = B2 + NOUT;
+        const rnd = (a, b) => a + Math.random() * (b - a);
+        function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
+        function randGenome() { const g = new Float32Array(GLEN); for (let i = 0; i < GLEN; i++) g[i] = rnd(-1, 1); return g; }
+        const ACT = { in: new Float32Array(NIN), hid: new Float32Array(NHID), out: new Float32Array(NOUT) };
+        function forward(g, inp, capture) {
+            const hid = capture ? ACT.hid : _hid;
+            for (let j = 0; j < NHID; j++) { let s = g[B1 + j]; for (let i = 0; i < NIN; i++) s += inp[i] * g[W1 + i * NHID + j]; hid[j] = Math.tanh(s); }
+            for (let k = 0; k < NOUT; k++) { let s = g[B2 + k]; for (let j = 0; j < NHID; j++) s += hid[j] * g[W2 + j * NOUT + k]; _out[k] = Math.tanh(s); }
+            if (capture) { for (let i = 0; i < NIN; i++) ACT.in[i] = inp[i]; ACT.out[0] = _out[0]; ACT.out[1] = _out[1]; }
+            return _out;
+        }
+        const _hid = new Float32Array(NHID), _out = new Float32Array(NOUT);
+        function crossover(a, b) { const c = new Float32Array(GLEN); for (let i = 0; i < GLEN; i++) c[i] = Math.random() < 0.5 ? a[i] : b[i]; return c; }
+        function mutate(g, rate, amt) { for (let i = 0; i < GLEN; i++) if (Math.random() < rate) { g[i] += gauss() * amt; if (g[i] > 3) g[i] = 3; else if (g[i] < -3) g[i] = -3; } return g; }
+
+        /* ---------------- track (closed Catmull-Rom corridor) ---------------- */
+        const HW = 30, N_CL = 260;            // half-width, centerline samples
+        let cl = [], nrm = [], cum = [], total = 0, inner = [], outer = [], bbox = null;
+        let scl = 1, ox = 0, oy = 0;            // world->screen
+        function catmull(p0, p1, p2, p3, t) { const t2 = t * t, t3 = t2 * t; return [0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]; }
+        function genTrack() {
+            const K = 12 + (Math.random() * 6 | 0), pts = [];
+            // radius woven from several harmonics with random phase -> concave + convex sections = both left & right turns
+            const harm = [[2, rnd(0.12, 0.24)], [3, rnd(0.08, 0.18)], [5, rnd(0.05, 0.12)], [7, rnd(0, 0.07)]], phs = harm.map(() => rnd(0, TAU));
+            for (let i = 0; i < K; i++) { const a = i / K * TAU; let rr = 1; for (let j = 0; j < harm.length; j++) rr += harm[j][1] * Math.sin(harm[j][0] * a + phs[j]); const R = 250 * Math.max(0.45, rr); pts.push([Math.cos(a) * R, Math.sin(a) * R * 0.92]); }
+            cl = []; for (let i = 0; i < K; i++) { const p0 = pts[(i - 1 + K) % K], p1 = pts[i], p2 = pts[(i + 1) % K], p3 = pts[(i + 2) % K]; const steps = Math.ceil(N_CL / K); for (let s = 0; s < steps; s++) cl.push(catmull(p0, p1, p2, p3, s / steps)); }
+            const n = cl.length; nrm = []; cum = []; total = 0; inner = []; outer = [];
+            for (let i = 0; i < n; i++) { const a = cl[i], b = cl[(i + 1) % n]; const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; nrm.push([-dy / L, dx / L]); cum.push(total); total += L; }
+            for (let i = 0; i < n; i++) { inner.push([cl[i][0] - nrm[i][0] * HW, cl[i][1] - nrm[i][1] * HW]); outer.push([cl[i][0] + nrm[i][0] * HW, cl[i][1] + nrm[i][1] * HW]); }
+            let xa = 1e9, ya = 1e9, xb = -1e9, yb = -1e9; for (const p of outer.concat(inner)) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
+            bbox = [xa, ya, xb, yb]; fitTrack();
+        }
+        function fitTrack() { if (!bbox) return; const m = 70, bw = bbox[2] - bbox[0], bh = bbox[3] - bbox[1]; scl = Math.min((W - m * 2) / bw, (H - m * 2) / bh); ox = W / 2 - (bbox[0] + bw / 2) * scl; oy = H / 2 - (bbox[1] + bh / 2) * scl; }
+        const sx = x => x * scl + ox, sy = y => y * scl + oy;
+        function segLen(i) { return cum[(i + 1) % cl.length] === 0 ? total - cum[i] : (cum[(i + 1) % cl.length] - cum[i] + total) % total; }
+
+        // ray vs segment -> distance along ray or Infinity
+        function raySeg(ox_, oy_, dx, dy, ax, ay, bx, by) {
+            const ex = bx - ax, ey = by - ay, den = dx * ey - dy * ex; if (Math.abs(den) < 1e-9) return Infinity;
+            const t = ((ax - ox_) * ey - (ay - oy_) * ex) / den, u = ((ax - ox_) * dy - (ay - oy_) * dx) / den;
+            return (t >= 0 && u >= 0 && u <= 1) ? t : Infinity;
+        }
+        // nearest centerline segment within window of last idx -> {idx,t,lat,prog}
+        function project(px, py, last) {
+            let best = 1e18, bi = last, bt = 0; const n = cl.length;
+            for (let d = -3; d <= 7; d++) { const i = (last + d + n) % n, a = cl[i], b = cl[(i + 1) % n]; const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1; let t = ((px - a[0]) * ex + (py - a[1]) * ey) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t; const cx = a[0] + ex * t, cy = a[1] + ey * t, dd = (px - cx) ** 2 + (py - cy) ** 2; if (dd < best) { best = dd; bi = i; bt = t; } }
+            const a = cl[bi], b = cl[(bi + 1) % n], ex = b[0] - a[0], ey = b[1] - a[1], L = Math.hypot(ex, ey) || 1; const lat = ((px - a[0]) * (-ey) + (py - a[1]) * ex) / L;   // signed lateral
+            return { idx: bi, t: bt, lat: lat, raw: cum[bi] + bt * L };
+        }
+
+        /* ---------------- cars ---------------- */
+        const POP = 140, ELITE = 6, MUT_RATE = 0.09, MUT_AMT = 0.45, MAXTICK = 2000, DT = 1 / 60;
+        const SRANGE = 170, MAXSPD = 250;
+        const COLS = ['#9eff5a', '#7ef0ff', '#ff8ad6', '#ffe06b', '#b18bff'];
+        let cars = [], gen = 1, bestEver = 0, curBest = 0, bestLap = 0, sparkHist = [], champion = null;
+        function newCar(genome, i) { return { g: genome, x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
+        function spawn(genomes) { cars = genomes.map((g, i) => newCar(g, i)); }
+        function initPop() { const gs = []; for (let i = 0; i < POP; i++) gs.push(randGenome()); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
+
+        function sense(car) {
+            const n = cl.length, inp = car.sens;
+            for (let s = 0; s < SENS.length; s++) {
+                const ang = car.a + SENS[s], dx = Math.cos(ang), dy = Math.sin(ang); let m = SRANGE;
+                for (let d = -2; d <= 8; d++) { const i = (car.idx + d + n) % n; let t = raySeg(car.x, car.y, dx, dy, inner[i][0], inner[i][1], inner[(i + 1) % n][0], inner[(i + 1) % n][1]); if (t < m) m = t; t = raySeg(car.x, car.y, dx, dy, outer[i][0], outer[i][1], outer[(i + 1) % n][0], outer[(i + 1) % n][1]); if (t < m) m = t; }
+                inp[s] = m / SRANGE;
+            }
+            return inp;
+        }
+        function step(car, capture) {
+            if (!car.alive) return;
+            sense(car); const o = forward(car.g, inputsOf(car), capture), steer = o[0], thr = o[1];
+            car.sp += thr * 360 * DT; car.sp -= car.sp * 0.9 * DT; if (car.sp > MAXSPD) car.sp = MAXSPD; if (car.sp < -60) car.sp = -60;
+            car.a += steer * 2.8 * Math.min(1, Math.abs(car.sp) / 50) * DT * (car.sp < 0 ? -1 : 1);
+            car.x += Math.cos(car.a) * car.sp * DT; car.y += Math.sin(car.a) * car.sp * DT;
+            const pr = project(car.x, car.y, car.idx); car.idx = pr.idx;
+            let draw = pr.raw - car.lastRaw; if (draw < -total / 2) car.lap++; else if (draw > total / 2) car.lap--; car.lastRaw = pr.raw;
+            car.prog = car.lap * total + pr.raw; car.fit = car.prog;
+            if (Math.abs(pr.lat) > HW - 4) { car.alive = false; return; }
+            if (car.prog > car.best + 1) { car.best = car.prog; car.stag = 0; } else { car.stag++; if (car.stag > 150) car.alive = false; }
+            if (capture) { car.trail.push([car.x, car.y]); if (car.trail.length > 26) car.trail.shift(); }
+        }
+        const _inN = new Float32Array(NIN);
+        function inputsOf(c) { for (let s = 0; s < SENS.length; s++) _inN[s] = c.sens[s]; _inN[SENS.length] = c.sp / MAXSPD; return _inN; }
+
+        function evolve() {
+            cars.sort((a, b) => b.fit - a.fit);
+            meanFit = cars.reduce((s, c) => s + c.fit, 0) / cars.length;
+            const top = cars[0]; if (top.fit > bestEver) { bestEver = top.fit; champion = top.g.slice(); save(); }
+            if (top.lap + (top.prog % total) / total > bestLap) bestLap = Math.max(bestLap, top.lap);
+            sparkHist.push(top.fit); if (sparkHist.length > 80) sparkHist.shift();
+            const genomes = [];
+            for (let i = 0; i < ELITE; i++) genomes.push(cars[i].g.slice());
+            const tourn = () => { let b = cars[(Math.random() * POP) | 0]; for (let k = 0; k < 4; k++) { const c = cars[(Math.random() * POP) | 0]; if (c.fit > b.fit) b = c; } return b.g; };
+            while (genomes.length < POP) genomes.push(mutate(crossover(tourn(), tourn()), MUT_RATE, MUT_AMT));
+            gen++; curBest = 0; spawn(genomes);
+        }
+
+        /* ---------------- persistence ---------------- */
+        function save() { try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen })); } catch (e) {} }
+        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d && d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; } } catch (e) {} })();
+
+        /* ---------------- state + loop ---------------- */
+        let running = true, simX = 1, tick = 0, showSensors = true, showAll = true, watch = false, turbo = false, meanFit = 0;
+        function tickAll(capture) {
+            let alive = 0, cb = 0, leader = capture ? currentLeader() : null;
+            for (const c of cars) { step(c, capture && c === leader); if (c.alive) alive++; if (c.fit > cb) cb = c.fit; }
+            curBest = Math.max(curBest, cb); tick++;
+            if (!watch && (alive === 0 || tick > MAXTICK)) { evolve(); tick = 0; }
+            else if (watch && alive === 0) startWatch();
+            return alive;
+        }
+        function skipGen() { if (watch) return; const g0 = gen; let n = 0; while (gen === g0 && n < MAXTICK + 5) { tickAll(false); n++; } }
+        function currentLeader() { let L = cars[0]; for (const c of cars) if (c.alive && c.fit > (L && L.alive ? L.fit : -1)) L = c; if (L && !L.alive) { for (const c of cars) if (c.alive) { L = c; break; } } return L || cars[0]; }
+
+        function startWatch() {
+            watch = true; $('watchBtn').classList.add('on');
+            spawn([champion ? champion.slice() : randGenome()]); cars[0].col = '#9eff5a';
+        }
+        function stopWatch() { watch = false; $('watchBtn').classList.remove('on'); initPop(); }
+
+        /* ---------------- render ---------------- */
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            // bg grid
+            ctx.strokeStyle = 'rgba(158,255,90,.04)'; ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 44) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+            for (let y = 0; y < H; y += 44) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+            const n = cl.length;
+            // asphalt corridor
+            ctx.beginPath(); ctx.moveTo(sx(outer[0][0]), sy(outer[0][1])); for (let i = 1; i < n; i++) ctx.lineTo(sx(outer[i][0]), sy(outer[i][1])); ctx.closePath();
+            ctx.moveTo(sx(inner[0][0]), sy(inner[0][1])); for (let i = 1; i < n; i++) ctx.lineTo(sx(inner[i][0]), sy(inner[i][1])); ctx.closePath();
+            ctx.fillStyle = '#0c150e'; ctx.fill('evenodd');
+            // dashed centerline
+            ctx.strokeStyle = 'rgba(158,255,90,.16)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 12]); ctx.beginPath(); ctx.moveTo(sx(cl[0][0]), sy(cl[0][1])); for (let i = 1; i < n; i++) ctx.lineTo(sx(cl[i][0]), sy(cl[i][1])); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+            // glowing edges
+            ctx.save(); ctx.shadowBlur = 12;
+            for (const [arr, col] of [[outer, '#9eff5a'], [inner, '#00e5ff']]) { ctx.strokeStyle = col; ctx.shadowColor = col; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(sx(arr[0][0]), sy(arr[0][1])); for (let i = 1; i < n; i++) ctx.lineTo(sx(arr[i][0]), sy(arr[i][1])); ctx.closePath(); ctx.stroke(); }
+            ctx.restore();
+            // start line
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx(inner[0][0]), sy(inner[0][1])); ctx.lineTo(sx(outer[0][0]), sy(outer[0][1])); ctx.stroke();
+
+            const leader = currentLeader();
+            // cars
+            for (const c of cars) {
+                if (!c.alive && !watch) continue;
+                if (!showAll && c !== leader) continue;
+                const isL = c === leader;
+                if (isL && c.trail.length > 1) { ctx.strokeStyle = c.col; ctx.globalAlpha = .5; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx(c.trail[0][0]), sy(c.trail[0][1])); for (let i = 1; i < c.trail.length; i++) ctx.lineTo(sx(c.trail[i][0]), sy(c.trail[i][1])); ctx.stroke(); ctx.globalAlpha = 1; }
+                drawCar(c, isL);
+            }
+            // leader sensors
+            if (showSensors && leader && leader.alive) {
+                ctx.lineWidth = 1; for (let s = 0; s < SENS.length; s++) { const ang = leader.a + SENS[s], dist = leader.sens[s] * SRANGE; ctx.strokeStyle = `rgba(255,255,255,${0.12 + (1 - leader.sens[s]) * 0.5})`; ctx.beginPath(); ctx.moveTo(sx(leader.x), sy(leader.y)); ctx.lineTo(sx(leader.x + Math.cos(ang) * dist), sy(leader.y + Math.sin(ang) * dist)); ctx.stroke(); }
+            }
+            drawBrain(leader);
+            drawGene(leader);
+            telemetry(leader);
+            drawSpark();
+            hud(leader);
+        }
+        function drawCar(c, isL) {
+            const x = sx(c.x), y = sy(c.y), r = (isL ? 8 : 5.5);
+            ctx.save(); ctx.translate(x, y); ctx.rotate(c.a);
+            if (isL) { ctx.shadowColor = c.col; ctx.shadowBlur = 14; }
+            ctx.globalAlpha = c.alive ? (isL ? 1 : .8) : .25;
+            ctx.fillStyle = c.col; ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(-r * .7, r * .6); ctx.lineTo(-r * .7, -r * .6); ctx.closePath(); ctx.fill();
+            ctx.restore(); ctx.globalAlpha = 1;
+        }
+        const IN_LAB = SENS.map((_, i) => 'S' + (i + 1)).concat('spd'), OUT_LAB = ['steer', 'thr'];
+        const bc = $('brainc'), bx = bc.getContext('2d'); let bW = 0, bH = 0;
+        function drawBrain(leader) {
+            if (bc.width !== bc.clientWidth * DPR) { bc.width = bc.clientWidth * DPR; bc.height = bc.clientHeight * DPR; bx.setTransform(DPR, 0, 0, DPR, 0, 0); bW = bc.clientWidth; bH = bc.clientHeight; }
+            bx.clearRect(0, 0, bW, bH);
+            if (!leader) return; forward(leader.g, inputsOf(leader), true);
+            const cols = [[ACT.in, NIN], [ACT.hid, NHID], [ACT.out, NOUT]], padL = 30, padR = 40, top = 22;
+            const colX = i => padL + i * (bW - padL - padR) / 2, posY = (k, cnt) => top + k * (bH - top - 12) / Math.max(1, cnt - 1);
+            const wsets = [[W1, NIN, NHID, 0, 1], [W2, NHID, NOUT, 1, 2]];
+            for (const [off, a, b, ca, cb] of wsets) for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) { const w = leader.g[off + i * b + j]; bx.strokeStyle = w >= 0 ? `rgba(158,255,90,${Math.min(.55, Math.abs(w) * .4)})` : `rgba(255,45,149,${Math.min(.55, Math.abs(w) * .4)})`; bx.lineWidth = Math.min(2.2, Math.abs(w)); bx.beginPath(); bx.moveTo(colX(ca), posY(i, a)); bx.lineTo(colX(cb), posY(j, b)); bx.stroke(); }
+            bx.font = '7px Fira Mono, monospace'; bx.textBaseline = 'middle';
+            for (let ci = 0; ci < 3; ci++) { const [vals, cnt] = cols[ci]; for (let k = 0; k < cnt; k++) { const val = vals[k], v = Math.abs(val), pos = val >= 0, x = colX(ci), y = posY(k, cnt); bx.fillStyle = pos ? `rgba(158,255,90,${0.3 + v * 0.7})` : `rgba(255,45,149,${0.3 + v * 0.7})`; bx.shadowColor = pos ? '#9eff5a' : '#ff2d95'; bx.shadowBlur = v * 9; bx.beginPath(); bx.arc(x, y, 5, 0, TAU); bx.fill(); bx.shadowBlur = 0; bx.fillStyle = 'rgba(230,255,210,.9)'; if (ci === 0) { bx.textAlign = 'right'; bx.fillText(IN_LAB[k], x - 8, y); } else if (ci === 2) { bx.textAlign = 'left'; bx.fillText(OUT_LAB[k], x + 8, y); } } }
+        }
+        const ge = $('gene'), gex = ge.getContext('2d'); let geW = 0;
+        function drawGene(leader) {
+            if (ge.width !== ge.clientWidth * DPR) { ge.width = ge.clientWidth * DPR; ge.height = ge.clientHeight * DPR; gex.setTransform(DPR, 0, 0, DPR, 0, 0); geW = ge.clientWidth; }
+            gex.clearRect(0, 0, geW, 12); if (!leader) return; const cw = geW / GLEN;
+            for (let i = 0; i < GLEN; i++) { const w = leader.g[i], v = Math.min(1, Math.abs(w) / 3); gex.fillStyle = w >= 0 ? `rgba(158,255,90,${0.2 + v * 0.8})` : `rgba(255,45,149,${0.2 + v * 0.8})`; gex.fillRect(i * cw, 0, Math.max(1, cw - 0.3), 12); }
+        }
+        let teleN = 0;
+        function telemetry(leader) {
+            if (teleN++ % 3 !== 0 || !leader) return;
+            const g = leader.g; let wmax = 0, wsum = 0; for (let i = 0; i < GLEN; i++) { const a = Math.abs(g[i]); if (a > wmax) wmax = a; wsum += a; }
+            const fmtA = a => Array.from(a).map(v => (v >= 0 ? '+' : '') + v.toFixed(2)).join(' ');
+            $('ndata').innerHTML =
+                `<div class="r"><span>in</span><span class="v">${fmtA(ACT.in)} +${(leader.sp / MAXSPD).toFixed(2)}</span></div>` +
+                `<div class="r"><span>hid</span><span class="v">${fmtA(ACT.hid)}</span></div>` +
+                `<div class="r"><span>out</span><span class="v">steer ${ACT.out[0].toFixed(2)} · thr ${ACT.out[1].toFixed(2)}</span></div>` +
+                `<div class="r"><span>fit</span><span class="v">best <b>${(bestEver / total).toFixed(2)}</b> · μ <b>${(meanFit / total).toFixed(2)}</b></span></div>` +
+                `<div class="r"><span>|w|</span><span class="v">max ${wmax.toFixed(2)} · μ ${(wsum / GLEN).toFixed(2)}</span></div>`;
+        }
+        const sp = $('spark'), spx = sp.getContext('2d'); let spW = 0, spH = 0;
+        function drawSpark() {
+            if (sp.width !== sp.clientWidth * DPR) { sp.width = sp.clientWidth * DPR; sp.height = sp.clientHeight * DPR; spx.setTransform(DPR, 0, 0, DPR, 0, 0); spW = sp.clientWidth; spH = sp.clientHeight; }
+            spx.clearRect(0, 0, spW, spH); if (sparkHist.length < 2) return;
+            const mx = Math.max(...sparkHist, 1); spx.strokeStyle = '#9eff5a'; spx.lineWidth = 2; spx.shadowColor = '#9eff5a'; spx.shadowBlur = 6; spx.beginPath();
+            sparkHist.forEach((v, i) => { const x = i / (sparkHist.length - 1) * spW, y = spH - 4 - (v / mx) * (spH - 8); i ? spx.lineTo(x, y) : spx.moveTo(x, y); }); spx.stroke(); spx.shadowBlur = 0;
+        }
+        function hud(leader) {
+            $('hGen').textContent = watch ? '★' : gen;
+            $('hAlive').textContent = cars.filter(c => c.alive).length;
+            $('hBest').textContent = (bestEver / total).toFixed(2);
+            $('hCur').textContent = (curBest / total).toFixed(2);
+            $('hLap').textContent = leader ? Math.max(0, leader.lap) : 0;
+        }
+
+        let last = performance.now();
+        function frame(now) {
+            last = now;
+            if (running) {
+                if (turbo) { const t0 = performance.now(); let n = 0; while (performance.now() - t0 < 13 && n < 8000) { tickAll(false); n++; } }
+                else { for (let s = 0; s < simX; s++) tickAll(true); }
+            }
+            draw();
+            requestAnimationFrame(frame);
+        }
+
+        /* ---------------- controls ---------------- */
+        $('playBtn').onclick = () => { running = !running; $('playBtn').textContent = running ? '⏸ Pause' : '▶ Play'; $('playBtn').classList.toggle('play', running); };
+        $('speedSeg').querySelectorAll('button').forEach(b => b.onclick = () => { simX = +b.dataset.s; turbo = false; $('maxBtn').classList.remove('act'); $('speedSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+        $('maxBtn').onclick = () => { turbo = !turbo; $('maxBtn').classList.toggle('act', turbo); if (turbo && !running) { running = true; $('playBtn').textContent = '⏸ Pause'; $('playBtn').classList.add('play'); } };
+        $('skipBtn').onclick = skipGen;
+        $('sensorBtn').onclick = () => { showSensors = !showSensors; $('sensorBtn').classList.toggle('act', showSensors); };
+        $('allBtn').onclick = () => { showAll = !showAll; $('allBtn').classList.toggle('on', showAll); };
+        $('trackBtn').onclick = () => { genTrack(); if (watch) startWatch(); else initPop(); tick = 0; };
+        $('resetBtn').onclick = () => { stopWatch(); bestEver = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; };
+        $('watchBtn').onclick = () => { watch ? stopWatch() : startWatch(); };
+        $('enterBtn').onclick = () => { $('intro').classList.add('hide'); setTimeout(() => $('intro').remove(), 650); };
+        $('allBtn').classList.add('on');
+        $('archTxt').textContent = NIN + '→' + NHID + '→' + NOUT + ' · ' + GLEN + ' weights';
+
+        resize(); genTrack(); initPop(); requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+
+</html>
