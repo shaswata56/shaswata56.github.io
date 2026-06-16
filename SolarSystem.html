@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solar System · Shaswata Das</title>
+    <meta name="description" content="Interactive 3D solar system — planets, moons, dwarf planets and comets on real Keplerian orbits.">
+    <style>
+        :root { --c1: #5fd0ff; --c2: #ffb347; --text: #eef4ff; --muted: #93a4c8; --panel: rgba(10, 16, 34, .62); --border: rgba(120, 170, 255, .22); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #03040c; color: var(--text); user-select: none; -webkit-user-select: none; touch-action: none; -webkit-font-smoothing: antialiased; }
+        #scene { position: fixed; inset: 0; z-index: 0; }
+        canvas { display: block; }
+        .mono { font-family: 'Fira Mono', ui-monospace, monospace; }
+
+        #labels { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+        .label { position: absolute; transform: translate(-50%, -140%); font-size: 11px; letter-spacing: 1px; color: #cfe3ff; white-space: nowrap; text-shadow: 0 0 8px rgba(0,0,0,.9); opacity: 0; transition: opacity .25s; }
+        .label.comet { color: #bfe6ff; }
+        .label.show { opacity: .9; }
+        .label::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 9px; background: rgba(150,190,255,.5); transform: translateX(-.5px); }
+
+        .ui { position: fixed; z-index: 5; }
+        .topbar { top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 18px; pointer-events: none; }
+        .title { font-weight: 800; letter-spacing: 3px; font-size: 15px; }
+        .title small { display: block; font-weight: 600; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; }
+        .top-actions { display: flex; gap: 8px; pointer-events: auto; }
+        .btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .5px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .15s, box-shadow .15s, color .15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(95,208,255,.2); }
+        .btn.on { color: #07101f; background: var(--c1); border-color: var(--c1); }
+
+        .dock { bottom: 92px; left: 0; right: 0; display: flex; justify-content: center; padding: 0 12px; pointer-events: none; }
+        .chips { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding: 6px; pointer-events: auto; scrollbar-width: none; }
+        .chips::-webkit-scrollbar { display: none; }
+        .chip { flex: none; background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 700; letter-spacing: .5px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: color .15s, border-color .15s, transform .15s; white-space: nowrap; }
+        .chip:hover { transform: translateY(-2px); }
+        .chip.comet { font-style: italic; }
+        .chip.active { color: #07101f; border-color: var(--cc); background: var(--cc); }
+
+        .timebar { bottom: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 0 14px 18px; pointer-events: none; }
+        .timebar-inner { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 9px 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); pointer-events: auto; max-width: 100%; }
+        .ico { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex: none; transition: background .15s, transform .15s; }
+        .ico:hover { transform: translateY(-2px); }
+        .ico.play { background: var(--c1); color: #07101f; border-color: var(--c1); }
+        .tinfo { text-align: center; min-width: 140px; }
+        .tinfo .spd { font-size: 13px; font-weight: 800; letter-spacing: .5px; color: var(--c1); }
+        .tinfo .date { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; cursor: pointer; border-bottom: 1px dashed transparent; display: inline-block; }
+        .tinfo .date:hover { color: var(--c1); border-bottom-color: rgba(95,208,255,.5); }
+        .tinfo .date-edit { font-size: 11px; letter-spacing: 1px; margin-top: 2px; background: rgba(255,255,255,.06); border: 1px solid var(--c1); border-radius: 6px; color: var(--text); padding: 1px 5px; outline: none; color-scheme: dark; width: 120px; text-align: center; }
+        .tinfo .date-edit.bad { border-color: #ff6b6b; color: #ffb3b3; }
+
+        .info { position: fixed; z-index: 6; right: 18px; bottom: 160px; width: min(340px, calc(100vw - 36px)); background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.5); transform: translateY(20px) scale(.98); opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+        .info.show { opacity: 1; transform: none; pointer-events: auto; }
+        .info .ihead { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+        .info .swatch { width: 30px; height: 30px; border-radius: 50%; flex: none; box-shadow: 0 0 16px var(--ic); }
+        .info h2 { font-size: 20px; font-weight: 800; letter-spacing: .5px; }
+        .info .itype { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+        .info .close { margin-left: auto; cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1; padding: 4px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .stat { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; }
+        .stat .k { font-size: 9.5px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+        .stat .v { font-size: 14px; font-weight: 800; margin-top: 2px; }
+        .fact { font-size: 12.5px; line-height: 1.55; color: #c3d2f0; }
+
+        #intro { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: radial-gradient(circle at 50% 38%, rgba(95,208,255,.12), rgba(3,4,12,.82) 52%, rgba(3,4,12,.95)); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: opacity .6s ease; }
+        #intro.hide { opacity: 0; pointer-events: none; }
+        #intro .intro-card { position: relative; width: min(560px, 100%); padding: clamp(28px, 5vw, 46px) clamp(26px, 5vw, 48px) clamp(26px, 4.5vw, 40px); background: linear-gradient(180deg, rgba(16,24,48,.78), rgba(8,12,28,.82)); border: 1px solid rgba(120,170,255,.24); border-radius: 26px; backdrop-filter: blur(22px) saturate(125%); -webkit-backdrop-filter: blur(22px) saturate(125%); box-shadow: 0 40px 120px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08); }
+        #intro .kicker { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--c1); background: rgba(95,208,255,.09); border: 1px solid rgba(95,208,255,.3); padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; }
+        #intro h1 { font-size: clamp(32px, 6.2vw, 47px); font-weight: 900; letter-spacing: 3px; line-height: 1.04; white-space: nowrap; background: linear-gradient(180deg, #fff, #bfe6ff 58%, var(--c1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        #intro p { color: #c6d5f2; letter-spacing: .3px; margin: 14px auto 0; font-size: clamp(13px, 2.5vw, 15px); line-height: 1.55; max-width: 32ch; }
+        #intro .divider { width: 60px; height: 2px; margin: 22px auto; border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(95,208,255,.65), transparent); }
+        #intro .hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
+        #intro .hints .hint { font-size: 12px; letter-spacing: .3px; color: #d4e2fb; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; transition: border-color .15s, background .15s; }
+        #intro .hints .hint b { color: var(--c1); font-weight: 800; }
+        #intro .go { margin-top: 30px; border: none; cursor: pointer; background: linear-gradient(180deg, #95e2ff, var(--c1)); color: #06101f; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 15px; padding: 15px 46px; border-radius: 13px; box-shadow: 0 12px 32px rgba(95,208,255,.42); transition: transform .15s, box-shadow .15s; }
+        #intro .go:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(95,208,255,.58); }
+        #intro .go:active { transform: translateY(0); }
+        .note { position: fixed; z-index: 4; bottom: 88px; left: 50%; transform: translateX(-50%); font-size: 10px; letter-spacing: 1px; color: var(--muted); opacity: .72; text-align: center; pointer-events: none; max-width: min(560px, 92vw); padding: 4px 12px; border-radius: 999px; background: rgba(6,10,24,.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+        .menu { position: fixed; z-index: 6; top: 70px; left: 18px; width: 268px; max-width: calc(100vw - 36px); background: var(--panel); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.5); overflow: hidden; display: flex; flex-direction: column; max-height: min(72vh, 580px); transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .3s; }
+        .menu.closed { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .menu-head { padding: 13px 13px 10px; border-bottom: 1px solid var(--border); }
+        .menu-head .mt { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .menu-head .mt .cnt { color: var(--c1); }
+        .menu-head .mt .mclose { margin-left: auto; background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 8px; cursor: pointer; font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+        .menu-head .mt .mclose:hover { background: rgba(255,255,255,.12); }
+        .search-wrap { position: relative; }
+        .search-wrap::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; }
+        .search { width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px 9px 30px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; }
+        .search::placeholder { color: var(--muted); }
+        .search:focus { border-color: var(--c1); }
+        .mlist { overflow-y: auto; padding: 4px 8px 10px; }
+        .mlist::-webkit-scrollbar { width: 8px; }
+        .mlist::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+        .mgroup { font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 11px 8px 5px; font-weight: 800; }
+        .mrow { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer; transition: background .15s; }
+        .mrow:hover { background: rgba(255,255,255,.06); }
+        .mrow.active { background: rgba(95,208,255,.16); }
+        .mrow .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 8px var(--d); }
+        .mrow .nm { font-size: 14px; font-weight: 700; }
+        .mrow .sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+        .mrow .meta { margin-left: auto; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+        .mempty { padding: 16px; text-align: center; color: var(--muted); font-size: 12px; }
+        @media (max-width: 640px) { .info { bottom: 150px; right: 12px; } .title small { display: none; } .note { display: none; } .menu { top: 64px; } }
+    </style>
+</head>
+
+<body>
+    <div id="scene"></div>
+    <div id="labels"></div>
+
+    <div class="ui topbar">
+        <div class="title">SOLAR SYSTEM<small id="scaleNote">compact · stylised</small></div>
+        <div class="top-actions">
+            <button class="btn on" id="menuBtn">☰ Objects</button>
+            <button class="btn on" id="labelBtn">◷ Labels</button>
+            <button class="btn" id="scaleBtn">⊹ Compact</button>
+            <a class="btn" href="arcade.html">⏻ Exit</a>
+        </div>
+    </div>
+
+    <div class="menu" id="menu">
+        <div class="menu-head">
+            <div class="mt">Objects · <span class="cnt" id="objCount">0</span><button class="mclose" id="menuClose" title="Minimize">✕</button></div>
+            <div class="search-wrap"><input class="search" id="search" placeholder="Search worlds, moons, comets…" autocomplete="off"></div>
+        </div>
+        <div class="mlist" id="mlist"></div>
+    </div>
+
+    <div class="ui timebar">
+        <div class="timebar-inner">
+            <div class="ico" id="slower">«</div>
+            <div class="ico play" id="playBtn">⏸</div>
+            <div class="ico" id="faster">»</div>
+            <div class="tinfo"><div class="spd mono" id="spd">7 days / s</div><div class="date mono" id="date" title="Click to set the date">—</div><input type="text" id="dateInput" class="date-edit mono" style="display:none" placeholder="YYYY-MM-DD" autocomplete="off" spellcheck="false" inputmode="numeric"></div>
+            <div class="ico" id="resetBtn" title="Reset view">⌖</div>
+        </div>
+    </div>
+
+    <div class="note" id="disclaimer">Compact view · sizes &amp; spacing stylised, but every body sits at its real orbital position for the date</div>
+
+    <div class="info" id="info">
+        <div class="ihead">
+            <div class="swatch" id="iSwatch"></div>
+            <div><h2 id="iName">—</h2><div class="itype" id="iType">—</div></div>
+            <div class="close" id="iClose">✕</div>
+        </div>
+        <div class="stats" id="iStats"></div>
+        <div class="fact" id="iFact"></div>
+    </div>
+
+    <div id="intro">
+        <div class="intro-card">
+            <div class="kicker">✦ Interactive 3D Orrery</div>
+            <h1>SOLAR&nbsp;SYSTEM</h1>
+            <p>Every planet, moon &amp; comet on its real orbit — for any date you choose.</p>
+            <div class="divider"></div>
+            <div class="hints">
+                <span class="hint"><b>Drag</b> to orbit</span>
+                <span class="hint"><b>Scroll</b> to zoom</span>
+                <span class="hint"><b>Tap</b> a world to explore</span>
+                <span class="hint"><b>Timeline</b> to travel in time</span>
+            </div>
+            <button class="go" id="enterBtn">▸ Launch</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        if (typeof THREE === 'undefined') { document.getElementById('intro').innerHTML = '<h1 style="font-size:34px">Offline</h1><p>Three.js failed to load</p>'; return; }
+        const $ = id => document.getElementById(id), PI = Math.PI, D2R = PI / 180;
+
+        /* ---------------- data (real orbital elements) ----------------
+           au=semi-major, e=eccentricity, i=inclination, Om=long. ascending node, w=arg. perihelion (deg)
+           M0=mean anomaly at epoch J2000 (deg), period (yr), rot (h, neg=retrograde), tilt (axial deg).
+           Planets + Pluto use the JPL table below (with secular rates) and ignore these au/M0 values for
+           positioning; dwarf planets & comets are propagated as fixed-element two-body orbits from M0. */
+        const SUN = { name: 'Sun', radiusKm: 696340, color: '#ffcc55', type: 'G-type star', fact: 'Holds 99.86% of the solar system’s mass. Light from its surface takes ~8 minutes to reach Earth.' };
+        const BODIES = [
+            { name: 'Mercury', radiusKm: 2440, au: 0.387, e: 0.2056, i: 7.005, Om: 48.33, w: 29.12, period: 0.2408, rot: 1408, tilt: 0.03, color: '#a9a29b', type: 'Terrestrial planet', moons: 0, tx: { kind: 'rock', base: [150, 142, 132], craters: 90 }, fact: 'Smallest planet, most eccentric orbit of the eight. A solar day lasts ~176 Earth days — longer than its year.' },
+            { name: 'Venus', radiusKm: 6052, au: 0.723, e: 0.0068, i: 3.39, Om: 76.68, w: 54.88, period: 0.6152, rot: -5832, tilt: 177.4, color: '#e6c182', type: 'Terrestrial planet', moons: 0, tx: { kind: 'gas', stops: [[0, [228, 203, 150]], [.5, [240, 222, 172]], [1, [224, 197, 140]]], turb: 0.12 }, fact: 'Hottest planet (~465°C) under a runaway CO₂ greenhouse. Spins backwards, very slowly.' },
+            { name: 'Earth', radiusKm: 6371, au: 1.0, e: 0.0167, i: 0.0, Om: 0, w: 102.9, period: 1.0, rot: 23.9345, tilt: 23.44, pole: [0.0, 90.0], color: '#4a90d9', type: 'Terrestrial planet', moons: 1, tx: { kind: 'earth' }, fact: 'The only known world with life. 71% of its surface is liquid water.', satellites: [{ name: 'Moon', radiusKm: 1737, orbitKm: 384400, dist: 2.6, period: 0.074803, color: '#cfcfcf', meeus: 1 }] },
+            { name: 'Mars', radiusKm: 3390, au: 1.524, e: 0.0934, i: 1.85, Om: 49.56, w: 286.5, period: 1.881, rot: 24.6229, tilt: 25.19, pole: [317.681, 52.887], color: '#c1440e', type: 'Terrestrial planet', moons: 2, tx: { kind: 'rock', base: [150, 70, 40], craters: 45, caps: [236, 238, 240], dark: [108, 54, 34] }, fact: 'Home to Olympus Mons, the tallest volcano in the solar system at ~22 km high.', satellites: [{ name: 'Phobos', radiusKm: 11, orbitKm: 9378, dist: 1.6, period: 0.000873, color: '#9b8b80', e: 0.014698, im: 26.0567, om: 84.8151, w: 342.7849, L0: 257.4224, N: 1129.5900922 }, { name: 'Deimos', radiusKm: 6, orbitKm: 23458, dist: 2.2, period: 0.003456, color: '#9b8b80', e: 0.000330, im: 27.5694, om: 83.6693, w: 211.8948, L0: 300.6580, N: 285.1619132 }] },
+            { name: 'Jupiter', radiusKm: 69911, au: 5.204, e: 0.0489, i: 1.304, Om: 100.46, w: 273.87, period: 11.862, rot: 9.925, tilt: 3.13, pole: [268.057, 64.495], color: '#d8b48c', type: 'Gas giant', moons: 95, tx: { kind: 'gas', big: 1, stops: [[0, [200, 165, 120]], [.12, [228, 205, 165]], [.26, [176, 125, 80]], [.4, [232, 216, 180]], [.5, [214, 165, 110]], [.62, [198, 138, 94]], [.76, [230, 212, 176]], [.88, [182, 140, 100]], [1, [200, 165, 120]]], turb: 0.05, spot: { x: .32, y: .63, rx: .055, ry: .032, c: [196, 103, 63] } }, fact: 'Largest planet — over twice the mass of all others combined. The Great Red Spot is a storm wider than Earth.', satellites: [{ name: 'Io', radiusKm: 1821, orbitKm: 422036, dist: 2.4, period: 0.004826, color: '#e8d96b', e: 0.004716, im: 2.2126, om: 336.8524, w: 66.1649, L0: 18.1705, N: 204.2341579 }, { name: 'Europa', radiusKm: 1560, orbitKm: 671248, dist: 3.0, period: 0.009651, color: '#cdbfae', e: 0.009813, im: 1.7910, om: 332.6287, w: 254.6471, L0: 212.6869, N: 102.1198356 }, { name: 'Ganymede', radiusKm: 2634, orbitKm: 1070497, dist: 3.8, period: 0.019589, color: '#9c8f80', e: 0.001457, im: 2.2141, om: 343.1728, w: 319.8078, L0: 220.0294, N: 50.3176078 }, { name: 'Callisto', radiusKm: 2410, orbitKm: 1882773, dist: 4.8, period: 0.045694, color: '#6e655c', e: 0.007439, im: 2.0169, om: 337.9426, w: 16.1269, L0: 79.1884, N: 21.5710593 }] },
+            { name: 'Saturn', radiusKm: 58232, au: 9.583, e: 0.0565, i: 2.485, Om: 113.66, w: 339.39, period: 29.46, rot: 10.656, tilt: 26.73, pole: [40.589, 83.537], color: '#e3d6a8', type: 'Gas giant', moons: 146, rings: [1.3, 2.3], tx: { kind: 'gas', big: 1, stops: [[0, [206, 184, 138]], [.2, [228, 212, 168]], [.4, [212, 190, 142]], [.55, [234, 220, 178]], [.7, [210, 186, 140]], [.85, [228, 212, 166]], [1, [206, 184, 138]]], turb: 0.04 }, fact: 'Its rings are mostly ice, only ~10–20 m thick on average. Saturn is less dense than water.', satellites: [{ name: 'Titan', radiusKm: 2575, orbitKm: 1221935, dist: 4.2, period: 0.043655, color: '#d9a441', e: 0.028601, im: 27.7183, om: 169.2392, w: 164.4091, L0: 137.0845, N: 22.5770480 }] },
+            { name: 'Uranus', radiusKm: 25362, au: 19.19, e: 0.0457, i: 0.772, Om: 74.0, w: 96.99, period: 84.01, rot: -17.24, tilt: 97.77, pole: [257.311, -15.175], color: '#9fe3e0', type: 'Ice giant', moons: 28, rings: [1.6, 2.0], tx: { kind: 'gas', stops: [[0, [168, 224, 222]], [.5, [192, 236, 233]], [1, [172, 222, 220]]], turb: 0.03 }, fact: 'Tipped on its side (98° tilt) — it rolls around the Sun. Each pole gets ~42 years of sunlight.' },
+            { name: 'Neptune', radiusKm: 24622, au: 30.07, e: 0.0113, i: 1.77, Om: 131.78, w: 276.34, period: 164.8, rot: 16.11, tilt: 28.32, pole: [299.36, 43.46], color: '#3b6fe0', type: 'Ice giant', moons: 16, tx: { kind: 'gas', stops: [[0, [40, 92, 200]], [.5, [62, 112, 222]], [1, [44, 96, 206]]], turb: 0.06, spot: { x: .42, y: .44, rx: .05, ry: .034, c: [22, 42, 92] } }, fact: 'Windiest planet — supersonic winds up to 2,100 km/h. Found by math before it was ever seen.' },
+            { name: 'Ceres', radiusKm: 473, au: 2.76555, e: 0.079692, i: 10.588, Om: 80.249, w: 73.294, period: 4.59919, M0: 5.10, rot: 9.07, tilt: 4, color: '#b9b1a6', type: 'Dwarf planet', moons: 0, dwarf: 1, tx: { kind: 'rock', base: [150, 144, 136], craters: 60 }, fact: 'The largest object in the asteroid belt and the only dwarf planet in the inner solar system.' },
+            { name: 'Pluto', radiusKm: 1188, au: 39.48, e: 0.2488, i: 17.16, Om: 110.30, w: 113.76, period: 248.0, rot: -153.3, tilt: 122.5, pole: [132.993, -6.163], color: '#c9b39b', type: 'Dwarf planet', moons: 5, dwarf: 1, tx: { kind: 'rock', base: [202, 180, 152], craters: 18, dark: [150, 120, 95] }, fact: 'Its eccentric, tilted orbit even crosses inside Neptune’s. Charon is so large the two orbit a point in space between them.' },
+            { name: 'Haumea', radiusKm: 816, au: 43.0603, e: 0.194443, i: 28.208, Om: 121.786, w: 240.691, period: 282.568, M0: 189.53, rot: 3.9, tilt: 0, color: '#e8e8ee', type: 'Dwarf planet', moons: 2, dwarf: 1, tx: { kind: 'rock', base: [224, 224, 232], craters: 8 }, fact: 'Spins so fast (every 3.9 h) it’s stretched into an egg shape. Has a ring and two moons.' },
+            { name: 'Makemake', radiusKm: 715, au: 45.5709, e: 0.158889, i: 29.028, Om: 79.295, w: 297.092, period: 307.638, M0: 139.00, rot: 22.5, tilt: 0, color: '#b06a4a', type: 'Dwarf planet', moons: 1, dwarf: 1, tx: { kind: 'rock', base: [176, 106, 74], craters: 14 }, fact: 'A reddish Kuiper-belt dwarf, one of the largest. Its surface is covered in frozen methane and ethane.' },
+            { name: 'Eris', radiusKm: 1163, au: 67.9339, e: 0.438239, i: 43.926, Om: 36.005, w: 150.795, period: 559.936, M0: 194.77, rot: 25.9, tilt: 44, color: '#d6d2c4', type: 'Dwarf planet', moons: 1, dwarf: 1, tx: { kind: 'rock', base: [214, 210, 200], craters: 12 }, fact: 'A scattered-disc world more massive than Pluto, on a wildly eccentric, steeply tilted orbit. Sparked the 2006 “what is a planet?” debate.' }
+        ];
+        const COMETS = [
+            { name: 'Halley', au: 17.9286, e: 0.967936, i: 162.191, Om: 59.099, w: 112.241, period: 75.917, M0: 65.88, color: '#bfe6ff', type: 'Comet (1P)', fact: 'The most famous comet — visible from Earth every ~76 years (next in 2061). Orbits retrograde.' },
+            { name: 'Encke', au: 2.21969, e: 0.847750, i: 11.412, Om: 334.194, w: 187.134, period: 3.30682, M0: 288.54, color: '#cfe9ff', type: 'Comet (2P)', fact: 'Shortest known period of any comet — 3.3 years. Likely the parent of the Taurid meteor showers.' },
+            { name: 'Hale-Bopp', au: 177.433, e: 0.994981, i: 89.288, Om: 282.733, w: 130.415, period: 2363.53, M0: 0.42, color: '#d6f0ff', type: 'Comet (C/1995 O1)', fact: 'The “Great Comet of 1997” — visible to the naked eye for a record 18 months. Won’t return until ~4385.' }
+        ];
+
+        /* ---------------- accurate ephemeris (JPL Keplerian elements + secular rates, J2000) ----------------
+           Standish & Williams, "Approximate Positions of the Planets" (Table 1, valid 1800–2050 AD).
+           Each entry: el = [a(au), e, I(deg), L(deg), long.peri ϖ(deg), long.node Ω(deg)] at J2000.0,
+           rate = same six quantities per Julian century. Heliocentric, mean ecliptic/equinox of J2000. */
+        const JPL = {
+            Mercury: { el: [0.38709927, 0.20563593, 7.00497902, 252.25032350, 77.45779628, 48.33076593], rate: [0.00000037, 0.00001906, -0.00594749, 149472.67411175, 0.16047689, -0.12534081] },
+            Venus:   { el: [0.72333566, 0.00677672, 3.39467605, 181.97909950, 131.60246718, 76.67984255], rate: [0.00000390, -0.00004107, -0.00078890, 58517.81538729, 0.00268329, -0.27769418] },
+            Earth:   { el: [1.00000261, 0.01671123, -0.00001531, 100.46457166, 102.93768193, 0.00000000], rate: [0.00000562, -0.00004392, -0.01294668, 35999.37244981, 0.32327364, 0.00000000] },
+            Mars:    { el: [1.52371034, 0.09339410, 1.84969142, -4.55343205, -23.94362959, 49.55953891], rate: [0.00001847, 0.00007882, -0.00813131, 19140.30268499, 0.44441088, -0.29257343] },
+            Jupiter: { el: [5.20288700, 0.04838624, 1.30439695, 34.39644051, 14.72847983, 100.47390909], rate: [-0.00011607, -0.00013253, -0.00183714, 3034.74612775, 0.21252668, 0.20469106] },
+            Saturn:  { el: [9.53667594, 0.05386179, 2.48599187, 49.95424423, 92.59887831, 113.66242448], rate: [-0.00125060, -0.00050991, 0.00193609, 1222.49362201, -0.41897216, -0.28867794] },
+            Uranus:  { el: [19.18916464, 0.04725744, 0.77263783, 313.23810451, 170.95427630, 74.01692503], rate: [-0.00196176, -0.00004397, -0.00242939, 428.48202785, 0.40805281, 0.04240589] },
+            Neptune: { el: [30.06992276, 0.00859048, 1.77004347, -55.12002969, 44.96476227, 131.78422574], rate: [0.00026291, 0.00005105, 0.00035372, 218.45945325, -0.32241464, -0.00508664] },
+            Pluto:   { el: [39.48211675, 0.24882730, 17.14001206, 238.92903833, 224.06891629, 110.30393684], rate: [-0.00031596, 0.00005170, 0.00004818, 145.20780515, -0.04062942, -0.01183482] }
+        };
+        // resolve a JPL body's instantaneous elements at T Julian centuries past J2000; M wrapped to [-180,180]°
+        function jplElements(j, T) {
+            const el = j.el, rt = j.rate;
+            const a = el[0] + rt[0] * T, e = el[1] + rt[1] * T, I = el[2] + rt[2] * T;
+            const L = el[3] + rt[3] * T, lp = el[4] + rt[4] * T, node = el[5] + rt[5] * T;
+            let M = (((L - lp) + 180) % 360 + 360) % 360 - 180;
+            return { a, e, incl: I * D2R, node: node * D2R, peri: (lp - node) * D2R, M: M * D2R };
+        }
+
+        /* ---------------- frame orientation ---------------- */
+        const OBLIQ = 23.43928 * D2R;   // mean obliquity of the ecliptic at J2000
+        // unit vector of an ICRF pole (RA,Dec deg) expressed in SCENE axes (x=equinox, y=ecliptic north, z=+90° lon)
+        function poleToScene(raDeg, decDeg) {
+            const ra = raDeg * D2R, dec = decDeg * D2R, cd = Math.cos(dec);
+            const xq = cd * Math.cos(ra), yq = cd * Math.sin(ra), zq = Math.sin(dec);   // equatorial
+            const xe = xq, ye = yq * Math.cos(OBLIQ) + zq * Math.sin(OBLIQ), ze = -yq * Math.sin(OBLIQ) + zq * Math.cos(OBLIQ); // ecliptic
+            return new THREE.Vector3(xe, ze, ye);   // scene
+        }
+
+        /* ---------------- Moon: Meeus (Astronomical Algorithms ch.47), abridged ----------------
+           Geocentric ecliptic longitude/latitude/distance, accurate to ~10″ — captures evection,
+           variation, annual equation etc. that a fixed Kepler ellipse cannot. */
+        const MOON_LON = [[6288774,0,0,1,0],[1274027,2,0,-1,0],[658314,2,0,0,0],[213618,0,0,2,0],[-185116,0,1,0,0],[-114332,0,0,0,2],[58793,2,0,-2,0],[57066,2,-1,-1,0],[53322,2,0,1,0],[45758,2,-1,0,0],[-40923,0,1,-1,0],[-34720,1,0,0,0],[-30383,0,1,1,0],[15327,2,0,0,-2],[-12528,0,0,1,2],[10980,0,0,1,-2],[10675,4,0,-1,0],[10034,0,0,3,0],[8548,4,0,-2,0],[-7888,2,1,-1,0],[-6766,2,1,0,0],[-5163,1,0,-1,0],[4987,1,1,0,0],[4036,2,-1,1,0],[3994,2,0,2,0],[3861,4,0,0,0],[3665,2,0,-3,0],[-2689,0,1,-2,0],[-2602,2,0,-1,2],[2390,2,-1,-2,0],[-2348,1,0,1,0],[2236,2,-2,0,0],[-2120,0,1,2,0],[-2069,0,2,0,0],[2048,2,-2,-1,0],[-1773,2,0,1,-2],[-1595,2,0,0,2],[1215,4,-1,-1,0],[-1110,0,0,2,2],[-892,3,0,-1,0],[-810,2,1,1,0],[759,4,-1,-2,0],[-713,0,2,-1,0],[-700,2,2,-1,0],[691,2,1,-2,0],[596,2,-1,0,-2],[549,4,0,1,0],[537,0,0,4,0],[520,4,-1,0,0],[-487,1,0,-2,0],[-399,2,1,0,-2],[-381,0,0,2,-2],[351,1,1,1,0],[-340,3,0,-2,0],[330,4,0,-3,0],[327,2,-1,2,0],[-323,0,2,1,0],[299,1,1,-1,0],[294,2,0,3,0]];
+        const MOON_LAT = [[5128122,0,0,0,1],[280602,0,0,1,1],[277693,0,0,1,-1],[173237,2,0,0,-1],[55413,2,0,-1,1],[46271,2,0,-1,-1],[32573,2,0,0,1],[17198,0,0,2,1],[9266,2,0,1,-1],[8822,0,0,2,-1],[8216,2,-1,0,-1],[4324,2,0,-2,-1],[4200,2,0,1,1],[-3359,2,1,0,-1],[2463,2,-1,-1,1],[2211,2,-1,0,1],[2065,2,-1,-1,-1],[-1870,0,1,-1,-1],[1828,4,0,-1,-1],[-1794,0,1,0,1],[-1749,0,0,0,3],[-1565,0,1,-1,1],[-1491,1,0,0,1],[-1475,0,1,1,1],[-1410,0,1,1,-1],[-1344,0,1,0,-1],[-1335,1,0,0,-1],[1107,0,0,3,1],[1021,4,0,0,-1],[833,4,0,-1,1],[777,0,0,1,-3],[671,4,0,-2,1],[607,2,0,0,-3],[596,2,0,2,-1],[491,2,-1,1,-1],[-451,2,0,-2,1],[439,0,0,3,-1],[422,2,0,2,1],[421,2,0,-3,-1],[-366,2,1,-1,1],[-351,2,1,0,1],[331,4,0,0,1],[315,2,-1,1,1],[302,2,-2,0,-1],[-283,0,0,1,3],[-229,2,1,1,-1],[223,1,1,0,-1],[223,1,1,0,1]];
+        const MOON_DIST = [[-20905355,0,0,1,0],[-3699111,2,0,-1,0],[-2955968,2,0,0,0],[-569925,0,0,2,0],[48888,0,1,0,0],[-3149,0,0,0,2],[246158,2,0,-2,0],[-152138,2,-1,-1,0],[-170733,2,0,1,0],[-204586,2,-1,0,0],[-129620,0,1,-1,0],[108743,1,0,0,0],[104755,0,1,1,0],[10321,2,0,0,-2],[79661,0,0,1,-2],[-34782,4,0,-1,0],[-23210,0,0,3,0],[-21636,4,0,-2,0],[24208,2,1,-1,0],[30824,2,1,0,0],[-8379,1,0,-1,0],[-16675,1,1,0,0],[-12831,2,-1,1,0],[-10445,2,0,2,0],[-11650,4,0,0,0],[14403,2,0,-3,0],[-7003,0,1,-2,0],[10056,2,-1,-2,0],[6322,1,0,1,0],[-9884,2,-2,0,0],[5751,0,1,2,0],[-4950,2,-2,-1,0],[4130,2,0,1,-2],[-3958,4,-1,-1,0],[3258,3,0,-1,0],[2616,2,1,1,0],[-1897,4,-1,-2,0],[-2117,0,2,-1,0],[2354,2,2,-1,0],[-1423,4,0,1,0],[-1117,0,0,4,0],[-1571,4,-1,0,0],[-1739,1,0,-2,0],[-4421,0,0,2,-2],[1165,0,2,1,0],[8752,2,0,-1,-2]];
+        function moonMeeus(jde) {
+            const T = (jde - 2451545.0) / 36525;
+            let Lp = 218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + T * T * T / 538841 - T * T * T * T / 65194000;
+            let D = 297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868 - T * T * T * T / 113065000;
+            let M = 357.5291092 + 35999.0502909 * T - 0.0001536 * T * T + T * T * T / 24490000;
+            let Mp = 134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T * T * T / 69699 - T * T * T * T / 14712000;
+            let F = 93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - T * T * T / 3526000 + T * T * T * T / 863310000;
+            const A1 = 119.75 + 131.849 * T, A2 = 53.09 + 479264.290 * T, A3 = 313.45 + 481266.484 * T;
+            const E = 1 - 0.002516 * T - 0.0000074 * T * T, eF = m => { const a = Math.abs(m); return a === 1 ? E : a === 2 ? E * E : 1; };
+            let sl = 0, sr = 0, sb = 0;
+            for (const t of MOON_LON) { const arg = (t[1] * D + t[2] * M + t[3] * Mp + t[4] * F) * D2R; sl += t[0] * eF(t[2]) * Math.sin(arg); }
+            for (const t of MOON_DIST) { const arg = (t[1] * D + t[2] * M + t[3] * Mp + t[4] * F) * D2R; sr += t[0] * eF(t[2]) * Math.cos(arg); }
+            for (const t of MOON_LAT) { const arg = (t[1] * D + t[2] * M + t[3] * Mp + t[4] * F) * D2R; sb += t[0] * eF(t[2]) * Math.sin(arg); }
+            sl += 3958 * Math.sin(A1 * D2R) + 1962 * Math.sin((Lp - F) * D2R) + 318 * Math.sin(A2 * D2R);
+            sb += -2235 * Math.sin(Lp * D2R) + 382 * Math.sin(A3 * D2R) + 175 * Math.sin((A1 - F) * D2R) + 175 * Math.sin((A1 + F) * D2R) + 127 * Math.sin((Lp - Mp) * D2R) - 115 * Math.sin((Lp + Mp) * D2R);
+            const prec = (5028.796195 * T + 1.1054348 * T * T) / 3600;   // general precession in longitude (deg): equinox-of-date -> J2000
+            const lon = (Lp + sl / 1e6 - prec) * D2R, lat = (sb / 1e6) * D2R, dist = 385000.56 + sr / 1000;   // deg->rad, km
+            return { x: Math.cos(lat) * Math.cos(lon), y: Math.sin(lat), z: Math.cos(lat) * Math.sin(lon), dist };  // scene unit dir + km
+        }
+
+        /* ---------------- textures (procedural, no external assets) ---------------- */
+        function buildNoise(w, h, oct, base) {
+            const out = new Float32Array(w * h), smooth = t => t * t * (3 - 2 * t), lerp = (a, b, t) => a + (b - a) * t;
+            let amp = 1, tot = 0, freq = base;
+            for (let o = 0; o < oct; o++) {
+                const gw = Math.max(2, Math.round(freq * 2)), gh = Math.max(1, Math.round(freq)), grid = new Float32Array((gw + 1) * (gh + 1));
+                for (let i = 0; i < grid.length; i++) grid[i] = Math.random();
+                for (let j = 0; j <= gh; j++) grid[j * (gw + 1) + gw] = grid[j * (gw + 1)];
+                for (let j = 0; j < h; j++) {
+                    const gy = j / h * gh, jy = Math.min(gh - 1, Math.floor(gy)), fy = smooth(gy - jy);
+                    for (let i = 0; i < w; i++) {
+                        const gx = i / w * gw, ix = Math.floor(gx), fx = smooth(gx - ix), i00 = jy * (gw + 1) + ix;
+                        out[j * w + i] += lerp(lerp(grid[i00], grid[i00 + 1], fx), lerp(grid[i00 + gw + 1], grid[i00 + gw + 2], fx), fy) * amp;
+                    }
+                }
+                tot += amp; amp *= 0.5; freq *= 2;
+            }
+            for (let i = 0; i < out.length; i++) out[i] /= tot;
+            return out;
+        }
+        const clp = v => v < 0 ? 0 : v > 255 ? 255 : v;
+        function sampleStops(st, v) {
+            for (let k = 1; k < st.length; k++) if (v <= st[k][0]) { const a = st[k - 1], b = st[k], t = (v - a[0]) / (b[0] - a[0] || 1); return [a[1][0] + (b[1][0] - a[1][0]) * t, a[1][1] + (b[1][1] - a[1][1]) * t, a[1][2] + (b[1][2] - a[1][2]) * t]; }
+            return st[st.length - 1][1];
+        }
+        function tex(canvas) { const t = new THREE.CanvasTexture(canvas); t.anisotropy = 4; return t; }
+        function makeGas(s) {
+            const w = s.big ? 1024 : 512, h = w / 2, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+            const warp = buildNoise(w, h, 4, 3), fine = buildNoise(w, h, 5, s.big ? 10 : 6), img = x.createImageData(w, h), D = img.data;
+            for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+                const idx = j * w + i; let v = j / h + (warp[idx] - 0.5) * s.turb; v = v < 0 ? 0 : v > 1 ? 1 : v;
+                const col = sampleStops(s.stops, v), n = (fine[idx] - 0.5) * 20, p = idx * 4;
+                D[p] = clp(col[0] + n); D[p + 1] = clp(col[1] + n); D[p + 2] = clp(col[2] + n); D[p + 3] = 255;
+            }
+            x.putImageData(img, 0, 0);
+            if (s.spot) { const sp = s.spot, cx = sp.x * w, cy = sp.y * h, g = x.createRadialGradient(cx, cy, 0, cx, cy, sp.rx * w); g.addColorStop(0, `rgb(${sp.c[0]},${sp.c[1]},${sp.c[2]})`); g.addColorStop(.7, `rgba(${sp.c[0]},${sp.c[1]},${sp.c[2]},.7)`); g.addColorStop(1, 'rgba(0,0,0,0)'); x.save(); x.translate(cx, cy); x.scale(1, sp.ry / sp.rx); x.translate(-cx, -cy); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, sp.rx * w, 0, PI * 2); x.fill(); x.restore(); }
+            return tex(c);
+        }
+        function makeRock(s) {
+            const w = 512, h = 256, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+            const base = buildNoise(w, h, 6, 4), patch = buildNoise(w, h, 3, 2), img = x.createImageData(w, h), D = img.data;
+            for (let j = 0; j < h; j++) { const lat = Math.abs(j / h - 0.5) * 2; for (let i = 0; i < w; i++) {
+                const idx = j * w + i, p = idx * 4, n = (base[idx] - 0.5) * 55; let r = s.base[0] + n, g = s.base[1] + n, b = s.base[2] + n;
+                if (s.dark && patch[idx] < 0.42) { r = (r + s.dark[0]) / 2; g = (g + s.dark[1]) / 2; b = (b + s.dark[2]) / 2; }
+                if (s.caps && lat > 0.88) { r = s.caps[0]; g = s.caps[1]; b = s.caps[2]; }
+                D[p] = clp(r); D[p + 1] = clp(g); D[p + 2] = clp(b); D[p + 3] = 255;
+            } }
+            x.putImageData(img, 0, 0);
+            for (let k = 0; k < (s.craters || 0); k++) { const cx = Math.random() * w, cy = Math.random() * h, rad = 2 + Math.random() * Math.random() * 18, g = x.createRadialGradient(cx, cy, rad * .3, cx, cy, rad); g.addColorStop(0, 'rgba(30,25,20,.45)'); g.addColorStop(.7, 'rgba(80,70,60,.12)'); g.addColorStop(.85, 'rgba(235,230,222,.4)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, rad, 0, PI * 2); x.fill(); }
+            return tex(c);
+        }
+        function makeEarth() {
+            const w = 1024, h = 512, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+            const land = buildNoise(w, h, 6, 3), det = buildNoise(w, h, 5, 8), img = x.createImageData(w, h), D = img.data;
+            for (let j = 0; j < h; j++) { const lat = Math.abs(j / h - 0.5) * 2; for (let i = 0; i < w; i++) {
+                const idx = j * w + i, p = idx * 4, n = land[idx] * 0.8 + det[idx] * 0.2; let r, g, b;
+                if (lat > 0.86 || (lat > 0.79 && n > 0.5)) { r = 238; g = 243; b = 247; }
+                else if (n > 0.5) { const e = (n - 0.5) / 0.5; if (e < 0.15) { r = 198; g = 188; b = 150; } else if (e < 0.6) { r = 46 + e * 28; g = 112 - e * 28; b = 52; } else { r = 120 - (e - 0.6) * 55; g = 96; b = 62; } if (lat > 0.18 && lat < 0.46 && e < 0.5) { r = 192; g = 162; b = 112; } }
+                else { const d = n / 0.5; r = 8 + d * 22; g = 40 + d * 55; b = 90 + d * 70; }
+                D[p] = r; D[p + 1] = g; D[p + 2] = b; D[p + 3] = 255;
+            } }
+            x.putImageData(img, 0, 0); return tex(c);
+        }
+        function makeClouds() {
+            const w = 512, h = 256, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+            const n = buildNoise(w, h, 5, 4), img = x.createImageData(w, h), D = img.data;
+            for (let i = 0; i < w * h; i++) { let a = (n[i] - 0.52) / 0.48; a = a < 0 ? 0 : Math.pow(a, 1.3) * 235; D[i * 4] = 255; D[i * 4 + 1] = 255; D[i * 4 + 2] = 255; D[i * 4 + 3] = a; }
+            x.putImageData(img, 0, 0); return tex(c);
+        }
+        function makeMoon() {
+            const w = 512, h = 256, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+            const base = buildNoise(w, h, 6, 4), maria = buildNoise(w, h, 3, 2), img = x.createImageData(w, h), D = img.data;
+            for (let i = 0; i < w * h; i++) { let g = 122 + (base[i] - 0.5) * 70; if (maria[i] < 0.42) g -= 40; g = Math.max(55, Math.min(212, g)); D[i * 4] = g; D[i * 4 + 1] = g; D[i * 4 + 2] = g * 0.97; D[i * 4 + 3] = 255; }
+            x.putImageData(img, 0, 0);
+            for (let k = 0; k < 90; k++) { const cx = Math.random() * w, cy = Math.random() * h, rad = 2 + Math.random() * Math.random() * 22, g = x.createRadialGradient(cx, cy, rad * .3, cx, cy, rad); g.addColorStop(0, 'rgba(35,35,35,.5)'); g.addColorStop(.7, 'rgba(90,90,90,.12)'); g.addColorStop(.85, 'rgba(228,228,228,.5)'); g.addColorStop(1, 'rgba(120,120,120,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, rad, 0, PI * 2); x.fill(); }
+            return tex(c);
+        }
+        const earthTex = makeEarth(), cloudTex = makeClouds(), moonTex = makeMoon();
+        function texFor(b) { if (!b.tx || b.tx.kind === 'earth') return null; if (b.tx._t) return b.tx._t; b.tx._t = b.tx.kind === 'gas' ? makeGas(b.tx) : makeRock(b.tx); return b.tx._t; }
+
+        /* ---------------- scene ---------------- */
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 400000);
+        camera.position.set(0, 60, 130); camera.lookAt(0, 0, 0);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+        $('scene').appendChild(renderer.domElement);
+        scene.add(new THREE.AmbientLight(0x556070, 0.32));
+        const sunLight = new THREE.PointLight(0xfff2d6, 2.6, 0, 0); scene.add(sunLight);
+
+        (function () {
+            const N = 2600, g = new THREE.BufferGeometry(), pos = new Float32Array(N * 3), col = new Float32Array(N * 3), tint = [[1, 1, 1], [.7, .8, 1], [1, .85, .7]];
+            for (let i = 0; i < N; i++) { const r = 60000 + Math.random() * 30000, th = Math.random() * PI * 2, ph = Math.acos(Math.random() * 2 - 1); pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = r * Math.cos(ph); pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th); const c = tint[(Math.random() * 3) | 0], b = .5 + Math.random() * .5; col[i * 3] = c[0] * b; col[i * 3 + 1] = c[1] * b; col[i * 3 + 2] = c[2] * b; }
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 220, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: .9 })));
+        })();
+
+        function glowSprite(color, size) {
+            const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+            g.addColorStop(0, color); g.addColorStop(.25, color); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.scale.set(size, size, 1); return s;
+        }
+        function ringTexture(color) { const c = document.createElement('canvas'); c.width = 256; c.height = 16; const x = c.getContext('2d'); for (let i = 0; i < 256; i++) { const a = (Math.sin(i * 0.4) * .25 + .55) * (Math.random() * .3 + .7); x.fillStyle = color; x.globalAlpha = a; x.fillRect(i, 0, 1, 16); } return new THREE.CanvasTexture(c); }
+        const DOT = (function () { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, '#fff'); g.addColorStop(.45, 'rgba(255,255,255,.85)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(16, 16, 16, 0, PI * 2); x.fill(); return new THREE.CanvasTexture(c); })();
+
+        /* ---------------- scale modes ---------------- */
+        const SUN_R = 7, DIST_K = 30, MODES = ['Compact', 'Logarithmic', 'True scale'];
+        let mode = 0, MIND = 9, MAXD = 4000, labelMax = 2200;
+        function distOf(au) { if (mode === 2) return au * 140; if (mode === 1) return 10 + 34 * Math.log10(Math.max(0.05, au) / 0.3); return SUN_R + DIST_K * Math.pow(au, 0.5); }
+        function radOf(km, isMoon) { if (mode === 2) return km * 9.358e-7; if (mode === 1) { const r = 0.15 + 0.55 * (Math.log10(km) - 1.5); return Math.max(isMoon ? 0.1 : 0.45, Math.min(r, 6)); } const r = (isMoon ? 0.5 : 0.85) * Math.pow(km / 6371, 0.5); return Math.max(isMoon ? 0.12 : 0.32, Math.min(r, 7)); }
+        function sunRadOf() { return radOf(696340, false); }
+        function modeParams() { if (mode === 2) { MIND = 0.01; MAXD = 30000; labelMax = 60000; camera.near = 0.002; } else { MIND = 9; MAXD = 4000; labelMax = 2200; camera.near = 0.05; } camera.updateProjectionMatrix(); }
+
+        // unit direction in scene coords from orbital elements (ecliptic = X-Z plane, Y up)
+        function dirOf(nu, incl, node, peri) {
+            const u = peri + nu, cu = Math.cos(u), su = Math.sin(u), cn = Math.cos(node), sn = Math.sin(node), ci = Math.cos(incl), si = Math.sin(incl);
+            return [cn * cu - sn * su * ci, su * si, sn * cu + cn * su * ci];   // [x, y(up), z]
+        }
+        function rebuildOrbit(line, a, e, incl, node, peri) {
+            // sample uniformly in eccentric anomaly E so even extreme-eccentricity orbits stay smooth
+            const seg = 360, p = new Float32Array((seg + 1) * 3);
+            for (let k = 0; k <= seg; k++) {
+                const E = k / seg * PI * 2;
+                const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2));
+                const rAU = a * (1 - e * Math.cos(E)), d = dirOf(nu, incl, node, peri), R = distOf(rAU);
+                p[k * 3] = d[0] * R; p[k * 3 + 1] = d[1] * R; p[k * 3 + 2] = d[2] * R;
+            }
+            line.geometry.setAttribute('position', new THREE.BufferAttribute(p, 3)); line.geometry.attributes.position.needsUpdate = true; line.geometry.computeBoundingSphere();
+        }
+
+        /* ---------------- sun ---------------- */
+        const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), new THREE.MeshBasicMaterial({ color: 0xffd66b }));
+        sunMesh.userData.pick = -1; scene.add(sunMesh);
+        sunMesh.add(glowSprite('rgba(255,200,90,.95)', 5)); sunMesh.add(glowSprite('rgba(255,140,40,.5)', 9));
+
+        /* ---------------- build planets ---------------- */
+        const labelLayer = $('labels');
+        function makeLabel(name, cls) { const d = document.createElement('div'); d.className = 'label' + (cls ? ' ' + cls : ''); d.textContent = name; labelLayer.appendChild(d); return d; }
+        const objs = [];
+        BODIES.forEach((b, i) => {
+            const group = new THREE.Group(); scene.add(group);
+            const t = texFor(b);
+            const mat = new THREE.MeshStandardMaterial({ color: (b.tx && b.tx.kind === 'earth') ? 0xffffff : (t ? 0xffffff : b.color), map: b.tx && b.tx.kind === 'earth' ? earthTex : t, roughness: b.tx && b.tx.kind === 'gas' ? 0.95 : 0.92, metalness: 0 });
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), mat); mesh.userData.pick = i; group.add(mesh);
+            mesh.add(glowSprite('rgba(' + hexRGB(b.color) + ',.3)', 3)); const atmo = mesh.children[0];
+            let clouds = null;
+            if (b.tx && b.tx.kind === 'earth') {
+                clouds = new THREE.Mesh(new THREE.SphereGeometry(1.015, 48, 48), new THREE.MeshStandardMaterial({ map: cloudTex, transparent: true, depthWrite: false, roughness: 1, opacity: 0.9 })); mesh.add(clouds);
+                mesh.add(new THREE.Mesh(new THREE.SphereGeometry(1.18, 32, 32), new THREE.MeshBasicMaterial({ color: 0x5ba3ff, transparent: true, opacity: 0.14, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));
+            }
+            let ringMesh = null;
+            if (b.rings) { ringMesh = new THREE.Mesh(new THREE.RingGeometry(b.rings[0], b.rings[1], 64), new THREE.MeshBasicMaterial({ map: ringTexture(b.color), side: THREE.DoubleSide, transparent: true, opacity: .85, depthWrite: false })); ringMesh.rotation.x = PI / 2; mesh.add(ringMesh); }
+            const orbit = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: b.color, transparent: true, opacity: b.dwarf ? .12 : .2 })); scene.add(orbit);
+            const jpl = JPL[b.name] || null, e0 = jpl ? jplElements(jpl, 0) : null;
+            const qOrient = b.pole ? new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), poleToScene(b.pole[0], b.pole[1])) : null;
+            const o = { data: b, mesh, group, atmo, clouds, ringMesh, orbit, jpl, qOrient,
+                spinRate: (b.rot ? 360 * 24 / b.rot : 0) * D2R,   // rad / sim-day (signed: retrograde if rot<0)
+                a: e0 ? e0.a : b.au, e: e0 ? e0.e : b.e, incl: e0 ? e0.incl : b.i * D2R, node: e0 ? e0.node : b.Om * D2R, peri: e0 ? e0.peri : b.w * D2R,
+                M0: (b.M0 || 0) * D2R, label: makeLabel(b.name), moons: [] };
+            if (b.satellites) b.satellites.forEach(s => {
+                const mg = new THREE.Group(); group.add(mg);
+                const mmMat = new THREE.MeshStandardMaterial({ color: s.name === 'Moon' ? 0xffffff : s.color, map: s.name === 'Moon' ? moonTex : null, roughness: 1 });
+                const seg = s.name === 'Moon' ? 36 : 20, mm = new THREE.Mesh(new THREE.SphereGeometry(1, seg, seg), mmMat); mg.add(mm);
+                o.moons.push({ data: s, group: mg, mesh: mm });
+            });
+            objs.push(o);
+        });
+        function hexRGB(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); }
+
+        /* ---------------- build comets ---------------- */
+        const YDOWN = new THREE.Vector3(0, -1, 0), comets = [];
+        COMETS.forEach((cm, ci) => {
+            const grp = new THREE.Group(); scene.add(grp);
+            const coma = glowSprite('rgba(200,235,255,.9)', 1); grp.add(coma);
+            const nuc = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 12), new THREE.MeshBasicMaterial({ color: 0xdff0ff })); nuc.userData.comet = ci; grp.add(nuc);
+            const tg = new THREE.ConeGeometry(1, 1, 18, 1, true); tg.translate(0, -0.5, 0);
+            const tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); tail.visible = false; scene.add(tail);
+            const orbit = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: cm.color, transparent: true, opacity: .16 })); scene.add(orbit);
+            comets.push({ data: cm, grp, coma, nuc, tail, orbit, a: cm.au, e: cm.e, incl: cm.i * D2R, node: cm.Om * D2R, peri: cm.w * D2R, M0: (cm.M0 || 0) * D2R, label: makeLabel(cm.name, 'comet') });
+        });
+
+        /* ---------------- belts ---------------- */
+        (function () { const N = 900, g = new THREE.BufferGeometry(), p = new Float32Array(N * 3); window.__beltD = []; for (let i = 0; i < N; i++) { const au = 2.1 + Math.random() * 1.2, a = Math.random() * 6.28, y = (Math.random() - .5) * 1.5; window.__beltD.push({ au, a, y }); const r = distOf(au); p[i * 3] = Math.cos(a) * r; p[i * 3 + 1] = y; p[i * 3 + 2] = Math.sin(a) * r; } g.setAttribute('position', new THREE.BufferAttribute(p, 3)); window.__belt = new THREE.Points(g, new THREE.PointsMaterial({ color: 0x8a7f72, size: 1.0, map: DOT, transparent: true, alphaTest: 0.25, depthWrite: false })); scene.add(window.__belt); })();
+        (function () { const N = 1500, g = new THREE.BufferGeometry(), p = new Float32Array(N * 3); window.__kuiperD = []; for (let i = 0; i < N; i++) { const au = 30 + Math.random() * 20, a = Math.random() * 6.28, yr = (Math.random() - .5); window.__kuiperD.push({ au, a, yr }); const r = distOf(au); p[i * 3] = Math.cos(a) * r; p[i * 3 + 1] = yr * r * 0.05; p[i * 3 + 2] = Math.sin(a) * r; } g.setAttribute('position', new THREE.BufferAttribute(p, 3)); window.__kuiper = new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9ec6e8, size: 0.9, map: DOT, transparent: true, opacity: .6, alphaTest: 0.18, depthWrite: false })); scene.add(window.__kuiper); })();
+
+        function applyScale() {
+            sunMesh.scale.setScalar(sunRadOf());
+            objs.forEach(o => {
+                const r = radOf(o.data.radiusKm, false); o.mesh.scale.setScalar(r); o.atmo.scale.setScalar(2.4);
+                rebuildOrbit(o.orbit, o.a, o.e, o.incl, o.node, o.peri);
+                o.moons.forEach(m => { m.mesh.scale.setScalar(radOf(m.data.radiusKm, true)); m.dist = (mode === 2 && m.data.orbitKm) ? m.data.orbitKm * 9.358e-7 : r + m.data.dist; });
+            });
+            comets.forEach(c => rebuildOrbit(c.orbit, c.a, c.e, c.incl, c.node, c.peri));
+            if (window.__belt) { const arr = window.__belt.geometry.attributes.position.array; window.__beltD.forEach((d, i) => { const r = distOf(d.au); arr[i * 3] = Math.cos(d.a) * r; arr[i * 3 + 1] = d.y; arr[i * 3 + 2] = Math.sin(d.a) * r; }); window.__belt.geometry.attributes.position.needsUpdate = true; }
+            if (window.__kuiper) { const arr = window.__kuiper.geometry.attributes.position.array; window.__kuiperD.forEach((d, i) => { const r = distOf(d.au); arr[i * 3] = Math.cos(d.a) * r; arr[i * 3 + 1] = d.yr * r * 0.05; arr[i * 3 + 2] = Math.sin(d.a) * r; }); window.__kuiper.geometry.attributes.position.needsUpdate = true; }
+        }
+        modeParams(); applyScale();
+
+        /* ---------------- camera controls ---------------- */
+        const ctrl = { theta: 0.6, phi: 1.05, dist: 150, target: new THREE.Vector3() }, want = { theta: 0.6, phi: 1.05, dist: 150, target: new THREE.Vector3() };
+        let followIdx = -2, followComet = -1, followMoon = null;
+        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+        function setFollow(idx) { followIdx = idx; followComet = -1; followMoon = null; let r; if (idx === -1) { r = sunRadOf() * 6; want.target.set(0, 0, 0); } else r = radOf(objs[idx].data.radiusKm, false) * 6; want.dist = Math.max(r, mode === 2 ? 0.03 : 8); }
+        function followCometView(ci) { followComet = ci; followIdx = -2; followMoon = null; want.dist = mode === 2 ? 30 : distOf(1) * 0.4; }
+
+        const el = renderer.domElement, pointers = new Map(); let moved = 0, downT = 0, lastPinch = 0;
+        el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = 0; downT = performance.now(); if (pointers.size === 2) lastPinch = pinchDist(); });
+        el.addEventListener('pointermove', e => {
+            if (!pointers.has(e.pointerId)) return; const prev = pointers.get(e.pointerId), dx = e.clientX - prev.x, dy = e.clientY - prev.y; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size >= 2) { const pd = pinchDist(); if (lastPinch) { want.dist *= lastPinch / pd; want.dist = clamp(want.dist, MIND, MAXD); } lastPinch = pd; return; }
+            moved += Math.abs(dx) + Math.abs(dy); want.theta -= dx * 0.005; want.phi = clamp(want.phi - dy * 0.005, 0.12, PI - 0.12);
+        });
+        function endP(e) { pointers.delete(e.pointerId); if (pointers.size < 2) lastPinch = 0; if (pointers.size === 0 && moved < 9 && performance.now() - downT < 400) pickAt(e.clientX, e.clientY); }
+        el.addEventListener('pointerup', endP); el.addEventListener('pointercancel', endP);
+        el.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(want.dist * (1 + e.deltaY * 0.001), MIND, MAXD); }, { passive: false });
+        function pinchDist() { const a = [...pointers.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+
+        const ray = new THREE.Raycaster();
+        function pickAt(cx, cy) {
+            const r = el.getBoundingClientRect(), ndc = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+            ray.setFromCamera(ndc, camera);
+            const hit = ray.intersectObjects([sunMesh, ...objs.map(o => o.mesh), ...comets.map(c => c.nuc)], false)[0];
+            if (hit) { if (hit.object.userData.comet != null) focusComet(hit.object.userData.comet); else focus(hit.object.userData.pick); }
+        }
+
+        /* ---------------- time ---------------- */
+        const SPEEDS = [{ d: 0.0007, l: '1 min / s' }, { d: 0.042, l: '1 hour / s' }, { d: 1, l: '1 day / s' }, { d: 7, l: '1 week / s' }, { d: 30, l: '1 month / s' }, { d: 182, l: '6 months / s' }, { d: 365, l: '1 year / s' }, { d: 3650, l: '10 years / s' }];
+        let spdIdx = 3, playing = true, simDays = 0; const startDate = Date.UTC(2000, 0, 1), Y = 365.25;
+        function updTime() { $('spd').textContent = SPEEDS[spdIdx].l; $('playBtn').textContent = playing ? '⏸' : '▶'; }
+        $('slower').onclick = () => { spdIdx = Math.max(0, spdIdx - 1); updTime(); };
+        $('faster').onclick = () => { spdIdx = Math.min(SPEEDS.length - 1, spdIdx + 1); updTime(); };
+        $('playBtn').onclick = () => { playing = !playing; updTime(); };
+        updTime();
+
+        /* editable date — click the date to pause, then TYPE a date (YYYY-MM-DD) to jump there */
+        const dateEl = $('date'), dateInput = $('dateInput'); let editingDate = false;
+        function isoFromSim() { const d = new Date(startDate + simDays * 86400000); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
+        // accept YYYY-MM-DD / YYYY/M/D and similar; returns days-since-epoch or null
+        function parseDate(str) {
+            const m = String(str).trim().match(/^(-?\d{1,6})[-/. ](\d{1,2})[-/. ](\d{1,2})$/);
+            if (!m) return null;
+            const y = +m[1], mo = +m[2], d = +m[3];
+            if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+            const t = Date.UTC(y, mo - 1, d);
+            const chk = new Date(t);
+            if (chk.getUTCMonth() !== mo - 1 || chk.getUTCDate() !== d) return null; // reject e.g. Feb 30
+            return (t - startDate) / 86400000;
+        }
+        function openDateEdit() {
+            editingDate = true; playing = false; updTime();
+            dateInput.value = isoFromSim(); dateInput.classList.remove('bad');
+            dateEl.style.display = 'none'; dateInput.style.display = '';
+            dateInput.focus(); dateInput.select();
+        }
+        function closeDateEdit() { editingDate = false; dateInput.style.display = 'none'; dateInput.classList.remove('bad'); dateEl.style.display = ''; }
+        function applyDateEdit() {
+            const days = parseDate(dateInput.value);
+            if (days === null) { dateInput.classList.add('bad'); dateInput.focus(); return; } // keep open on bad input
+            simDays = days; closeDateEdit();
+        }
+        dateEl.onclick = openDateEdit;
+        dateInput.addEventListener('input', () => dateInput.classList.toggle('bad', dateInput.value !== '' && parseDate(dateInput.value) === null));
+        dateInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyDateEdit(); else if (e.key === 'Escape') closeDateEdit(); });
+        dateInput.addEventListener('blur', () => { if (parseDate(dateInput.value) !== null) applyDateEdit(); else closeDateEdit(); });
+
+        /* ---------------- info + searchable menu ---------------- */
+        const info = $('info');
+        function fmt(n) { return n >= 1e9 ? (n / 1e9).toFixed(1) + ' B' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n.toLocaleString(); }
+        function showInfo(name, type, color, stats, fact) {
+            $('iName').textContent = name; $('iType').textContent = type; $('iSwatch').style.background = color; info.style.setProperty('--ic', color);
+            $('iStats').innerHTML = stats.map(s => `<div class="stat"><div class="k">${s[0]}</div><div class="v">${s[1]}</div></div>`).join('');
+            $('iFact').textContent = fact; info.classList.add('show');
+        }
+        const MOON_FACTS = {
+            Moon: 'Earth’s only natural satellite, and the driver of our tides — drifting ~3.8 cm farther away each year.',
+            Phobos: 'Mars’ doomed inner moon — spiralling inward, it will break apart or crash in ~50 million years.',
+            Deimos: 'The smaller, outer moon of Mars — just ~12 km across and lumpy.',
+            Io: 'The most volcanically active body in the solar system, flexed by Jupiter’s gravity.',
+            Europa: 'A smooth ice shell over a deep saltwater ocean — a prime target in the search for life.',
+            Ganymede: 'The largest moon in the solar system — bigger than Mercury, with its own magnetic field.',
+            Callisto: 'One of the most heavily cratered worlds known — an ancient, barely-changed surface.',
+            Titan: 'The only moon with a thick atmosphere, with rivers and seas of liquid methane.'
+        };
+        function focus(idx) {
+            setFollow(idx);
+            const d = idx === -1 ? SUN : BODIES[idx], stats = [['Radius', fmt(d.radiusKm) + ' km']];
+            if (idx === -1) { stats.push(['Type', 'Yellow dwarf'], ['Surface', '~5,500 °C'], ['Age', '4.6 B yrs']); }
+            else { stats.push(['Distance', d.au + ' AU'], ['Orbit', d.period < 1 ? (d.period * 365).toFixed(0) + ' days' : d.period.toFixed(1) + ' yrs'], ['Day', Math.abs(d.rot) >= 48 ? (Math.abs(d.rot) / 24).toFixed(0) + ' days' : Math.abs(d.rot).toFixed(1) + ' h'], ['Moons', d.moons + (objs[idx].moons.length ? ' · ' + objs[idx].moons.length + ' shown' : '')]); }
+            showInfo(d.name, d.type, d.color, stats, d.fact); setActive(idx === -1 ? 'sun' : 'p' + idx);
+        }
+        function focusComet(ci) {
+            followCometView(ci); const c = COMETS[ci], peri = (c.au * (1 - c.e)).toFixed(2), apo = (c.au * (1 + c.e)).toFixed(0);
+            showInfo(c.name, c.type, c.color, [['Period', c.period < 100 ? c.period.toFixed(1) + ' yrs' : Math.round(c.period) + ' yrs'], ['Perihelion', peri + ' AU'], ['Aphelion', apo + ' AU'], ['Eccentricity', c.e.toFixed(3)]], c.fact); setActive('c' + ci);
+        }
+        function focusMoon(pi, mi) {
+            followIdx = -2; followComet = -1; followMoon = { pi, mi };
+            const o = objs[pi], s = o.moons[mi].data;
+            want.dist = Math.max(radOf(s.radiusKm, true) * 9, mode === 2 ? 0.02 : 4.5);
+            showInfo(s.name, 'Moon of ' + o.data.name, s.color, [['Radius', fmt(s.radiusKm) + ' km'], ['Orbit', fmt(s.orbitKm) + ' km'], ['Period', (s.period * 365.25).toFixed(1) + ' days'], ['Parent', o.data.name]], MOON_FACTS[s.name] || ('A natural satellite of ' + o.data.name + '.'));
+            setActive('mo' + pi + '_' + mi);
+        }
+        $('iClose').onclick = () => info.classList.remove('show');
+
+        /* searchable object list */
+        const entries = [];
+        entries.push({ key: 'sun', name: 'Sun', sub: 'G-type star', group: 'Star', color: '#ffcc55', meta: '', fn: () => focus(-1) });
+        objs.forEach((o, i) => { const b = o.data; entries.push({ key: 'p' + i, name: b.name, sub: b.type, group: b.dwarf ? 'Dwarf planets' : 'Planets', color: b.color, meta: b.moons ? '☾ ' + b.moons : '', fn: () => focus(i) }); });
+        objs.forEach((o, i) => o.moons.forEach((m, mi) => entries.push({ key: 'mo' + i + '_' + mi, name: m.data.name, sub: 'moon of ' + o.data.name, group: 'Moons', color: m.data.color, meta: '', fn: () => focusMoon(i, mi) })));
+        comets.forEach((c, ci) => entries.push({ key: 'c' + ci, name: c.data.name, sub: c.data.type, group: 'Comets', color: c.data.color, meta: Math.round(c.data.period) + ' yr', fn: () => focusComet(ci) }));
+        const GROUPS = ['Star', 'Planets', 'Dwarf planets', 'Moons', 'Comets'], mlist = $('mlist'), menu = $('menu'), search = $('search');
+        let activeKey = null;
+        function renderMenu(filter) {
+            const f = (filter || '').trim().toLowerCase(); mlist.innerHTML = ''; let shown = 0;
+            GROUPS.forEach(g => {
+                const rows = entries.filter(e => e.group === g && (!f || e.name.toLowerCase().includes(f) || e.sub.toLowerCase().includes(f)));
+                if (!rows.length) return;
+                const gh = document.createElement('div'); gh.className = 'mgroup'; gh.textContent = g; mlist.appendChild(gh);
+                rows.forEach(e => { shown++; const row = document.createElement('div'); row.className = 'mrow' + (e.key === activeKey ? ' active' : ''); row.dataset.key = e.key; row.style.setProperty('--d', e.color);
+                    row.innerHTML = `<span class="dot" style="background:${e.color}"></span><div><div class="nm">${e.name}</div><div class="sub">${e.sub}</div></div>${e.meta ? `<span class="meta">${e.meta}</span>` : ''}`;
+                    row.onclick = () => { e.fn(); if (innerWidth < 700) menu.classList.add('closed'); }; mlist.appendChild(row); });
+            });
+            if (!shown) { const em = document.createElement('div'); em.className = 'mempty'; em.textContent = 'No match for “' + filter + '”'; mlist.appendChild(em); }
+        }
+        function setActive(key) { activeKey = key; [...mlist.querySelectorAll('.mrow')].forEach(r => r.classList.toggle('active', r.dataset.key === key)); }
+        $('objCount').textContent = entries.length;
+        renderMenu('');
+        search.addEventListener('input', () => renderMenu(search.value));
+        $('menuBtn').onclick = () => { menu.classList.toggle('closed'); $('menuBtn').classList.toggle('on', !menu.classList.contains('closed')); };
+        $('menuClose').onclick = () => { menu.classList.add('closed'); $('menuBtn').classList.remove('on'); };
+        if (innerWidth < 700) menu.classList.add('closed'), $('menuBtn').classList.remove('on');
+
+        let labelsOn = true; $('labelBtn').onclick = () => { labelsOn = !labelsOn; $('labelBtn').classList.toggle('on', labelsOn); };
+        function setNote() {
+            const notes = ['Compact view · sizes &amp; spacing stylised, but every body sits at its real orbital position for the date', 'Logarithmic scale · size &amp; distance ratios compressed; orbital positions are real for the date', 'TRUE scale · real size, distance &amp; position — planets become specks, tap one to fly in'];
+            $('scaleNote').textContent = mode === 0 ? 'compact · stylised' : mode === 1 ? 'logarithmic scale' : 'true scale · real ratios'; $('disclaimer').innerHTML = notes[mode];
+        }
+        $('scaleBtn').onclick = () => { mode = (mode + 1) % 3; $('scaleBtn').textContent = '⊹ ' + MODES[mode]; $('scaleBtn').classList.toggle('on', mode !== 0); modeParams(); applyScale(); setNote(); followIdx = -2; followComet = -1; followMoon = null; want.target.set(0, 0, 0); want.dist = mode === 2 ? 600 : 150; setActive(null); info.classList.remove('show'); };
+        setNote();
+        $('resetBtn').onclick = () => { followIdx = -2; followComet = -1; followMoon = null; want.target.set(0, 0, 0); want.dist = mode === 2 ? 600 : 150; want.theta = 0.6; want.phi = 1.05; info.classList.remove('show'); setActive(null); };
+        $('enterBtn').onclick = () => { $('intro').classList.add('hide'); setTimeout(() => $('intro').remove(), 700); };
+        addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+        /* ---------------- loop ---------------- */
+        const tmp = new THREE.Vector3(), _qSpin = new THREE.Quaternion(), YAX = new THREE.Vector3(0, 1, 0); let last = performance.now();
+        function kepler(M, e) {
+            M = M % (PI * 2); if (M < 0) M += PI * 2;            // wrap — huge M wrecks the Newton seed
+            let E = e < 0.8 ? M : PI;                            // π seed converges for high-eccentricity comets
+            for (let k = 0; k < 40; k++) { const d = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); E -= d; if (Math.abs(d) < 1e-7) break; }
+            return E;
+        }
+        function frame(now) {
+            let dt = (now - last) / 1000; last = now; if (!isFinite(dt) || dt < 0) dt = 0; dt = Math.min(0.05, dt);
+            if (playing) simDays += SPEEDS[spdIdx].d * dt;
+
+            objs.forEach(o => {
+                const b = o.data;
+                let a, e, incl, node, peri, M;
+                if (o.jpl) { const el = jplElements(o.jpl, (simDays - 0.5) / 36525); a = el.a; e = el.e; incl = el.incl; node = el.node; peri = el.peri; M = el.M; }
+                else { a = o.a; e = o.e; incl = o.incl; node = o.node; peri = o.peri; M = o.M0 + (simDays / (b.period * Y)) * PI * 2; }
+                const E = kepler(M, e);
+                const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), rAU = a * (1 - e * Math.cos(E)), d = dirOf(nu, incl, node, peri), R = distOf(rAU);
+                o.group.position.set(d[0] * R, d[1] * R, d[2] * R);
+                if (o.qOrient) { _qSpin.setFromAxisAngle(YAX, (o.spinRate * simDays) % (PI * 2)); o.mesh.quaternion.copy(o.qOrient).multiply(_qSpin); }
+                else { o.mesh.rotation.z = b.tilt * D2R; o.mesh.rotation.y = (o.spinRate * simDays) % (PI * 2); }
+                if (o.clouds) o.clouds.rotation.y += dt * 0.03;
+                o.moons.forEach(m => {
+                    const s = m.data; let dir, md = m.dist;
+                    if (s.meeus) { dir = moonMeeus(2451544.5 + simDays); if (mode === 2) md = dir.dist * 9.358e-7; }
+                    else {
+                        const Mm = (s.L0 + s.N * (simDays - 0.5) - (s.om + s.w)) * D2R, Em = kepler(Mm, s.e);
+                        const num = 2 * Math.atan2(Math.sqrt(1 + s.e) * Math.sin(Em / 2), Math.sqrt(1 - s.e) * Math.cos(Em / 2)), dd = dirOf(num, s.im * D2R, s.om * D2R, s.w * D2R);
+                        dir = { x: dd[0], y: dd[1], z: dd[2] };
+                    }
+                    m.group.position.set(dir.x * md, dir.y * md, dir.z * md);
+                });
+            });
+
+            comets.forEach(c => {
+                const M = c.M0 + (simDays / (c.data.period * Y)) * PI * 2, E = kepler(M, c.e);
+                const nu = 2 * Math.atan2(Math.sqrt(1 + c.e) * Math.sin(E / 2), Math.sqrt(1 - c.e) * Math.cos(E / 2)), rAU = c.a * (1 - c.e * Math.cos(E)), d = dirOf(nu, c.incl, c.node, c.peri), R = distOf(rAU);
+                c.grp.position.set(d[0] * R, d[1] * R, d[2] * R);
+                const act = clamp((3.6 - rAU) / 3.4, 0, 1), unit = distOf(1) * 0.02, coma = (0.5 + act * 1.5) * unit;
+                c.coma.scale.set(coma * 4, coma * 4, 1); c.nuc.scale.setScalar(Math.max(0.04, coma * 0.25));
+                if (act > 0.02) { c.tail.visible = true; const L = act * distOf(1) * 0.55, dir = c.grp.position.clone().normalize(); c.tail.position.copy(c.grp.position); c.tail.quaternion.setFromUnitVectors(YDOWN, dir); c.tail.scale.set(coma * 1.5, L, coma * 1.5); c.tail.material.opacity = 0.1 + act * 0.22; } else c.tail.visible = false;
+            });
+
+            if (window.__belt) { const arr = window.__belt.geometry.attributes.position.array; window.__beltD.forEach((dd, i) => { const r = distOf(dd.au), a = dd.a + simDays / (Math.pow(dd.au, 1.5) * Y) * PI * 2; arr[i * 3] = Math.cos(a) * r; arr[i * 3 + 2] = Math.sin(a) * r; }); window.__belt.geometry.attributes.position.needsUpdate = true; }
+            if (window.__kuiper) window.__kuiper.rotation.y = simDays * 0.00002 * PI;
+
+            if (followMoon) objs[followMoon.pi].moons[followMoon.mi].mesh.getWorldPosition(want.target);
+            else if (followComet >= 0) want.target.copy(comets[followComet].grp.position);
+            else if (followIdx === -1) want.target.set(0, 0, 0);
+            else if (followIdx >= 0) objs[followIdx].mesh.getWorldPosition(want.target);
+            ctrl.target.lerp(want.target, Math.min(1, dt * 6));
+            ctrl.theta += (want.theta - ctrl.theta) * Math.min(1, dt * 8); ctrl.phi += (want.phi - ctrl.phi) * Math.min(1, dt * 8); ctrl.dist += (want.dist - ctrl.dist) * Math.min(1, dt * 6);
+            camera.position.set(ctrl.target.x + ctrl.dist * Math.sin(ctrl.phi) * Math.cos(ctrl.theta), ctrl.target.y + ctrl.dist * Math.cos(ctrl.phi), ctrl.target.z + ctrl.dist * Math.sin(ctrl.phi) * Math.sin(ctrl.theta));
+            camera.lookAt(ctrl.target);
+            sunMesh.position.set(0, 0, 0);
+
+            const labeled = [{ m: sunMesh, el: sunLabel }, ...objs.map(o => ({ m: o.mesh, el: o.label })), ...comets.map(c => ({ m: c.nuc, el: c.label }))];
+            labeled.forEach(L => {
+                if (!labelsOn) { L.el.classList.remove('show'); return; }
+                L.m.getWorldPosition(tmp); const dd = camera.position.distanceTo(tmp); tmp.project(camera);
+                if (tmp.z > 1 || tmp.z < -1) { L.el.classList.remove('show'); return; }
+                L.el.style.left = (tmp.x * .5 + .5) * innerWidth + 'px'; L.el.style.top = (-tmp.y * .5 + .5) * innerHeight + 'px'; L.el.classList.toggle('show', dd < labelMax);
+            });
+
+            const dd = new Date(startDate + simDays * 86400000);
+            $('date').textContent = dd.getUTCFullYear() + '-' + String(dd.getUTCMonth() + 1).padStart(2, '0') + '-' + String(dd.getUTCDate()).padStart(2, '0');
+            renderer.render(scene, camera); requestAnimationFrame(frame);
+        }
+        const sunLabel = makeLabel('Sun'); sunLabel.style.color = '#ffd98a';
+        requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+
+</html>

@@ -329,7 +329,7 @@
                 g.add(m); g.userData.body = m;
             } else if (kind === 'ramp') {
                 const m = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 4.6), new THREE.MeshStandardMaterial({ color: '#06281a', emissive: COL.ramp, emissiveIntensity: 1.1, metalness: .4, roughness: .4 }));
-                m.rotation.x = -0.45; m.position.y = 0.9;
+                m.rotation.x = 0.45; m.position.y = 0.9;
                 m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: '#aaffd5' })));
                 g.add(m);
             } else if (kind === 'tunnel') {

@@ -113,7 +113,8 @@
         .rail { display: flex; flex-direction: column; gap: 13px; }
         .rail-label { font-size: 10.5px; letter-spacing: 3px; color: var(--muted); font-weight: 800; text-transform: uppercase; padding-left: 4px; }
         .rail-label::before { content: '// '; color: var(--accent); }
-        .tile { position: relative; display: flex; gap: 12px; align-items: center; text-align: left; overflow: hidden;
+        .tile { position: relative; display: flex; gap: 12px; align-items: center; text-align: left; overflow: hidden; cursor: pointer;
+            color: var(--text); font-family: inherit;
             background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border); border-radius: 15px; padding: 11px; transition: transform .2s, box-shadow .2s, border-color .2s; }
         .tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .25;
@@ -124,7 +125,8 @@
         .tile.active .led { opacity: 1; animation: blink 1.2s ease-in-out infinite; }
         .tnum { font-size: 10.5px; font-weight: 900; color: var(--t-accent); }
         .tcanvas { width: 80px; height: 52px; border-radius: 9px; flex: none; background: #06041c; border: 1px solid var(--border); }
-        .tmeta .tt { font-weight: 800; font-size: 14.5px; letter-spacing: .3px; }
+        .tmeta { position: relative; z-index: 2; min-width: 0; }
+        .tmeta .tt { font-weight: 800; font-size: 14.5px; letter-spacing: .3px; color: var(--text); }
         .tmeta .tb { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-top: 3px; }
         .tile.soon { border-style: dashed; opacity: .68; }
         .tile.soon .tcanvas { display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: var(--border); }
@@ -256,13 +258,72 @@
             towers.forEach((tw, k) => { if (Math.sin(t * 3 + k * 2) > 0.7) { const a = at(t * 90 + k * total / 5); ctx.strokeStyle = '#fff'; ctx.globalAlpha = .6; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tw[0] * w, tw[1] * h); ctx.lineTo(a[0], a[1]); ctx.stroke(); ctx.globalAlpha = 1; } });
         }
 
+        let cosmosStars = null;
+        function cosmosThumb(ctx, w, h, t) {
+            if (!cosmosStars) { cosmosStars = []; for (let i = 0; i < 70; i++) cosmosStars.push([Math.random(), Math.random(), Math.random() * 0.5 + 0.3]); }
+            const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#070b1e'); g.addColorStop(1, '#02030a');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#cfe3ff';
+            for (const s of cosmosStars) { ctx.globalAlpha = s[2]; ctx.fillRect(s[0] * w, s[1] * h, 1.2, 1.2); }
+            ctx.globalAlpha = 1;
+            const cx = w / 2, cy = h * 0.5, R = Math.min(w, h), sr = Math.max(w, h) * 0.16;
+            const sg = ctx.createRadialGradient(cx, cy, 0, cx, cy, sr);
+            sg.addColorStop(0, 'rgba(255,210,120,.95)'); sg.addColorStop(.4, 'rgba(255,150,60,.5)'); sg.addColorStop(1, 'rgba(255,120,40,0)');
+            ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(cx, cy, sr, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffd66b'; ctx.beginPath(); ctx.arc(cx, cy, Math.max(4, h * 0.04), 0, Math.PI * 2); ctx.fill();
+            const planets = [[0.18, '#a9a29b', 0.8], [0.30, '#4a90d9', 0.55], [0.42, '#c1440e', 0.4], [0.56, '#d8b48c', 0.26, true], [0.72, '#e3d6a8', 0.17, true, true]];
+            planets.forEach((p, i) => {
+                const rad = R * p[0];
+                ctx.strokeStyle = 'rgba(150,190,255,.14)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, rad, rad * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+                const a = t * p[2] + i * 1.7, px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad * 0.42, pr = Math.max(2.2, R * 0.022 * (p[3] ? 1.6 : 1));
+                ctx.fillStyle = p[1]; ctx.shadowColor = p[1]; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                if (p[4]) { ctx.strokeStyle = p[1]; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(px, py, pr * 2.1, pr * 0.7, 0.5, 0, Math.PI * 2); ctx.stroke(); }
+            });
+        }
+
+        let galStars = null, galFar = null, galField = null;
+        function galaxyThumb(ctx, w, h, t) {
+            const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.5, tilt = 0.58;
+            const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.75);
+            bg.addColorStop(0, '#0a1130'); bg.addColorStop(.55, '#050719'); bg.addColorStop(1, '#01020a');
+            ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+            if (!galStars) {
+                galStars = []; const arms = 2, turns = 2.4;
+                for (let k = 0; k < 520; k++) { const p = Math.pow(Math.random(), 0.55), arm = Math.floor(Math.random() * arms) * (2 * Math.PI / arms), jit = (Math.random() - 0.5) * (0.95 - 0.6 * p); galStars.push([p, arm + p * turns * 2 * Math.PI + jit, Math.random()]); }
+                galField = []; for (let k = 0; k < 80; k++) galField.push([Math.random(), Math.random(), Math.random() * 0.6 + 0.2]);
+                galFar = []; for (let k = 0; k < 5; k++) galFar.push([Math.random(), Math.random(), Math.random() * 0.45 + 0.35, Math.random() * Math.PI, Math.random() < .5]);
+            }
+            // deep-field: faint background stars + a few distant galaxies
+            for (const s of galField) { ctx.globalAlpha = s[2] * 0.7; ctx.fillStyle = '#cdd8f0'; ctx.fillRect(s[0] * w, s[1] * h, 1, 1); }
+            ctx.globalAlpha = 1;
+            for (const g of galFar) { const x = g[0] * w, y = g[1] * h, gr = g[2] * R * 0.16, col = g[4] ? '200,212,255' : '255,224,190'; const gg = ctx.createRadialGradient(x, y, 0, x, y, gr); gg.addColorStop(0, 'rgba(' + col + ',.55)'); gg.addColorStop(1, 'rgba(' + col + ',0)'); ctx.save(); ctx.translate(x, y); ctx.rotate(g[3]); ctx.scale(1, 0.38); ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 0, gr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+            // main galaxy — tilted disk
+            const rot = t * 0.1;
+            ctx.save(); ctx.translate(cx, cy); ctx.scale(1, tilt);
+            const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.92);
+            halo.addColorStop(0, 'rgba(255,244,210,.5)'); halo.addColorStop(.22, 'rgba(255,205,130,.28)'); halo.addColorStop(.55, 'rgba(150,160,230,.10)'); halo.addColorStop(1, 'rgba(90,100,170,0)');
+            ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, R * 0.92, 0, Math.PI * 2); ctx.fill();
+            for (const s of galStars) { const p = s[0], ang = s[1] + rot, radius = p * R * 0.9, x = Math.cos(ang) * radius, y = Math.sin(ang) * radius; ctx.globalAlpha = (0.4 + s[2] * 0.6) * (1 - p * 0.2); ctx.fillStyle = p < 0.18 ? '#fff2cf' : p < 0.5 ? '#ffd9a0' : '#bcd4ff'; const sz = p < 0.12 ? 1.9 : 1.2; ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz); }
+            ctx.restore(); ctx.globalAlpha = 1;
+            // glowing core bloom
+            const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.24);
+            core.addColorStop(0, 'rgba(255,255,248,1)'); core.addColorStop(.45, 'rgba(255,228,165,.85)'); core.addColorStop(1, 'rgba(255,200,120,0)');
+            ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, R * 0.24, 0, Math.PI * 2); ctx.fill();
+        }
+
         const games = [
             { id: 'neonrun', title: 'Neon Run', href: 'NeonRun.html', badge: '3D · WebGL', accent: '#00e5ff', glow: 'rgba(0,229,255,.5)',
               tags: ['Three.js', 'Synthwave', 'Endless'], render: neonRunThumb, bestKey: 'neonrun_best', bestLabel: 'High score',
               desc: 'Tear down an infinite synthwave highway. Dodge blocks, vault barriers, ramp into the air and burn NOS for the high score.' },
             { id: 'td', title: 'Tower Defense', href: 'TowerDefense.html', badge: '2D · Canvas', accent: '#ff2d95', glow: 'rgba(255,45,149,.5)',
               tags: ['Canvas', 'Strategy', 'Endless'], render: tdThumb, stat: 'Endless waves',
-              desc: 'Hold the line. Place and upgrade towers, sell and reposition, speed up the clock and outlast relentless waves.' }
+              desc: 'Hold the line. Place and upgrade towers, sell and reposition, speed up the clock and outlast relentless waves.' },
+            { id: 'cosmos', title: 'Solar System', href: 'SolarSystem.html', badge: '3D · Three.js', accent: '#5fd0ff', glow: 'rgba(95,208,255,.5)',
+              tags: ['Three.js', 'Astronomy', 'Real orbits'], render: cosmosThumb, stat: 'JPL-accurate',
+              desc: 'A real astronomical simulation — planets, moons, dwarf planets and comets at their true positions for any date, validated against NASA JPL. Set the date and watch the sky line up.' },
+            { id: 'milkyway', title: 'Cosmos', href: 'Cosmos.html', badge: '3D · Three.js', accent: '#9fc0ff', glow: 'rgba(159,192,255,.5)',
+              tags: ['Three.js', 'Cosmic web', 'Zoom-out'], render: galaxyThumb, stat: 'Sun → universe',
+              desc: 'One continuous zoom from the Sun to the edge of the observable universe — real planets, nearby stars, the Milky Way and Sagittarius A*, the Local Group and the Laniakea Great Attractor.' }
         ];
 
         /* ---------- background ---------- */
