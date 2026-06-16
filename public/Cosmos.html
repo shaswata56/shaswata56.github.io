@@ -576,12 +576,30 @@
         const lgObjs = LG.map((gx, i) => {
             let pos; if (gx.self) pos = new THREE.Vector3(0, 0, 0); else { const ang = i * 2.399963, y = 1 - 2 * (i + 0.5) / LG.length, rr = Math.sqrt(Math.max(0, 1 - y * y)), d = lgDist(gx.mly); pos = new THREE.Vector3(Math.cos(ang) * rr * d, y * d * 0.5, Math.sin(ang) * rr * d); }
             const grp = new THREE.Group(); grp.position.copy(pos); lgGrp.add(grp);
-            const kind = (gx.self || /spiral/i.test(gx.type)) ? 'spiral' : /elliptical|spheroidal/i.test(gx.type) ? 'elliptical' : 'irregular';
-            const diskR = LG_BASE * (gx.self ? 2.4 : /spiral/i.test(gx.type) ? 1.5 : 1.0);
-            const disk = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGalaxyTexture(kind, gx.c), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })); disk.scale.set(diskR, diskR, 1); grp.add(disk);
-            const glow = glowSprite('rgba(220,235,255,.7)', 1); glow.material.color = new THREE.Color(gx.c); grp.add(glow);
+            const isSpiral = gx.self || /spiral/i.test(gx.type);
+            const kind = isSpiral ? 'spiral' : /elliptical|spheroidal/i.test(gx.type) ? 'elliptical' : 'irregular';
+            const diskR = LG_BASE * (gx.self ? 2.4 : isSpiral ? 1.5 : 1.0);
+            // each galaxy gets a fixed 3D orientation so it's a real object in space (viewable edge-on), not a billboard
+            const seed = i * 1.7 + 0.3; grp.rotation.set(0.5 + Math.sin(seed) * 0.9, seed * 0.7, Math.cos(seed * 1.3) * 0.6);
+            const col = new THREE.Color(gx.c), mats = [], bodies = [];
+            let disk;
+            if (isSpiral) {
+                // tilted textured disk + a real 3D central bulge
+                disk = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeGalaxyTexture('spiral', gx.c), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                disk.scale.set(diskR, diskR, 1); grp.add(disk); mats.push(disk.material); bodies.push(disk);
+                const bulge = new THREE.Mesh(new THREE.SphereGeometry(diskR * 0.13, 20, 16), new THREE.MeshBasicMaterial({ color: col.clone().lerp(_white, 0.55), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+                grp.add(bulge); mats.push(bulge.material); bodies.push(bulge);
+            } else {
+                // genuine 3D star cloud — ellipsoid for ellipticals, lumpier for irregular clouds
+                const N = kind === 'elliptical' ? 760 : 560, arr = new Float32Array(N * 3), fy = kind === 'elliptical' ? 0.72 : 0.6, conc = kind === 'elliptical' ? 1.1 : 0.8;
+                for (let k = 0; k < N; k++) { const rr = diskR * Math.pow(Math.random(), conc), th = Math.random() * PI * 2, ph = Math.acos(Math.random() * 2 - 1); arr[k * 3] = rr * Math.sin(ph) * Math.cos(th); arr[k * 3 + 1] = rr * Math.cos(ph) * fy + (kind === 'irregular' ? (Math.random() - 0.5) * diskR * 0.35 : 0); arr[k * 3 + 2] = rr * Math.sin(ph) * Math.sin(th); }
+                const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+                disk = new THREE.Points(pg, new THREE.PointsMaterial({ color: gx.c, size: diskR * 0.06, map: DOT, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
+                grp.add(disk); mats.push(disk.material); bodies.push(disk);
+            }
+            const glow = glowSprite('rgba(220,235,255,.7)', 1); glow.material.color = col.clone(); grp.add(glow);
             const proxy = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false })); proxy.userData.lgI = i; grp.add(proxy);
-            return { grp, disk, glow, proxy, diskR, label: makeLabel(gx.n, 'comet'), data: gx, bright: gx.self ? 1.2 : 1 };
+            return { grp, disk, glow, proxy, diskR, mats, bodies, label: makeLabel(gx.n, 'comet'), data: gx, bright: gx.self ? 1.2 : 1 };
         });
         (function buildWeb() {
             const WEBN = 46, wp = new Float32Array(WEBN * 3), nodes = [];
@@ -641,8 +659,9 @@
             o.proxy.scale.set(halo * 3, halo * 3, 1);
         }
         function setLG(o, vis, mf) {
-            o.disk.material.opacity = Math.min(1, vis); o.disk.visible = vis > 0.01;
-            o.glow.material.opacity = vis * 0.5;
+            const v = Math.min(1, vis), on = v > 0.01;
+            o.mats.forEach(m => m.opacity = v); o.bodies.forEach(b => b.visible = on);
+            o.glow.material.opacity = vis * 0.45;
             o.glow.getWorldPosition(_wp); const cd = camera.position.distanceTo(_wp);
             const halo = Math.max(o.diskR * 0.5, (cd * 0.012) / mf); o.glow.scale.set(halo, halo, 1);
             o.proxy.scale.set(Math.max(o.diskR, (cd * 0.045) / mf) * 1.2, Math.max(o.diskR, (cd * 0.045) / mf) * 1.2, 1);
@@ -759,7 +778,7 @@
         el.addEventListener('pointermove', e => {
             if (!pointers.has(e.pointerId)) return; const prev = pointers.get(e.pointerId), dx = e.clientX - prev.x, dy = e.clientY - prev.y; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (pointers.size >= 2) { const pd = pinchDist(); if (lastPinch) { want.dist *= lastPinch / pd; want.dist = clamp(want.dist, MIND, MAXD); } lastPinch = pd; return; }
-            moved += Math.abs(dx) + Math.abs(dy); want.theta -= dx * 0.005; want.phi = clamp(want.phi - dy * 0.005, 0.12, PI - 0.12);
+            moved += Math.abs(dx) + Math.abs(dy); want.theta += dx * 0.005; want.phi -= dy * 0.005;
         });
         function endP(e) { pointers.delete(e.pointerId); if (pointers.size < 2) lastPinch = 0; if (pointers.size === 0 && moved < 9 && performance.now() - downT < 400) pickAt(e.clientX, e.clientY); }
         el.addEventListener('pointerup', endP); el.addEventListener('pointercancel', endP);
@@ -959,7 +978,7 @@
             ctrl.target.lerp(want.target, Math.min(1, dt * 6));
             ctrl.theta += (want.theta - ctrl.theta) * Math.min(1, dt * 8); ctrl.phi += (want.phi - ctrl.phi) * Math.min(1, dt * 8); ctrl.dist += (want.dist - ctrl.dist) * Math.min(1, dt * 6);
             camera.position.set(ctrl.target.x + ctrl.dist * Math.sin(ctrl.phi) * Math.cos(ctrl.theta), ctrl.target.y + ctrl.dist * Math.cos(ctrl.phi), ctrl.target.z + ctrl.dist * Math.sin(ctrl.phi) * Math.sin(ctrl.theta));
-            camera.lookAt(ctrl.target);
+            camera.up.set(0, Math.sin(ctrl.phi) >= 0 ? 1 : -1, 0); camera.lookAt(ctrl.target);
             sunMesh.position.set(0, 0, 0);
 
             updateLadder();

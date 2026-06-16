@@ -469,7 +469,7 @@
         el.addEventListener('pointermove', e => {
             if (!pointers.has(e.pointerId)) return; const prev = pointers.get(e.pointerId), dx = e.clientX - prev.x, dy = e.clientY - prev.y; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (pointers.size >= 2) { const pd = pinchDist(); if (lastPinch) { want.dist *= lastPinch / pd; want.dist = clamp(want.dist, MIND, MAXD); } lastPinch = pd; return; }
-            moved += Math.abs(dx) + Math.abs(dy); want.theta -= dx * 0.005; want.phi = clamp(want.phi - dy * 0.005, 0.12, PI - 0.12);
+            moved += Math.abs(dx) + Math.abs(dy); want.theta += dx * 0.005; want.phi -= dy * 0.005;
         });
         function endP(e) { pointers.delete(e.pointerId); if (pointers.size < 2) lastPinch = 0; if (pointers.size === 0 && moved < 9 && performance.now() - downT < 400) pickAt(e.clientX, e.clientY); }
         el.addEventListener('pointerup', endP); el.addEventListener('pointercancel', endP);
@@ -655,7 +655,7 @@
             ctrl.target.lerp(want.target, Math.min(1, dt * 6));
             ctrl.theta += (want.theta - ctrl.theta) * Math.min(1, dt * 8); ctrl.phi += (want.phi - ctrl.phi) * Math.min(1, dt * 8); ctrl.dist += (want.dist - ctrl.dist) * Math.min(1, dt * 6);
             camera.position.set(ctrl.target.x + ctrl.dist * Math.sin(ctrl.phi) * Math.cos(ctrl.theta), ctrl.target.y + ctrl.dist * Math.cos(ctrl.phi), ctrl.target.z + ctrl.dist * Math.sin(ctrl.phi) * Math.sin(ctrl.theta));
-            camera.lookAt(ctrl.target);
+            camera.up.set(0, Math.sin(ctrl.phi) >= 0 ? 1 : -1, 0); camera.lookAt(ctrl.target);
             sunMesh.position.set(0, 0, 0);
 
             const labeled = [{ m: sunMesh, el: sunLabel }, ...objs.map(o => ({ m: o.mesh, el: o.label })), ...comets.map(c => ({ m: c.nuc, el: c.label }))];
