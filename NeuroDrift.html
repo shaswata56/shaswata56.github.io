@@ -123,6 +123,8 @@
         .mbtn { flex: 1; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 10px; padding: 11px; font-weight: 700; font-size: 13px; cursor: pointer; transition: transform .12s, box-shadow .12s; }
         .mbtn:hover { transform: translateY(-1px); }
         .mbtn.primary { background: var(--acc); color: #06140a; border-color: var(--acc); }
+        .mbtn.danger { background: #ff4d4d; color: #fff; border-color: #ff4d4d; }
+        .mbtn.danger:hover { box-shadow: 0 8px 22px -8px #ff4d4d; }
         .mnote { font-size: 12px; margin-top: 10px; min-height: 16px; color: var(--muted); }
         .mnote.ok { color: var(--acc); } .mnote.err { color: var(--mag); }
         .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(20px); z-index: 40; max-width: 90vw; background: rgba(9,18,11,.97); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; text-align: center; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
@@ -236,6 +238,14 @@
                 <p class="hnote">A car dies if it leaves the track or stops making progress. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
             </div>
             <div class="mrow"><button class="mbtn primary" id="helpClose">Got it</button></div>
+        </div>
+    </div>
+
+    <div id="confirm" class="modal">
+        <div class="mcard">
+            <div class="mtitle">Reset evolution?</div>
+            <div class="msub">This permanently erases the driver you’re currently training and starts again from scratch. Drivers saved in your garage are <b>not</b> affected. This can’t be undone.</div>
+            <div class="mrow"><button class="mbtn danger" id="cfYes">Reset everything</button><button class="mbtn" id="cfNo">Cancel</button></div>
         </div>
     </div>
     <div id="toast" class="toast"></div>
@@ -584,7 +594,11 @@
             else initPop();
             tick = 0;
         };
-        $('resetBtn').onclick = () => { stopWatch(); bestEver = 0; bestGen = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; };
+        const confirmM = $('confirm');
+        $('resetBtn').onclick = () => confirmM.classList.add('show');
+        $('cfNo').onclick = () => confirmM.classList.remove('show');
+        confirmM.onclick = e => { if (e.target === confirmM) confirmM.classList.remove('show'); };
+        $('cfYes').onclick = () => { confirmM.classList.remove('show'); stopWatch(); bestEver = 0; bestGen = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; toast('Evolution reset — starting fresh.'); };
         $('watchBtn').onclick = () => { watch ? stopWatch() : startWatch(); };
         $('enterBtn').onclick = () => { $('intro').classList.add('hide'); setTimeout(() => $('intro').remove(), 650); };
 
@@ -635,7 +649,7 @@
         $('helpBtn').onclick = () => help.classList.add('show');
         $('helpClose').onclick = () => help.classList.remove('show');
         help.onclick = e => { if (e.target === help) help.classList.remove('show'); };
-        addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); } });
+        addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); confirmM.classList.remove('show'); } });
         $('allBtn').classList.add('on');
         $('archTxt').textContent = NIN + '→' + NHID + '→' + NOUT + ' · ' + GLEN + ' weights';
 
