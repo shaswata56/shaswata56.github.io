@@ -158,9 +158,11 @@
             .console { grid-template-columns: 1fr; }
             .stage { min-height: 56vh; }
             .telemetry { display: none; }
-            .rail { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
+            .rail { flex-direction: row; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+            .rail::-webkit-scrollbar { display: none; }
             .rail-label { display: none; }
-            .tile { flex: 0 0 auto; flex-direction: column; width: 150px; text-align: center; }
+            .tile { flex: 0 0 auto; flex-direction: column; width: 150px; text-align: center; scroll-snap-align: center; }
+            .tile:hover { transform: none; }
             .tcanvas { width: 100%; height: 66px; }
             .corners i:nth-child(3) { right: 16px; }
         }
@@ -452,10 +454,46 @@
             $('tSector').textContent = '0' + (i + 1) + '/0' + games.length;
             info.classList.remove('swap'); void info.offsetWidth; info.classList.add('swap');
             elTitle.classList.remove('decode'); void elTitle.offsetWidth; elTitle.classList.add('decode');
+            centerTile(i);
+        }
+        // keep the selected cartridge centered in the horizontal rail (mobile) / scrolled into view
+        function centerTile(i) {
+            const t = rail.querySelectorAll('.tile')[i]; if (!t) return;
+            const horiz = rail.scrollWidth > rail.clientWidth + 4;
+            if (!horiz) return;
+            const tr = t.getBoundingClientRect(), rr = rail.getBoundingClientRect();
+            const target = rail.scrollLeft + (tr.left - rr.left) - (rr.width - tr.width) / 2;
+            rail.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
         }
         function play() { window.location.href = games[sel].href; }
         $('playBtn').addEventListener('click', play);
-        hero.addEventListener('click', play);
+
+        /* ---------- swipe to browse (mobile) ---------- */
+        const stage = $('stage');
+        let swX = 0, swY = 0, swOn = false, swSuppress = false;
+        stage.addEventListener('touchstart', e => {
+            if (e.touches.length !== 1) { swOn = false; return; }
+            swX = e.touches[0].clientX; swY = e.touches[0].clientY; swOn = true; swSuppress = false;
+        }, { passive: true });
+        stage.addEventListener('touchmove', e => {
+            if (!swOn) return;
+            const dx = e.touches[0].clientX - swX, dy = e.touches[0].clientY - swY;
+            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) swSuppress = true;
+        }, { passive: true });
+        stage.addEventListener('touchend', e => {
+            if (!swOn) return; swOn = false;
+            const t = e.changedTouches[0], dx = t.clientX - swX, dy = t.clientY - swY;
+            if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.4)
+                select((sel + (dx < 0 ? 1 : -1) + games.length) % games.length);
+        }, { passive: true });
+        // tap the preview to play, but never right after a swipe
+        hero.addEventListener('click', () => { if (swSuppress) { swSuppress = false; return; } play(); });
+
+        // touch-friendly hint
+        if (matchMedia('(hover: none)').matches) {
+            const h = document.querySelector('.hint');
+            if (h) h.innerHTML = 'Swipe to browse · tap a cartridge · tap <kbd>▶</kbd> to play';
+        }
         addEventListener('keydown', e => {
             if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); select((sel + 1) % games.length); }
             else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); select((sel - 1 + games.length) % games.length); }
