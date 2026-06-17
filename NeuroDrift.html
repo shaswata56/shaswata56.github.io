@@ -23,15 +23,32 @@
         .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(158,255,90,.18); }
         .btn.on { color: #06140a; background: var(--acc); border-color: var(--acc); }
 
-        .hud { top: 70px; left: 18px; display: flex; flex-direction: column; gap: 10px; width: 210px; }
-        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-        .stat-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); letter-spacing: .5px; margin: 4px 0; }
-        .stat-row b { color: #fff; font-size: 15px; font-weight: 800; font-family: 'Fira Mono', monospace; }
-        .stat-row.big b { color: var(--acc); font-size: 22px; }
-        .stat-row .unit { font-style: normal; font-size: 9px; color: var(--muted); opacity: .7; }
-        .stat-row.tiny { margin: -3px 0 5px; }
-        .stat-row.tiny span { font-size: 9.5px; color: var(--muted); letter-spacing: .3px; }
-        .stat-row.tiny b { font-size: 11px; color: var(--acc2); }
+        .hud { top: 70px; left: 18px; display: flex; flex-direction: column; gap: 10px; width: 228px; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        /* generation header */
+        .hgen-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .hgen { display: flex; align-items: baseline; gap: 7px; }
+        .hgen b { font-family: 'Fira Mono', monospace; font-weight: 800; font-size: 30px; line-height: 1; color: var(--acc); text-shadow: 0 0 16px rgba(158,255,90,.35); }
+        .hgen i { font-style: normal; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+        .hchip { font-size: 10px; font-weight: 800; letter-spacing: .4px; color: var(--acc2); border: 1px solid rgba(0,229,255,.32); background: rgba(0,229,255,.08); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+        /* best result panel */
+        .hbest { margin-top: 13px; padding: 11px 12px; border-radius: 13px; background: linear-gradient(180deg, rgba(158,255,90,.12), rgba(158,255,90,.02)); border: 1px solid rgba(158,255,90,.24); }
+        .hbest-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .hbest-head .l { font-size: 9.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); font-weight: 800; white-space: nowrap; }
+        .htag { font-size: 9px; font-weight: 800; letter-spacing: .3px; color: var(--acc); background: rgba(158,255,90,.14); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+        .hbest .val { display: block; font-family: 'Fira Mono', monospace; font-weight: 800; font-size: 26px; line-height: 1; color: #fff; text-shadow: 0 0 18px rgba(255,255,255,.16); white-space: nowrap; }
+        /* leader lap progress */
+        .hlead { display: flex; align-items: center; gap: 9px; margin-top: 13px; }
+        .hlead .l { font-size: 11px; letter-spacing: .4px; color: var(--muted); font-weight: 700; }
+        .hdots { display: flex; gap: 5px; flex: 1; }
+        .hdots span { flex: 1; height: 7px; border-radius: 4px; background: rgba(255,255,255,.10); transition: background .2s, box-shadow .2s; }
+        .hdots span.on { background: var(--acc); box-shadow: 0 0 9px rgba(158,255,90,.6); }
+        .hlead .v { font-family: 'Fira Mono', monospace; font-weight: 800; font-size: 13px; color: #fff; }
+        /* mini stats */
+        .hmini { display: flex; gap: 8px; margin-top: 13px; }
+        .hmini > div { flex: 1; min-width: 0; background: rgba(0,0,0,.24); border: 1px solid rgba(255,255,255,.05); border-radius: 11px; padding: 7px 10px; }
+        .hmini i { display: block; font-style: normal; font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 3px; }
+        .hmini b { font-family: 'Fira Mono', monospace; font-weight: 800; font-size: 13px; color: #fff; white-space: nowrap; }
         .hudhelp { margin-top: 8px; width: 100%; background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 8px; padding: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; cursor: pointer; transition: color .15s, border-color .15s; }
         .hudhelp:hover { color: var(--acc); border-color: var(--acc); }
         .hbody { font-size: 12.5px; line-height: 1.55; }
@@ -84,15 +101,20 @@
             .btn { padding: 9px 11px; border-radius: 11px; }
             .btn .bl { display: none; }                 /* icon-only buttons on phones */
             .btn .bi { font-size: 15px; }
-            .hud { width: 124px; top: 56px; left: 12px; gap: 8px; }
-            .card { padding: 9px 11px; border-radius: 12px; }
-            .stat-row { font-size: 10.5px; margin: 3px 0; }
-            .stat-row b { font-size: 13px; }
-            .stat-row.big b { font-size: 18px; }
-            .spark { height: 36px; }
+            .hud { width: 162px; top: 54px; left: 10px; gap: 8px; }
+            .card { padding: 11px; border-radius: 13px; }
+            .hgen b { font-size: 23px; }
+            .hgen i { font-size: 9px; letter-spacing: 1.5px; }
+            .hchip { font-size: 8.5px; padding: 3px 7px; }
+            .hbest { margin-top: 10px; padding: 9px 10px; border-radius: 11px; }
+            .hbest .val { font-size: 20px; }
+            .hbest-head .l { font-size: 8.5px; letter-spacing: 1px; }
+            .htag { font-size: 8px; padding: 2px 6px; }
+            .hlead, .hmini { margin-top: 10px; }
+            .hmini > div { padding: 6px 8px; }
+            .spark { height: 34px; }
             .cap { font-size: 8.5px; }
-            .hudhelp { font-size: 9px; padding: 5px; margin-top: 6px; }
-            .stat-row .unit { display: none; }
+            .hudhelp { font-size: 9px; padding: 6px; margin-top: 10px; }
             /* brain panel: collapsible, tucked above the controls, off by default */
             #brain { width: 150px; right: 12px; bottom: 86px; transition: transform .25s ease, opacity .25s ease; transform-origin: bottom right; }
             #brain.min { transform: scale(.001); opacity: 0; pointer-events: none; }
@@ -150,6 +172,41 @@
         .gacts button { border: 1px solid var(--border); background: #0a160d; color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
         .gacts button[data-act="use"] { background: var(--acc); color: #06140a; border-color: var(--acc); }
         .gacts button[data-act="del"] { color: var(--mag); padding: 6px 9px; }
+        /* garage tabs + panels */
+        .gtabs { display: flex; gap: 6px; margin-bottom: 12px; }
+        .gtab { flex: 1; background: #06100a; border: 1px solid var(--border); color: var(--muted); border-radius: 10px; padding: 9px; font-weight: 800; font-size: 12px; letter-spacing: .5px; cursor: pointer; transition: background .15s, color .15s; }
+        .gtab.on { background: var(--acc); color: #06140a; border-color: var(--acc); }
+        .gpanel { margin-bottom: 14px; }
+        /* driver grid */
+        .ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(154px, 1fr)); gap: 10px; max-height: 44vh; overflow-y: auto; padding-right: 3px; }
+        .gcard { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 9px; display: flex; flex-direction: column; gap: 7px; }
+        .gcard .gthumb { width: 100%; height: 80px; border-radius: 8px; background: #040a06; border: 1px solid var(--border); display: block; }
+        .gchead { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .gcard .gnm { max-width: 100%; }
+        .gcard .gdna { width: 100%; height: 12px; border-radius: 3px; background: rgba(0,0,0,.3); display: block; }
+        .gcard .gmeta { font-size: 10px; line-height: 1.4; }
+        .gcard .gacts { margin-top: 1px; }
+        .gcard .gacts button { flex: 1; padding: 6px 0; font-size: 11px; }
+        /* performance matrix */
+        .gmxnote { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 9px; }
+        .gmxnote b { color: var(--acc); } .gmxnote .dnf { color: #c9d6c2; }
+        .gmxwrap { max-height: 42vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+        .gtable { border-collapse: collapse; font-size: 11.5px; width: 100%; }
+        .gtable th, .gtable td { padding: 7px 9px; text-align: center; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,.06); font-family: 'Fira Mono', monospace; }
+        .gtable thead th { position: sticky; top: 0; background: #08130c; color: var(--muted); font-size: 9.5px; letter-spacing: .5px; text-transform: uppercase; z-index: 2; }
+        .gtable thead th small { display: block; font-size: 8px; color: var(--acc2); font-family: inherit; opacity: .8; }
+        .gtable td.name, .gtable th.name { position: sticky; left: 0; background: #08130c; text-align: left; color: var(--text); font-weight: 700; z-index: 1; font-family: inherit; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+        .gtable thead th.name { z-index: 3; }
+        .gtable td.best { color: var(--acc); font-weight: 800; background: rgba(158,255,90,.08); }
+        .gtable td.dnf { color: #93b48a; }
+        .gtable td.home { box-shadow: inset 0 0 0 1px rgba(0,229,255,.55); }
+        .gmxempty { color: var(--muted); font-size: 12.5px; padding: 22px; text-align: center; }
+        @media (max-width: 540px) {
+            .ggrid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; max-height: 46vh; }
+            .gcard .gthumb { height: 66px; }
+            .gtab { font-size: 11px; padding: 8px 4px; }
+            .gtable th, .gtable td { padding: 6px 7px; font-size: 10.5px; }
+        }
         #gPaste { width: 100%; height: 54px; resize: none; background: #06100a; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Fira Mono', ui-monospace, monospace; font-size: 11px; padding: 9px; word-break: break-all; outline: none; }
         #gPaste:focus { border-color: var(--acc); }
     </style>
@@ -171,14 +228,23 @@
 
     <div class="ui hud">
         <div class="card">
-            <div class="stat-row big"><span>Generation</span><b id="hGen">1</b></div>
-            <div class="stat-row"><span>Race <i class="unit">first to</i></span><b id="hTarget">3 laps</b></div>
-            <div class="stat-row"><span>Racing</span><b id="hAlive">140</b></div>
-            <div class="stat-row"><span>Best time</span><b id="hBest">—</b></div>
-            <div class="stat-row tiny"><span>↳ from gen</span><b id="hBestGen">—</b></div>
-            <div class="stat-row"><span>This gen</span><b id="hCur">—</b></div>
-            <div class="stat-row"><span>Leader now <i class="unit">lap</i></span><b id="hLap">0</b></div>
-            <div class="stat-row tiny"><span>↓ faster finish = better driver</span><b></b></div>
+            <div class="hgen-row">
+                <div class="hgen"><b id="hGen">1</b><i>gen</i></div>
+                <div class="hchip" id="hTarget">3-lap race</div>
+            </div>
+            <div class="hbest">
+                <div class="hbest-head"><span class="l" id="hBestLbl">Best result</span><span class="htag" id="hBestGen">—</span></div>
+                <span class="val" id="hBest">—</span>
+            </div>
+            <div class="hlead">
+                <span class="l">Leader</span>
+                <div class="hdots" id="hDots"></div>
+                <span class="v" id="hLap">0/3</span>
+            </div>
+            <div class="hmini">
+                <div><i>Racing</i><b id="hAlive">140</b></div>
+                <div><i>This gen</i><b id="hCur">—</b></div>
+            </div>
             <button class="hudhelp" id="helpBtn">ⓘ What do these numbers mean?</button>
         </div>
         <div class="card">
@@ -221,8 +287,15 @@
                 <button class="mbtn primary" id="gSave">Save current</button>
                 <button class="mbtn" id="gShareCur">Share</button>
             </div>
-            <div class="gcap">Saved drivers</div>
-            <div class="glist" id="gList"></div>
+            <div class="gtabs">
+                <button class="gtab on" id="gtabGrid">▦ Drivers</button>
+                <button class="gtab" id="gtabCmp">▦ Compare tracks</button>
+            </div>
+            <div id="gpGrid" class="gpanel"><div class="ggrid" id="gGrid"></div></div>
+            <div id="gpCmp" class="gpanel" style="display:none">
+                <div class="gmxnote">Every saved driver raced on every saved track. <b>Lower time wins</b>; <span class="dnf">grey</span> = crashed (shows laps reached). The cyan ring marks each driver's home track.</div>
+                <div class="gmxwrap"><div id="gMatrix"></div></div>
+            </div>
             <div class="gcap">Load a shared driver</div>
             <textarea id="gPaste" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="Paste a share link or code (ND1.…)"></textarea>
             <div class="mrow"><button class="mbtn primary" id="gImport">Import &amp; use</button><button class="mbtn" id="gClose">Close</button></div>
@@ -459,6 +532,88 @@
         function saveCurrent(name) { if (!champion) throw new Error('No trained driver yet — evolve a few generations first.'); return addModel(name, f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver / (total || 1), 'personal'); }
         function useModel(m) { useWeights(m.w, m.s, m.b); }
         function importToLibrary(code, useNow) { const { p } = parseCode(code); const m = addModel(p.nm || 'Shared driver', p.w, p.s, p.g, p.b, 'shared'); if (useNow) useModel(m); return m; }
+        const seedLabel = s => '#' + ((s >>> 0).toString(16).toUpperCase().padStart(8, '0')).slice(-4);
+
+        /* ---- garage visuals: deterministic track silhouette + genome fingerprint ---- */
+        function trackPtsFor(seed) {   // pure: same control points genTrack() uses, without touching live globals
+            const R = mulberry32(seed >>> 0), rr2 = (a, b) => a + R() * (b - a);
+            const K = 12 + (R() * 6 | 0);
+            const harm = [[2, rr2(0.12, 0.24)], [3, rr2(0.08, 0.18)], [5, rr2(0.05, 0.12)], [7, rr2(0, 0.07)]], phs = harm.map(() => rr2(0, TAU));
+            const pts = [];
+            for (let i = 0; i < K; i++) { const a = i / K * TAU; let rr = 1; for (let j = 0; j < harm.length; j++) rr += harm[j][1] * Math.sin(harm[j][0] * a + phs[j]); const Rr = 250 * Math.max(0.45, rr); pts.push([Math.cos(a) * Rr, Math.sin(a) * Rr * 0.92]); }
+            return pts;
+        }
+        function fitCanvas(cv) { const r = Math.min(devicePixelRatio || 1, 2); const w = cv.clientWidth || +cv.getAttribute('w') || 120, h = cv.clientHeight || 70; cv.width = Math.round(w * r); cv.height = Math.round(h * r); const x = cv.getContext('2d'); x.setTransform(r, 0, 0, r, 0, 0); return { x, w, h }; }
+        function drawThumb(cv, seed) {
+            const { x, w, h } = fitCanvas(cv); x.clearRect(0, 0, w, h);
+            const pts = trackPtsFor(seed >>> 0), K = pts.length, sm = [];
+            for (let i = 0; i < K; i++) { const p0 = pts[(i - 1 + K) % K], p1 = pts[i], p2 = pts[(i + 1) % K], p3 = pts[(i + 2) % K]; for (let s = 0; s < 9; s++) sm.push(catmull(p0, p1, p2, p3, s / 9)); }
+            let xa = 1e9, ya = 1e9, xb = -1e9, yb = -1e9; for (const p of sm) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
+            const pad = 9, sc = Math.min((w - pad * 2) / (xb - xa), (h - pad * 2) / (yb - ya));
+            const ox = (w - (xb - xa) * sc) / 2 - xa * sc, oy = (h - (yb - ya) * sc) / 2 - ya * sc;
+            const px = p => p[0] * sc + ox, py = p => p[1] * sc + oy;
+            x.lineJoin = 'round'; x.lineCap = 'round';
+            x.beginPath(); sm.forEach((p, i) => i ? x.lineTo(px(p), py(p)) : x.moveTo(px(p), py(p))); x.closePath();
+            x.strokeStyle = 'rgba(0,229,255,.22)'; x.lineWidth = Math.max(7, HW * sc * 1.1); x.stroke();   // road band
+            x.strokeStyle = 'rgba(158,255,90,.9)'; x.lineWidth = 1.6; x.shadowColor = 'rgba(158,255,90,.7)'; x.shadowBlur = 5; x.stroke(); x.shadowBlur = 0;
+            x.fillStyle = '#fff'; x.beginPath(); x.arc(px(sm[0]), py(sm[0]), 2.4, 0, TAU); x.fill();
+        }
+        function drawDNA(cv, wB64) {
+            const { x, w, h } = fitCanvas(cv); x.clearRect(0, 0, w, h);
+            let g; try { g = b64f32(wB64); } catch (e) { return; }
+            const n = g.length, bw = w / n;
+            for (let i = 0; i < n; i++) { const v = Math.min(1, Math.abs(g[i]) / 3); x.fillStyle = g[i] >= 0 ? 'rgba(158,255,90,' + (0.22 + v * 0.78) + ')' : 'rgba(255,45,149,' + (0.22 + v * 0.78) + ')'; x.fillRect(i * bw, 0, Math.max(0.7, bw - 0.25), h); }
+        }
+
+        /* ---- headless race: run one genome on a seed's track, return finish time or laps reached ---- */
+        function evalOnTrack(genome, seed) {
+            genTrack(seed >>> 0);                          // sets cl/total/inner/outer for this track (restored by caller)
+            const car = newCar(genome, 0);
+            for (let t = 0; t < MAXTICK; t++) {
+                sense(car); const o = forward(car.g, inputsOf(car), false), steer = o[0], thr = o[1];
+                car.sp += thr * 360 * DT; car.sp -= car.sp * 0.7 * DT; if (car.sp < -80) car.sp = -80;
+                car.a += steer * 2.8 * Math.min(1, Math.abs(car.sp) / 50) * DT * (car.sp < 0 ? -1 : 1);
+                car.x += Math.cos(car.a) * car.sp * DT; car.y += Math.sin(car.a) * car.sp * DT;
+                const pr = project(car.x, car.y, car.idx); car.idx = pr.idx;
+                let draw = pr.raw - car.lastRaw; if (draw < -total / 2) car.lap++; else if (draw > total / 2) car.lap--; car.lastRaw = pr.raw;
+                car.prog = car.lap * total + pr.raw;
+                if (car.lap >= RACE_LAPS) return { fin: true, time: (t + 1) * DT, laps: RACE_LAPS };
+                if (Math.abs(pr.lat) > HW - 4) return { fin: false, laps: Math.max(0, car.prog / total) };
+                if (car.prog > car.best + 1) { car.best = car.prog; car.stag = 0; } else { car.stag++; if (car.stag > 150) return { fin: false, laps: Math.max(0, car.prog / total) }; }
+            }
+            return { fin: false, laps: Math.max(0, car.prog / total) };
+        }
+        function computeMatrix() {
+            const models = loadModels();
+            const seen = new Map(), cols = [];
+            for (const m of models) { const s = m.s >>> 0; if (!seen.has(s)) { seen.set(s, cols.length); cols.push({ seed: s, label: seedLabel(s), owners: 1 }); } else cols[seen.get(s)].owners++; }
+            const liveSeed = trackSeed;                     // remember the live track to restore afterwards
+            const rows = models.map(m => { const g = b64f32(m.w); return { m, cells: cols.map(c => evalOnTrack(g, c.seed)) }; });
+            genTrack(liveSeed >>> 0);                        // deterministic regen — live cars/gen untouched
+            return { cols, rows };
+        }
+        function renderMatrix() {
+            const mx = $('gMatrix'), models = loadModels();
+            if (models.length < 1) { mx.innerHTML = '<div class="gmxempty">No saved drivers yet — save a few, then compare them across tracks.</div>'; return; }
+            const { cols, rows } = computeMatrix();
+            // find the winner (per column) to highlight
+            const bestIdx = cols.map((c, ci) => { let bi = -1, bt = Infinity, bl = -1; rows.forEach((r, ri) => { const cell = r.cells[ci]; if (cell.fin) { if (cell.time < bt) { bt = cell.time; bi = ri; } } else if (bt === Infinity && cell.laps > bl) { bl = cell.laps; bi = ri; } }); return bi; });
+            let html = '<table class="gtable"><thead><tr><th class="name">Driver \\ Track</th>';
+            cols.forEach(c => html += '<th>' + c.label + '<small>' + c.owners + ' here</small></th>');
+            html += '</tr></thead><tbody>';
+            rows.forEach((r, ri) => {
+                html += '<tr><td class="name" title="' + esc(r.m.name) + '">' + esc(r.m.name) + '</td>';
+                r.cells.forEach((cell, ci) => {
+                    const home = (r.m.s >>> 0) === cols[ci].seed, best = bestIdx[ci] === ri;
+                    const cls = [cell.fin ? '' : 'dnf', best ? 'best' : '', home ? 'home' : ''].filter(Boolean).join(' ');
+                    const txt = cell.fin ? cell.time.toFixed(2) + 's' : (cell.laps >= 0.05 ? cell.laps.toFixed(1) + 'L' : '—');
+                    html += '<td class="' + cls + '">' + txt + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            mx.innerHTML = html;
+        }
 
         /* ---------------- state + loop ---------------- */
         let running = true, simX = 1, tick = 0, showSensors = true, showAll = true, watch = false, turbo = false, meanFit = 0;
@@ -575,12 +730,17 @@
         }
         function hud(leader) {
             $('hGen').textContent = watch ? '★' : gen;
-            $('hTarget').textContent = RACE_LAPS + ' laps';
+            $('hTarget').textContent = RACE_LAPS + '-lap race';
             $('hAlive').textContent = cars.filter(c => c.alive).length;
-            $('hBest').textContent = bestEver <= 0 ? '—' : fitToLabel(bestEver);
-            $('hBestGen').textContent = bestEver <= 0 ? '—' : (bestGen > 0 ? bestGen : 'loaded');
+            const bl = bestEver > 0 ? fitToLabel(bestEver) : '—';
+            $('hBest').textContent = bl;
+            $('hBestLbl').textContent = bestEver <= 0 ? 'Best result' : (bl.endsWith('s') ? 'Fastest race' : 'Best so far');
+            $('hBestGen').textContent = bestEver <= 0 ? 'no record' : (bestGen > 0 ? 'gen ' + bestGen : 'loaded');
             $('hCur').textContent = curBest <= 0 ? '—' : fitToLabel(curBest);
-            $('hLap').textContent = (leader ? Math.max(0, leader.lap) : 0) + ' / ' + RACE_LAPS;
+            const lap = leader ? Math.max(0, Math.min(RACE_LAPS, leader.lap)) : 0;
+            $('hLap').textContent = lap + '/' + RACE_LAPS;
+            const dots = $('hDots'); if (dots.childElementCount !== RACE_LAPS) { dots.innerHTML = Array.from({ length: RACE_LAPS }, () => '<span></span>').join(''); }
+            for (let i = 0; i < dots.children.length; i++) dots.children[i].classList.toggle('on', i < lap);
         }
 
         let last = performance.now();
@@ -639,12 +799,30 @@
         function renderGarage() {
             $('gCur').innerHTML = champion ? ('Current driver — best <b>' + (bestEver > 0 ? fitToLabel(bestEver) : 'untested') + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
             $('gSave').disabled = !champion; $('gShareCur').disabled = !champion;
-            const list = loadModels();
-            $('gList').innerHTML = !list.length ? '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>' :
-                list.map(m => '<div class="grow" data-id="' + m.id + '"><div class="ginfo"><span class="gnm">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span><span class="gmeta">' + ((+m.b) >= RACE_LAPS ? '✓ finishes the race' : 'best ' + (+m.b).toFixed(2) + ' laps') + ' · gen ' + m.g + '</span></div><div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div></div>').join('');
+            const list = loadModels(), grid = $('gGrid');
+            if (!list.length) { grid.innerHTML = '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>'; return; }
+            grid.innerHTML = list.map(m => {
+                const meta = ((+m.b) >= RACE_LAPS ? '✓ finishes' : 'best ' + (+m.b).toFixed(2) + ' laps') + ' · gen ' + m.g;
+                return '<div class="gcard" data-id="' + m.id + '">' +
+                    '<canvas class="gthumb"></canvas>' +
+                    '<div class="gchead"><span class="gnm" title="' + esc(m.name) + '">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span></div>' +
+                    '<canvas class="gdna" title="genome — every weight"></canvas>' +
+                    '<div class="gmeta">' + meta + ' · track ' + seedLabel(m.s) + '</div>' +
+                    '<div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div>' +
+                    '</div>';
+            }).join('');
+            requestAnimationFrame(() => list.forEach(m => { const c = grid.querySelector('.gcard[data-id="' + m.id + '"]'); if (!c) return; drawThumb(c.querySelector('.gthumb'), m.s); drawDNA(c.querySelector('.gdna'), m.w); }));
         }
-        function openGarage() { $('gName').value = ''; $('gPaste').value = ''; gNote.textContent = ''; gNote.className = 'mnote'; renderGarage(); garage.classList.add('show'); }
+        function showGarageTab(which) {
+            const grid = which === 'grid';
+            $('gtabGrid').classList.toggle('on', grid); $('gtabCmp').classList.toggle('on', !grid);
+            $('gpGrid').style.display = grid ? '' : 'none'; $('gpCmp').style.display = grid ? 'none' : '';
+            if (!grid) { $('gMatrix').innerHTML = '<div class="gmxempty">Racing every driver on every track…</div>'; setTimeout(renderMatrix, 30); }
+        }
+        function openGarage() { $('gName').value = ''; $('gPaste').value = ''; gNote.textContent = ''; gNote.className = 'mnote'; showGarageTab('grid'); renderGarage(); garage.classList.add('show'); }
         $('garageBtn').onclick = openGarage;
+        $('gtabGrid').onclick = () => showGarageTab('grid');
+        $('gtabCmp').onclick = () => showGarageTab('cmp');
         $('gClose').onclick = () => garage.classList.remove('show');
         garage.onclick = e => { if (e.target === garage) garage.classList.remove('show'); };
         $('gSave').onclick = () => { try { const m = saveCurrent($('gName').value); $('gName').value = ''; renderGarage(); toast('Saved “' + m.name + '” to your garage.'); } catch (e) { gNote.textContent = e.message; gNote.className = 'mnote err'; } };
@@ -655,9 +833,9 @@
             garage.classList.remove('show'); showShareLink(shareURL(nm), '“' + nm + '”');
         };
         $('gImport').onclick = () => { try { const m = importToLibrary($('gPaste').value, true); garage.classList.remove('show'); toast('Imported “' + m.name + '” — now training from it. Tap ★ to watch.'); } catch (e) { gNote.textContent = e.message || String(e); gNote.className = 'mnote err'; } };
-        $('gList').onclick = e => {
+        $('gGrid').onclick = e => {
             const btn = e.target.closest('button[data-act]'); if (!btn) return;
-            const row = e.target.closest('.grow'), id = row && row.dataset.id, m = loadModels().find(x => x.id === id); if (!m) return;
+            const row = e.target.closest('.gcard'), id = row && row.dataset.id, m = loadModels().find(x => x.id === id); if (!m) return;
             const act = btn.dataset.act;
             if (act === 'use') { useModel(m); garage.classList.remove('show'); toast('Loaded “' + m.name + '” — training from it. Tap ★ Watch best.'); }
             else if (act === 'share') { garage.classList.remove('show'); showShareLink(urlFromModel(m), '“' + m.name + '”'); }
