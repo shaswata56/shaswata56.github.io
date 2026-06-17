@@ -98,6 +98,46 @@
             .seg button[data-s="16"], .seg button[data-s="32"] { display: none; }   /* keep one row */
             .ico .il { display: none; }
         }
+        /* share / load model modal */
+        .modal { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: rgba(2,6,3,.74); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 20px; }
+        .modal.show { display: flex; }
+        .mcard { width: min(470px, 94vw); background: rgba(9,18,11,.97); border: 1px solid var(--border); border-radius: 18px; padding: 20px 20px 18px; box-shadow: 0 24px 80px rgba(0,0,0,.6); }
+        .mtitle { font-weight: 800; letter-spacing: .6px; font-size: 17px; margin-bottom: 5px; }
+        .msub { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
+        .msub b { color: var(--acc); }
+        #mcode { width: 100%; height: 92px; resize: none; background: #06100a; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Fira Mono', ui-monospace, monospace; font-size: 11px; line-height: 1.45; padding: 10px; word-break: break-all; outline: none; }
+        #mcode:focus { border-color: var(--acc); }
+        .mrow { display: flex; gap: 10px; margin-top: 14px; }
+        .mbtn { flex: 1; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 10px; padding: 11px; font-weight: 700; font-size: 13px; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+        .mbtn:hover { transform: translateY(-1px); }
+        .mbtn.primary { background: var(--acc); color: #06140a; border-color: var(--acc); }
+        .mnote { font-size: 12px; margin-top: 10px; min-height: 16px; color: var(--muted); }
+        .mnote.ok { color: var(--acc); } .mnote.err { color: var(--mag); }
+        .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(20px); z-index: 40; max-width: 90vw; background: rgba(9,18,11,.97); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; text-align: center; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .mbtn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+        /* garage */
+        .mcard.garage { width: min(520px, 94vw); }
+        .grow-cur { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #06100a; border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; margin-bottom: 14px; }
+        #gCur { flex: 1 1 100%; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; } #gCur b { color: var(--acc); }
+        #gName { flex: 1 1 130px; background: #0a160d; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 12px; outline: none; }
+        #gName:focus { border-color: var(--acc); }
+        .grow-cur .mbtn { flex: 0 0 auto; padding: 8px 13px; font-size: 12px; }
+        .gcap { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin: 4px 0 7px; }
+        .glist { max-height: 36vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .gempty { color: var(--muted); font-size: 12.5px; padding: 16px; text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
+        .grow { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+        .ginfo { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .gnm { font-weight: 700; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+        .gbadge { font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; color: #06140a; }
+        .gbadge.pe { background: var(--acc); } .gbadge.sh { background: var(--acc2); }
+        .gmeta { font-size: 11px; color: var(--muted); font-family: 'Fira Mono', monospace; }
+        .gacts { display: flex; gap: 6px; flex: 0 0 auto; }
+        .gacts button { border: 1px solid var(--border); background: #0a160d; color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+        .gacts button[data-act="use"] { background: var(--acc); color: #06140a; border-color: var(--acc); }
+        .gacts button[data-act="del"] { color: var(--mag); padding: 6px 9px; }
+        #gPaste { width: 100%; height: 54px; resize: none; background: #06100a; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Fira Mono', ui-monospace, monospace; font-size: 11px; padding: 9px; word-break: break-all; outline: none; }
+        #gPaste:focus { border-color: var(--acc); }
     </style>
 </head>
 
@@ -109,6 +149,7 @@
         <div class="actions">
             <button class="btn" id="watchBtn"><span class="bi">★</span><span class="bl">Watch best</span></button>
             <button class="btn" id="trackBtn"><span class="bi">⟳</span><span class="bl">New track</span></button>
+            <button class="btn" id="garageBtn"><span class="bi">🗂</span><span class="bl">Garage</span></button>
             <button class="btn" id="resetBtn"><span class="bi">⊘</span><span class="bl">Reset evolution</span></button>
             <a class="btn" href="arcade.html"><span class="bi">⏻</span><span class="bl">Exit</span></a>
         </div>
@@ -141,6 +182,36 @@
             <button class="ico" id="brainToggle" title="Show/hide network">🧠</button>
         </div>
     </div>
+
+    <div id="modal" class="modal">
+        <div class="mcard">
+            <div class="mtitle" id="mTitle"></div>
+            <div class="msub" id="mSub"></div>
+            <textarea id="mcode" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+            <div class="mrow"><button class="mbtn primary" id="mPrimary"></button><button class="mbtn" id="mClose">Close</button></div>
+            <div class="mnote" id="mNote"></div>
+        </div>
+    </div>
+
+    <div id="garage" class="modal">
+        <div class="mcard garage">
+            <div class="mtitle">Your garage</div>
+            <div class="msub">Save, run, train-from, share and delete your drivers — and ones shared with you.</div>
+            <div class="grow-cur">
+                <div id="gCur"></div>
+                <input id="gName" placeholder="Name this driver" maxlength="28" spellcheck="false">
+                <button class="mbtn primary" id="gSave">Save current</button>
+                <button class="mbtn" id="gShareCur">Share</button>
+            </div>
+            <div class="gcap">Saved drivers</div>
+            <div class="glist" id="gList"></div>
+            <div class="gcap">Load a shared driver</div>
+            <textarea id="gPaste" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="Paste a share link or code (ND1.…)"></textarea>
+            <div class="mrow"><button class="mbtn primary" id="gImport">Import &amp; use</button><button class="mbtn" id="gClose">Close</button></div>
+            <div class="mnote" id="gNote"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
 
     <div id="intro">
         <div class="icard">
@@ -196,11 +267,15 @@
         let cl = [], nrm = [], cum = [], total = 0, inner = [], outer = [], bbox = null;
         let scl = 1, ox = 0, oy = 0;            // world->screen
         function catmull(p0, p1, p2, p3, t) { const t2 = t * t, t3 = t2 * t; return [0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]; }
-        function genTrack() {
-            const K = 12 + (Math.random() * 6 | 0), pts = [];
+        let trackSeed = 0;
+        function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+        function genTrack(seed) {
+            trackSeed = (seed == null) ? (Math.random() * 4294967296) >>> 0 : (seed >>> 0);
+            const R = mulberry32(trackSeed), rr2 = (a, b) => a + R() * (b - a);   // seeded -> same seed = same track (shareable)
+            const K = 12 + (R() * 6 | 0), pts = [];
             // radius woven from several harmonics with random phase -> concave + convex sections = both left & right turns
-            const harm = [[2, rnd(0.12, 0.24)], [3, rnd(0.08, 0.18)], [5, rnd(0.05, 0.12)], [7, rnd(0, 0.07)]], phs = harm.map(() => rnd(0, TAU));
-            for (let i = 0; i < K; i++) { const a = i / K * TAU; let rr = 1; for (let j = 0; j < harm.length; j++) rr += harm[j][1] * Math.sin(harm[j][0] * a + phs[j]); const R = 250 * Math.max(0.45, rr); pts.push([Math.cos(a) * R, Math.sin(a) * R * 0.92]); }
+            const harm = [[2, rr2(0.12, 0.24)], [3, rr2(0.08, 0.18)], [5, rr2(0.05, 0.12)], [7, rr2(0, 0.07)]], phs = harm.map(() => rr2(0, TAU));
+            for (let i = 0; i < K; i++) { const a = i / K * TAU; let rr = 1; for (let j = 0; j < harm.length; j++) rr += harm[j][1] * Math.sin(harm[j][0] * a + phs[j]); const Rr = 250 * Math.max(0.45, rr); pts.push([Math.cos(a) * Rr, Math.sin(a) * Rr * 0.92]); }
             cl = []; for (let i = 0; i < K; i++) { const p0 = pts[(i - 1 + K) % K], p1 = pts[i], p2 = pts[(i + 1) % K], p3 = pts[(i + 2) % K]; const steps = Math.ceil(N_CL / K); for (let s = 0; s < steps; s++) cl.push(catmull(p0, p1, p2, p3, s / steps)); }
             const n = cl.length; nrm = []; cum = []; total = 0; inner = []; outer = [];
             for (let i = 0; i < n; i++) { const a = cl[i], b = cl[(i + 1) % n]; const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; nrm.push([-dy / L, dx / L]); cum.push(total); total += L; }
@@ -283,8 +358,53 @@
         }
 
         /* ---------------- persistence ---------------- */
-        function save() { try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen })); } catch (e) {} }
-        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d && d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; } } catch (e) {} })();
+        function save() { if (!champion) return; try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen, seed: trackSeed })); } catch (e) {} }
+        let savedSeed = null;
+        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d) { if (d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; } if (typeof d.seed === 'number') savedSeed = d.seed >>> 0; } } catch (e) {} })();
+
+        /* ---------------- share a trained model (export / import) ---------------- */
+        const b64e = s => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const b64d = s => atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+        const utf8b64 = s => b64e(unescape(encodeURIComponent(s)));   // UTF-8 safe (names with emoji/accents)
+        const b64utf8 = s => decodeURIComponent(escape(b64d(s)));
+        function f32b64(f32) { const u = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return b64e(s); }
+        function b64f32(str) { const bin = b64d(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Float32Array(u.buffer); }
+        function buildCode(wB64, s, g, bLaps, name) { const p = { v: 1, n: NIN, h: NHID, o: NOUT, s: (s >>> 0), g: g || 1, b: Math.round((bLaps || 0) * 100) / 100, w: wB64 }; const nm = (name || '').trim().slice(0, 40); if (nm) p.nm = nm; return 'ND1.' + utf8b64(JSON.stringify(p)); }
+        function exportCode(name) { return champion ? buildCode(f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver / (total || 1), name) : ''; }
+        function shareURL(name) { const c = exportCode(name); return c ? location.origin + location.pathname + '#m=' + c : ''; }
+        function spawnFrom(seedG) { const gs = []; for (let i = 0; i < ELITE && gs.length < POP; i++) gs.push(seedG.slice()); while (gs.length < POP) gs.push(mutate(seedG.slice(), MUT_RATE, MUT_AMT)); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
+        function parseCode(code) {
+            const m = (code || '').trim().match(/ND1\.([A-Za-z0-9\-_]+)/);
+            if (!m) throw new Error('That doesn’t look like a Neuro Drift model link or code.');
+            let p; try { p = JSON.parse(b64utf8(m[1])); } catch (e) { try { p = JSON.parse(b64d(m[1])); } catch (e2) { throw new Error('The model code looks corrupted or incomplete.'); } }
+            if (p.n !== NIN || p.h !== NHID || p.o !== NOUT) throw new Error('Built for a different network (' + p.n + '\u2192' + p.h + '\u2192' + p.o + ').');
+            const w = b64f32(p.w); if (w.length !== GLEN) throw new Error('The model code has the wrong number of weights.');
+            return { p, w };
+        }
+        // load weights into the live run, on the model's own track, and seed the population from it (train-from)
+        function useWeights(wB64, s, bLaps) {
+            watch = false; $('watchBtn').classList.remove('on');
+            champion = b64f32(wB64); bestLap = 0;
+            genTrack(typeof s === 'number' ? (s >>> 0) : undefined);
+            bestEver = (bLaps || 0) * (total || 1);
+            spawnFrom(champion); tick = 0; save();
+        }
+
+        /* ---- model garage: personal + shared drivers, persisted ---- */
+        const LKEY = 'neurodrift.models';
+        function loadModels() { try { const a = JSON.parse(localStorage.getItem(LKEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+        function saveModels(a) { try { localStorage.setItem(LKEY, JSON.stringify(a)); } catch (e) {} }
+        function codeFromModel(m) { return buildCode(m.w, m.s, m.g, m.b, m.name); }
+        function urlFromModel(m) { return location.origin + location.pathname + '#m=' + codeFromModel(m); }
+        function addModel(name, wB64, s, g, bLaps, origin) {
+            const a = loadModels();
+            const m = { id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: (name || '').trim() || (origin === 'shared' ? 'Shared driver' : 'My driver'), w: wB64, s: (s >>> 0), g: g || 1, b: Math.round((bLaps || 0) * 100) / 100, o: origin || 'personal', t: Date.now() };
+            a.unshift(m); if (a.length > 60) a.length = 60; saveModels(a); return m;
+        }
+        function deleteModel(id) { saveModels(loadModels().filter(m => m.id !== id)); }
+        function saveCurrent(name) { if (!champion) throw new Error('No trained driver yet — evolve a few generations first.'); return addModel(name, f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver / (total || 1), 'personal'); }
+        function useModel(m) { useWeights(m.w, m.s, m.b); }
+        function importToLibrary(code, useNow) { const { p } = parseCode(code); const m = addModel(p.nm || 'Shared driver', p.w, p.s, p.g, p.b, 'shared'); if (useNow) useModel(m); return m; }
 
         /* ---------------- state + loop ---------------- */
         let running = true, simX = 1, tick = 0, showSensors = true, showAll = true, watch = false, turbo = false, meanFit = 0;
@@ -420,14 +540,78 @@
         $('allBtn').onclick = () => { showAll = !showAll; $('allBtn').classList.toggle('on', showAll); };
         const brainPanel = $('brain'); if (innerWidth <= 720) brainPanel.classList.add('min');
         $('brainToggle').onclick = () => { const on = brainPanel.classList.toggle('min'); $('brainToggle').classList.toggle('on', !on); };
-        $('trackBtn').onclick = () => { genTrack(); if (watch) startWatch(); else initPop(); tick = 0; };
+        $('trackBtn').onclick = () => {
+            const keep = cars.map(c => c.g.slice());   // carry the trained drivers onto the new track
+            genTrack();
+            if (watch) startWatch();
+            else if (keep.length >= 2) { spawn(keep); gen = 1; curBest = 0; bestEver = 0; bestLap = 0; sparkHist = []; toast('New track — your trained drivers carried over. Keep evolving!'); }
+            else initPop();
+            tick = 0;
+        };
         $('resetBtn').onclick = () => { stopWatch(); bestEver = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; };
         $('watchBtn').onclick = () => { watch ? stopWatch() : startWatch(); };
         $('enterBtn').onclick = () => { $('intro').classList.add('hide'); setTimeout(() => $('intro').remove(), 650); };
+
+        /* ---- share-link + garage UI ---- */
+        const modal = $('modal'), mNote = $('mNote'), mcode = $('mcode'), garage = $('garage'), gNote = $('gNote');
+        function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
+        function copyText(t) { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t); return new Promise((res, rej) => { try { mcode.focus(); mcode.select(); document.execCommand('copy') ? res() : rej(); } catch (e) { rej(e); } }); }
+        function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+        function showShareLink(url, name) {
+            $('mTitle').textContent = 'Share ' + (name || 'this driver');
+            $('mSub').innerHTML = 'Send this link to any browser, device or person — they can <b>watch</b> it and <b>keep training</b> from it. Its name travels with the link and can’t be changed by whoever receives it.';
+            mcode.value = url; mcode.readOnly = true; $('mPrimary').textContent = 'Copy link'; mNote.textContent = ''; mNote.className = 'mnote';
+            modal.classList.add('show');
+            copyText(url).then(() => { mNote.textContent = 'Link copied to clipboard ✓'; mNote.className = 'mnote ok'; }).catch(() => { mNote.textContent = 'Select the text above to copy it.'; });
+        }
+        $('mPrimary').onclick = () => { copyText(mcode.value).then(() => { mNote.textContent = 'Link copied ✓'; mNote.className = 'mnote ok'; }).catch(() => { mNote.textContent = 'Select the text and copy it.'; mNote.className = 'mnote err'; }); };
+        $('mClose').onclick = () => modal.classList.remove('show');
+        modal.onclick = e => { if (e.target === modal) modal.classList.remove('show'); };
+
+        function renderGarage() {
+            $('gCur').innerHTML = champion ? ('Current driver — best <b>' + (bestEver / (total || 1)).toFixed(2) + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
+            $('gSave').disabled = !champion; $('gShareCur').disabled = !champion;
+            const list = loadModels();
+            $('gList').innerHTML = !list.length ? '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>' :
+                list.map(m => '<div class="grow" data-id="' + m.id + '"><div class="ginfo"><span class="gnm">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span><span class="gmeta">best ' + (+m.b).toFixed(2) + ' · gen ' + m.g + '</span></div><div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div></div>').join('');
+        }
+        function openGarage() { $('gName').value = ''; $('gPaste').value = ''; gNote.textContent = ''; gNote.className = 'mnote'; renderGarage(); garage.classList.add('show'); }
+        $('garageBtn').onclick = openGarage;
+        $('gClose').onclick = () => garage.classList.remove('show');
+        garage.onclick = e => { if (e.target === garage) garage.classList.remove('show'); };
+        $('gSave').onclick = () => { try { const m = saveCurrent($('gName').value); $('gName').value = ''; renderGarage(); toast('Saved “' + m.name + '” to your garage.'); } catch (e) { gNote.textContent = e.message; gNote.className = 'mnote err'; } };
+        $('gShareCur').onclick = () => {
+            if (!champion) { gNote.textContent = 'No trained driver yet.'; gNote.className = 'mnote err'; return; }
+            const nm = $('gName').value.trim();
+            if (!nm) { gNote.textContent = 'Name this driver first — the name travels with the share link and can’t be changed by others.'; gNote.className = 'mnote err'; $('gName').focus(); return; }
+            garage.classList.remove('show'); showShareLink(shareURL(nm), '“' + nm + '”');
+        };
+        $('gImport').onclick = () => { try { const m = importToLibrary($('gPaste').value, true); garage.classList.remove('show'); toast('Imported “' + m.name + '” — now training from it. Tap ★ to watch.'); } catch (e) { gNote.textContent = e.message || String(e); gNote.className = 'mnote err'; } };
+        $('gList').onclick = e => {
+            const btn = e.target.closest('button[data-act]'); if (!btn) return;
+            const row = e.target.closest('.grow'), id = row && row.dataset.id, m = loadModels().find(x => x.id === id); if (!m) return;
+            const act = btn.dataset.act;
+            if (act === 'use') { useModel(m); garage.classList.remove('show'); toast('Loaded “' + m.name + '” — training from it. Tap ★ Watch best.'); }
+            else if (act === 'share') { garage.classList.remove('show'); showShareLink(urlFromModel(m), '“' + m.name + '”'); }
+            else if (act === 'del') { deleteModel(id); renderGarage(); toast('Deleted “' + m.name + '”.'); }
+        };
+        addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); } });
         $('allBtn').classList.add('on');
         $('archTxt').textContent = NIN + '→' + NHID + '→' + NOUT + ' · ' + GLEN + ' weights';
 
-        resize(); genTrack(); initPop(); requestAnimationFrame(frame);
+        resize();
+        if (/ND1\.[A-Za-z0-9\-_]+/.test(location.hash)) {
+            try {
+                importToLibrary(location.hash, true);
+                const p = document.querySelector('#intro .icard p'); if (p) p.innerHTML = 'A <b>shared, pre-trained driver</b> is loaded and saved to your Garage (best fitness <b>' + (bestEver / (total || 1)).toFixed(2) + '</b>). Press Begin to keep evolving it — or use <b>★ Watch best</b> to watch it drive its track.';
+                $('enterBtn').textContent = '▸ Begin from this model';
+                setTimeout(() => toast('Shared model loaded & saved to Garage.'), 250);
+            }
+            catch (e) { genTrack(savedSeed); initPop(); setTimeout(() => toast(e.message || String(e)), 350); }
+            try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        } else if (savedSeed != null) { genTrack(savedSeed); initPop(); }
+        else { genTrack(); initPop(); }
+        requestAnimationFrame(frame);
     })();
     </script>
 </body>
