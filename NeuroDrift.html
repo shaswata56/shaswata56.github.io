@@ -172,15 +172,17 @@
     <div class="ui hud">
         <div class="card">
             <div class="stat-row big"><span>Generation</span><b id="hGen">1</b></div>
-            <div class="stat-row"><span>Alive</span><b id="hAlive">140</b></div>
-            <div class="stat-row"><span>Best ever <i class="unit">laps</i></span><b id="hBest">0</b></div>
+            <div class="stat-row"><span>Race <i class="unit">first to</i></span><b id="hTarget">3 laps</b></div>
+            <div class="stat-row"><span>Racing</span><b id="hAlive">140</b></div>
+            <div class="stat-row"><span>Best time</span><b id="hBest">—</b></div>
             <div class="stat-row tiny"><span>↳ from gen</span><b id="hBestGen">—</b></div>
-            <div class="stat-row"><span>This gen</span><b id="hCur">0</b></div>
-            <div class="stat-row"><span>Laps now</span><b id="hLap">0</b></div>
+            <div class="stat-row"><span>This gen</span><b id="hCur">—</b></div>
+            <div class="stat-row"><span>Leader now <i class="unit">lap</i></span><b id="hLap">0</b></div>
+            <div class="stat-row tiny"><span>↓ faster finish = better driver</span><b></b></div>
             <button class="hudhelp" id="helpBtn">ⓘ What do these numbers mean?</button>
         </div>
         <div class="card">
-            <div class="cap">Best fitness / generation</div>
+            <div class="cap">Best result per generation</div>
             <canvas class="spark" id="spark"></canvas>
         </div>
     </div>
@@ -230,11 +232,12 @@
 
     <div id="help" class="modal">
         <div class="mcard">
-            <div class="mtitle">Reading the numbers</div>
+            <div class="mtitle">How the race works</div>
             <div class="hbody">
-                <p><b>Fitness</b> = how far a car drives, measured in <b>laps</b> of the track (distance travelled ÷ track length). Half a lap = 0.50.</p>
-                <p><b>Best ever</b> = the highest fitness <i>any single car</i> has reached on this track — and <b>from gen</b> shows which generation produced it. That car is your champion (★ Watch best · Share).</p>
-                <p><b>This gen</b> = the best fitness in the current generation only. <b>Laps now</b> = laps completed by the car you're watching.</p>
+                <p>It's a <b>race</b>: every car starts together and the first to finish <b id="hLaps">3</b> full laps wins. There's <b>no speed limit</b> — cars accelerate as hard as they dare.</p>
+                <p><b>Best time</b> = the fastest time (in seconds) any car has ever completed the race on this track — <b>lower is better</b>. <b>from gen</b> is the generation that produced that record holder (★ Watch best · Share).</p>
+                <p>Before any car finishes, scores show as <b>laps completed</b> (more = better). <b>This gen</b> = the best of the current generation; <b>Leader now</b> = laps done by the car you're watching.</p>
+                <p><b>The skill</b>: with no speed cap, flooring it is easy — the hard part is <i>not flying off the track in the corners</i>. The network has to learn when to brake and how to carry speed through bends. Braver, smoother cornering = a faster time.</p>
                 <p class="hnote">A car dies if it leaves the track or stops making progress. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
             </div>
             <div class="mrow"><button class="mbtn primary" id="helpClose">Got it</button></div>
@@ -348,12 +351,14 @@
         }
 
         /* ---------------- cars ---------------- */
-        const POP = 140, ELITE = 6, MUT_RATE = 0.12, MUT_AMT = 0.5, MAXTICK = 2000, DT = 1 / 60;
+        const POP = 140, ELITE = 6, MUT_RATE = 0.12, MUT_AMT = 0.5, MAXTICK = 3000, DT = 1 / 60;
         const IMMIG = 0.12, EXPLORE = 0.20;   // fresh-random + bold-explorer fraction each generation (keeps variety)
-        const SRANGE = 170, MAXSPD = 250;
+        // No artificial speed cap — top speed is limited only by engine vs. drag. The race ends when a car
+        // completes RACE_LAPS; SPDREF is used purely to normalise the speed sensor fed to the network.
+        const SRANGE = 170, SPDREF = 520, RACE_LAPS = 3;
         const COLS = ['#9eff5a', '#7ef0ff', '#ff8ad6', '#ffe06b', '#b18bff'];
         let cars = [], gen = 1, bestEver = 0, bestGen = 0, curBest = 0, bestLap = 0, sparkHist = [], champion = null;
-        function newCar(genome, i) { return { g: genome, x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
+        function newCar(genome, i) { return { g: genome, x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, finished: false, finishTick: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
         function spawn(genomes) { cars = genomes.map((g, i) => newCar(g, i)); }
         function initPop() { const gs = []; for (let i = 0; i < POP; i++) gs.push(randGenome()); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
 
@@ -369,18 +374,22 @@
         function step(car, capture) {
             if (!car.alive) return;
             sense(car); const o = forward(car.g, inputsOf(car), capture), steer = o[0], thr = o[1];
-            car.sp += thr * 360 * DT; car.sp -= car.sp * 0.9 * DT; if (car.sp > MAXSPD) car.sp = MAXSPD; if (car.sp < -60) car.sp = -60;
+            // no top-speed clamp: engine force vs. drag sets a natural terminal speed (~520); braking is up to the brain
+            car.sp += thr * 360 * DT; car.sp -= car.sp * 0.7 * DT; if (car.sp < -80) car.sp = -80;
             car.a += steer * 2.8 * Math.min(1, Math.abs(car.sp) / 50) * DT * (car.sp < 0 ? -1 : 1);
             car.x += Math.cos(car.a) * car.sp * DT; car.y += Math.sin(car.a) * car.sp * DT;
             const pr = project(car.x, car.y, car.idx); car.idx = pr.idx;
             let draw = pr.raw - car.lastRaw; if (draw < -total / 2) car.lap++; else if (draw > total / 2) car.lap--; car.lastRaw = pr.raw;
-            car.prog = car.lap * total + pr.raw; car.fit = car.prog;
+            car.prog = car.lap * total + pr.raw;
+            // race finish: first to RACE_LAPS wins. Fitness = base + time bonus so earlier finishers rank higher.
+            if (!watch && !car.finished && car.lap >= RACE_LAPS) { car.finished = true; car.finishTick = tick; car.fit = RACE_LAPS * total + (MAXTICK - tick); car.alive = false; if (capture) car.trail.push([car.x, car.y]); return; }
+            car.fit = car.prog;
             if (Math.abs(pr.lat) > HW - 4) { car.alive = false; return; }
             if (car.prog > car.best + 1) { car.best = car.prog; car.stag = 0; } else { car.stag++; if (car.stag > 150) car.alive = false; }
             if (capture) { car.trail.push([car.x, car.y]); if (car.trail.length > 26) car.trail.shift(); }
         }
         const _inN = new Float32Array(NIN);
-        function inputsOf(c) { for (let s = 0; s < SENS.length; s++) _inN[s] = c.sens[s]; _inN[SENS.length] = c.sp / MAXSPD; return _inN; }
+        function inputsOf(c) { for (let s = 0; s < SENS.length; s++) _inN[s] = c.sens[s]; _inN[SENS.length] = c.sp / SPDREF; return _inN; }
 
         function evolve() {
             cars.sort((a, b) => b.fit - a.fit);
@@ -543,10 +552,10 @@
             const g = leader.g; let wmax = 0, wsum = 0; for (let i = 0; i < GLEN; i++) { const a = Math.abs(g[i]); if (a > wmax) wmax = a; wsum += a; }
             const fmtA = a => Array.from(a).map(v => (v >= 0 ? '+' : '') + v.toFixed(2)).join(' ');
             $('ndata').innerHTML =
-                `<div class="r"><span>in</span><span class="v">${fmtA(ACT.in)} +${(leader.sp / MAXSPD).toFixed(2)}</span></div>` +
+                `<div class="r"><span>in</span><span class="v">${fmtA(ACT.in)} +${(leader.sp / SPDREF).toFixed(2)}</span></div>` +
                 `<div class="r"><span>hid</span><span class="v">${fmtA(ACT.hid)}</span></div>` +
                 `<div class="r"><span>out</span><span class="v">steer ${ACT.out[0].toFixed(2)} · thr ${ACT.out[1].toFixed(2)}</span></div>` +
-                `<div class="r"><span>fit</span><span class="v">best <b>${(bestEver / total).toFixed(2)}</b> · μ <b>${(meanFit / total).toFixed(2)}</b></span></div>` +
+                `<div class="r"><span>fit</span><span class="v">best <b>${bestEver <= 0 ? '—' : fitToLabel(bestEver)}</b> · μ <b>${(meanFit / (total || 1)).toFixed(2)} laps</b></span></div>` +
                 `<div class="r"><span>|w|</span><span class="v">max ${wmax.toFixed(2)} · μ ${(wsum / GLEN).toFixed(2)}</span></div>`;
         }
         const sp = $('spark'), spx = sp.getContext('2d'); let spW = 0, spH = 0;
@@ -556,13 +565,22 @@
             const mx = Math.max(...sparkHist, 1); spx.strokeStyle = '#9eff5a'; spx.lineWidth = 2; spx.shadowColor = '#9eff5a'; spx.shadowBlur = 6; spx.beginPath();
             sparkHist.forEach((v, i) => { const x = i / (sparkHist.length - 1) * spW, y = spH - 4 - (v / mx) * (spH - 8); i ? spx.lineTo(x, y) : spx.moveTo(x, y); }); spx.stroke(); spx.shadowBlur = 0;
         }
+        // a finisher's fitness encodes its race time; everyone else is still measured in laps driven
+        function fitToLabel(fitVal) {
+            if (total > 0 && fitVal >= RACE_LAPS * total) {
+                const ticks = MAXTICK - (fitVal - RACE_LAPS * total);
+                if (ticks > 0 && ticks <= MAXTICK) return (ticks * DT).toFixed(2) + 's';
+            }
+            return (fitVal / (total || 1)).toFixed(2) + ' laps';
+        }
         function hud(leader) {
             $('hGen').textContent = watch ? '★' : gen;
+            $('hTarget').textContent = RACE_LAPS + ' laps';
             $('hAlive').textContent = cars.filter(c => c.alive).length;
-            $('hBest').textContent = (bestEver / total).toFixed(2);
+            $('hBest').textContent = bestEver <= 0 ? '—' : fitToLabel(bestEver);
             $('hBestGen').textContent = bestEver <= 0 ? '—' : (bestGen > 0 ? bestGen : 'loaded');
-            $('hCur').textContent = (curBest / total).toFixed(2);
-            $('hLap').textContent = leader ? Math.max(0, leader.lap) : 0;
+            $('hCur').textContent = curBest <= 0 ? '—' : fitToLabel(curBest);
+            $('hLap').textContent = (leader ? Math.max(0, leader.lap) : 0) + ' / ' + RACE_LAPS;
         }
 
         let last = performance.now();
@@ -619,11 +637,11 @@
         modal.onclick = e => { if (e.target === modal) modal.classList.remove('show'); };
 
         function renderGarage() {
-            $('gCur').innerHTML = champion ? ('Current driver — best <b>' + (bestEver / (total || 1)).toFixed(2) + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
+            $('gCur').innerHTML = champion ? ('Current driver — best <b>' + (bestEver > 0 ? fitToLabel(bestEver) : 'untested') + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
             $('gSave').disabled = !champion; $('gShareCur').disabled = !champion;
             const list = loadModels();
             $('gList').innerHTML = !list.length ? '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>' :
-                list.map(m => '<div class="grow" data-id="' + m.id + '"><div class="ginfo"><span class="gnm">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span><span class="gmeta">best ' + (+m.b).toFixed(2) + ' · gen ' + m.g + '</span></div><div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div></div>').join('');
+                list.map(m => '<div class="grow" data-id="' + m.id + '"><div class="ginfo"><span class="gnm">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span><span class="gmeta">' + ((+m.b) >= RACE_LAPS ? '✓ finishes the race' : 'best ' + (+m.b).toFixed(2) + ' laps') + ' · gen ' + m.g + '</span></div><div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div></div>').join('');
         }
         function openGarage() { $('gName').value = ''; $('gPaste').value = ''; gNote.textContent = ''; gNote.className = 'mnote'; renderGarage(); garage.classList.add('show'); }
         $('garageBtn').onclick = openGarage;
@@ -646,7 +664,7 @@
             else if (act === 'del') { deleteModel(id); renderGarage(); toast('Deleted “' + m.name + '”.'); }
         };
         const help = $('help');
-        $('helpBtn').onclick = () => help.classList.add('show');
+        $('helpBtn').onclick = () => { $('hLaps').textContent = RACE_LAPS; help.classList.add('show'); };
         $('helpClose').onclick = () => help.classList.remove('show');
         help.onclick = e => { if (e.target === help) help.classList.remove('show'); };
         addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); confirmM.classList.remove('show'); } });
@@ -657,7 +675,7 @@
         if (/ND1\.[A-Za-z0-9\-_]+/.test(location.hash)) {
             try {
                 importToLibrary(location.hash, true);
-                const p = document.querySelector('#intro .icard p'); if (p) p.innerHTML = 'A <b>shared, pre-trained driver</b> is loaded and saved to your Garage (best fitness <b>' + (bestEver / (total || 1)).toFixed(2) + '</b>). Press Begin to keep evolving it — or use <b>★ Watch best</b> to watch it drive its track.';
+                const p = document.querySelector('#intro .icard p'); if (p) p.innerHTML = 'A <b>shared, pre-trained driver</b> is loaded and saved to your Garage (best <b>' + (bestEver > 0 ? fitToLabel(bestEver) : 'untested') + '</b>). Press Begin to keep evolving it — or use <b>★ Watch best</b> to watch it drive its track.';
                 $('enterBtn').textContent = '▸ Begin from this model';
                 setTimeout(() => toast('Shared model loaded & saved to Garage.'), 250);
             }
