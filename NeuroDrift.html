@@ -28,6 +28,16 @@
         .stat-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); letter-spacing: .5px; margin: 4px 0; }
         .stat-row b { color: #fff; font-size: 15px; font-weight: 800; font-family: 'Fira Mono', monospace; }
         .stat-row.big b { color: var(--acc); font-size: 22px; }
+        .stat-row .unit { font-style: normal; font-size: 9px; color: var(--muted); opacity: .7; }
+        .stat-row.tiny { margin: -3px 0 5px; }
+        .stat-row.tiny span { font-size: 9.5px; color: var(--muted); letter-spacing: .3px; }
+        .stat-row.tiny b { font-size: 11px; color: var(--acc2); }
+        .hudhelp { margin-top: 8px; width: 100%; background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 8px; padding: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; cursor: pointer; transition: color .15s, border-color .15s; }
+        .hudhelp:hover { color: var(--acc); border-color: var(--acc); }
+        .hbody { font-size: 12.5px; line-height: 1.55; }
+        .hbody p { margin-bottom: 9px; color: #cfe6c4; }
+        .hbody b { color: var(--acc); } .hbody i { color: var(--acc2); font-style: normal; }
+        .hbody .hnote { color: var(--muted); font-size: 11.5px; }
         .spark { width: 100%; height: 48px; display: block; margin-top: 6px; border-radius: 8px; background: rgba(0,0,0,.25); }
         .cap { font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 6px; }
 
@@ -81,6 +91,8 @@
             .stat-row.big b { font-size: 18px; }
             .spark { height: 36px; }
             .cap { font-size: 8.5px; }
+            .hudhelp { font-size: 9px; padding: 5px; margin-top: 6px; }
+            .stat-row .unit { display: none; }
             /* brain panel: collapsible, tucked above the controls, off by default */
             #brain { width: 150px; right: 12px; bottom: 86px; transition: transform .25s ease, opacity .25s ease; transform-origin: bottom right; }
             #brain.min { transform: scale(.001); opacity: 0; pointer-events: none; }
@@ -159,9 +171,11 @@
         <div class="card">
             <div class="stat-row big"><span>Generation</span><b id="hGen">1</b></div>
             <div class="stat-row"><span>Alive</span><b id="hAlive">140</b></div>
-            <div class="stat-row"><span>Best ever</span><b id="hBest">0</b></div>
+            <div class="stat-row"><span>Best ever <i class="unit">laps</i></span><b id="hBest">0</b></div>
+            <div class="stat-row tiny"><span>↳ from gen</span><b id="hBestGen">—</b></div>
             <div class="stat-row"><span>This gen</span><b id="hCur">0</b></div>
-            <div class="stat-row"><span>Laps</span><b id="hLap">0</b></div>
+            <div class="stat-row"><span>Laps now</span><b id="hLap">0</b></div>
+            <button class="hudhelp" id="helpBtn">ⓘ What do these numbers mean?</button>
         </div>
         <div class="card">
             <div class="cap">Best fitness / generation</div>
@@ -209,6 +223,19 @@
             <textarea id="gPaste" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="Paste a share link or code (ND1.…)"></textarea>
             <div class="mrow"><button class="mbtn primary" id="gImport">Import &amp; use</button><button class="mbtn" id="gClose">Close</button></div>
             <div class="mnote" id="gNote"></div>
+        </div>
+    </div>
+
+    <div id="help" class="modal">
+        <div class="mcard">
+            <div class="mtitle">Reading the numbers</div>
+            <div class="hbody">
+                <p><b>Fitness</b> = how far a car drives, measured in <b>laps</b> of the track (distance travelled ÷ track length). Half a lap = 0.50.</p>
+                <p><b>Best ever</b> = the highest fitness <i>any single car</i> has reached on this track — and <b>from gen</b> shows which generation produced it. That car is your champion (★ Watch best · Share).</p>
+                <p><b>This gen</b> = the best fitness in the current generation only. <b>Laps now</b> = laps completed by the car you're watching.</p>
+                <p class="hnote">A car dies if it leaves the track or stops making progress. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
+            </div>
+            <div class="mrow"><button class="mbtn primary" id="helpClose">Got it</button></div>
         </div>
     </div>
     <div id="toast" class="toast"></div>
@@ -311,10 +338,11 @@
         }
 
         /* ---------------- cars ---------------- */
-        const POP = 140, ELITE = 6, MUT_RATE = 0.09, MUT_AMT = 0.45, MAXTICK = 2000, DT = 1 / 60;
+        const POP = 140, ELITE = 6, MUT_RATE = 0.12, MUT_AMT = 0.5, MAXTICK = 2000, DT = 1 / 60;
+        const IMMIG = 0.12, EXPLORE = 0.20;   // fresh-random + bold-explorer fraction each generation (keeps variety)
         const SRANGE = 170, MAXSPD = 250;
         const COLS = ['#9eff5a', '#7ef0ff', '#ff8ad6', '#ffe06b', '#b18bff'];
-        let cars = [], gen = 1, bestEver = 0, curBest = 0, bestLap = 0, sparkHist = [], champion = null;
+        let cars = [], gen = 1, bestEver = 0, bestGen = 0, curBest = 0, bestLap = 0, sparkHist = [], champion = null;
         function newCar(genome, i) { return { g: genome, x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
         function spawn(genomes) { cars = genomes.map((g, i) => newCar(g, i)); }
         function initPop() { const gs = []; for (let i = 0; i < POP; i++) gs.push(randGenome()); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
@@ -347,20 +375,27 @@
         function evolve() {
             cars.sort((a, b) => b.fit - a.fit);
             meanFit = cars.reduce((s, c) => s + c.fit, 0) / cars.length;
-            const top = cars[0]; if (top.fit > bestEver) { bestEver = top.fit; champion = top.g.slice(); save(); }
+            const top = cars[0]; if (top.fit > bestEver) { bestEver = top.fit; bestGen = gen; champion = top.g.slice(); save(); }
             if (top.lap + (top.prog % total) / total > bestLap) bestLap = Math.max(bestLap, top.lap);
             sparkHist.push(top.fit); if (sparkHist.length > 80) sparkHist.shift();
             const genomes = [];
             for (let i = 0; i < ELITE; i++) genomes.push(cars[i].g.slice());
             const tourn = () => { let b = cars[(Math.random() * POP) | 0]; for (let k = 0; k < 4; k++) { const c = cars[(Math.random() * POP) | 0]; if (c.fit > b.fit) b = c; } return b.g; };
-            while (genomes.length < POP) genomes.push(mutate(crossover(tourn(), tourn()), MUT_RATE, MUT_AMT));
+            // mix fresh random "immigrants" + bold "explorers" off the elites + refined offspring so the
+            // population keeps real behavioural variety instead of collapsing into near-identical clones.
+            while (genomes.length < POP) {
+                const r = Math.random();
+                if (r < IMMIG) genomes.push(randGenome());
+                else if (r < IMMIG + EXPLORE) genomes.push(mutate(cars[(Math.random() * ELITE) | 0].g.slice(), 0.35, 0.9));
+                else genomes.push(mutate(crossover(tourn(), tourn()), MUT_RATE, MUT_AMT));
+            }
             gen++; curBest = 0; spawn(genomes);
         }
 
         /* ---------------- persistence ---------------- */
-        function save() { if (!champion) return; try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen, seed: trackSeed })); } catch (e) {} }
+        function save() { if (!champion) return; try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen, bestGen, seed: trackSeed })); } catch (e) {} }
         let savedSeed = null;
-        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d) { if (d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; } if (typeof d.seed === 'number') savedSeed = d.seed >>> 0; } } catch (e) {} })();
+        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d) { if (d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; bestGen = d.bestGen || 0; } if (typeof d.seed === 'number') savedSeed = d.seed >>> 0; } } catch (e) {} })();
 
         /* ---------------- share a trained model (export / import) ---------------- */
         const b64e = s => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -384,7 +419,7 @@
         // load weights into the live run, on the model's own track, and seed the population from it (train-from)
         function useWeights(wB64, s, bLaps) {
             watch = false; $('watchBtn').classList.remove('on');
-            champion = b64f32(wB64); bestLap = 0;
+            champion = b64f32(wB64); bestLap = 0; bestGen = 0;
             genTrack(typeof s === 'number' ? (s >>> 0) : undefined);
             bestEver = (bLaps || 0) * (total || 1);
             spawnFrom(champion); tick = 0; save();
@@ -515,6 +550,7 @@
             $('hGen').textContent = watch ? '★' : gen;
             $('hAlive').textContent = cars.filter(c => c.alive).length;
             $('hBest').textContent = (bestEver / total).toFixed(2);
+            $('hBestGen').textContent = bestEver <= 0 ? '—' : (bestGen > 0 ? bestGen : 'loaded');
             $('hCur').textContent = (curBest / total).toFixed(2);
             $('hLap').textContent = leader ? Math.max(0, leader.lap) : 0;
         }
@@ -544,11 +580,11 @@
             const keep = cars.map(c => c.g.slice());   // carry the trained drivers onto the new track
             genTrack();
             if (watch) startWatch();
-            else if (keep.length >= 2) { spawn(keep); gen = 1; curBest = 0; bestEver = 0; bestLap = 0; sparkHist = []; toast('New track — your trained drivers carried over. Keep evolving!'); }
+            else if (keep.length >= 2) { spawn(keep); gen = 1; curBest = 0; bestEver = 0; bestGen = 0; bestLap = 0; sparkHist = []; toast('New track — your trained drivers carried over. Keep evolving!'); }
             else initPop();
             tick = 0;
         };
-        $('resetBtn').onclick = () => { stopWatch(); bestEver = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; };
+        $('resetBtn').onclick = () => { stopWatch(); bestEver = 0; bestGen = 0; bestLap = 0; champion = null; try { localStorage.removeItem('neurodrift'); } catch (e) {} initPop(); tick = 0; };
         $('watchBtn').onclick = () => { watch ? stopWatch() : startWatch(); };
         $('enterBtn').onclick = () => { $('intro').classList.add('hide'); setTimeout(() => $('intro').remove(), 650); };
 
@@ -595,7 +631,11 @@
             else if (act === 'share') { garage.classList.remove('show'); showShareLink(urlFromModel(m), '“' + m.name + '”'); }
             else if (act === 'del') { deleteModel(id); renderGarage(); toast('Deleted “' + m.name + '”.'); }
         };
-        addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); } });
+        const help = $('help');
+        $('helpBtn').onclick = () => help.classList.add('show');
+        $('helpClose').onclick = () => help.classList.remove('show');
+        help.onclick = e => { if (e.target === help) help.classList.remove('show'); };
+        addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); } });
         $('allBtn').classList.add('on');
         $('archTxt').textContent = NIN + '→' + NHID + '→' + NOUT + ' · ' + GLEN + ' weights';
 
