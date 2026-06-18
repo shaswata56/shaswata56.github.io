@@ -470,8 +470,8 @@
         }
 
         /* ---------------- cars ---------------- */
-        const POP = 140, ELITE = 6, MUT_RATE = 0.12, MUT_AMT = 0.5, MAXTICK = 3000, DT = 1 / 60;
-        const IMMIG = 0.12, EXPLORE = 0.20;   // fresh-random + bold-explorer fraction each generation (keeps variety)
+        const POP = 140, ELITE = 12, MUT_RATE = 0.08, MUT_AMT = 0.3, MAXTICK = 3000, DT = 1 / 60;
+        const IMMIG = 0.06, EXPLORE = 0.10;   // fresh-random + bold-explorer fraction each generation (keeps variety)
         // No artificial speed cap — top speed is limited only by engine vs. drag. The race ends when a car
         // completes RACE_LAPS; SPDREF is used purely to normalise the speed sensor fed to the network.
         const SRANGE = 170, SPDREF = 520, RACE_LAPS = 3;
