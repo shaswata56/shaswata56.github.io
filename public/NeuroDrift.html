@@ -185,6 +185,9 @@
         .gcard .gnm { max-width: 100%; }
         .gcard .gdna { width: 100%; height: 12px; border-radius: 3px; background: rgba(0,0,0,.3); display: block; }
         .gcard .gmeta { font-size: 10px; line-height: 1.4; }
+        .gcard .gfit { font-family: 'Fira Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: .2px; }
+        .gcard .gfit.ok { color: var(--acc); } .gcard .gfit.no { color: var(--mag); }
+        .gcard .gfit .gfh { font-size: 8.5px; color: var(--muted); font-weight: 400; font-family: 'Inter', sans-serif; }
         .gcard .gacts { margin-top: 1px; }
         .gcard .gacts button { flex: 1; padding: 6px 0; font-size: 11px; }
         /* performance matrix */
@@ -197,10 +200,21 @@
         .gtable thead th small { display: block; font-size: 8px; color: var(--acc2); font-family: inherit; opacity: .8; }
         .gtable td.name, .gtable th.name { position: sticky; left: 0; background: #08130c; text-align: left; color: var(--text); font-weight: 700; z-index: 1; font-family: inherit; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
         .gtable thead th.name { z-index: 3; }
-        .gtable td.best { color: var(--acc); font-weight: 800; background: rgba(158,255,90,.08); }
+        .gtable td.best { color: #eafce4; font-weight: 800; box-shadow: inset 0 0 0 2px rgba(158,255,90,.8); }
         .gtable td.dnf { color: #93b48a; }
-        .gtable td.home { box-shadow: inset 0 0 0 1px rgba(0,229,255,.55); }
+        .gtable td.home { outline: 2px solid rgba(0,229,255,.65); outline-offset: -2px; }
         .gmxempty { color: var(--muted); font-size: 12.5px; padding: 22px; text-align: center; }
+        /* matrix v2: thumbnails, ranking, heat-map */
+        .gtable.gmx2 th.trk { padding: 6px 7px; }
+        .mxthumb { width: 54px; height: 33px; display: block; margin: 0 auto 3px; border-radius: 5px; background: #040a06; border: 1px solid var(--border); }
+        .mxname { font-size: 8.5px; color: var(--muted); letter-spacing: .5px; font-family: 'Inter', sans-serif; }
+        .gtable th.sumh { text-transform: none; font-size: 9px; color: var(--acc2); line-height: 1.3; }
+        .gtable td.sum { font-family: 'Inter', sans-serif; font-size: 10.5px; color: var(--muted); text-align: left; white-space: nowrap; }
+        .gtable td.sum b { color: var(--text); font-family: 'Fira Mono', monospace; }
+        .gtable td.sum.top { color: var(--acc); } .gtable td.sum.top b { color: var(--acc); }
+        .gtable td.name .rk { margin-right: 3px; }
+        .gtable td.dnf .dnfx { color: var(--mag); font-weight: 800; font-size: 10px; display: block; line-height: 1.1; }
+        .gtable td.dnf .dnfl { color: #93b48a; font-size: 8px; display: block; }
         @media (max-width: 540px) {
             .ggrid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; max-height: 46vh; }
             .gcard .gthumb { height: 66px; }
@@ -293,7 +307,7 @@
             </div>
             <div id="gpGrid" class="gpanel"><div class="ggrid" id="gGrid"></div></div>
             <div id="gpCmp" class="gpanel" style="display:none">
-                <div class="gmxnote">Every saved driver raced on every saved track. <b>Lower time wins</b>; <span class="dnf">grey</span> = crashed (shows laps reached). The cyan ring marks each driver's home track.</div>
+                <div class="gmxnote">Every driver raced on every track. <b>Greener &amp; faster = better</b>; <span class="dnf">DNF</span> = crashed. Drivers are ranked 🥇 by how many tracks they finish (then average time) — that's who <b>generalizes</b> best. Cyan ring = home track.</div>
                 <div class="gmxwrap"><div id="gMatrix"></div></div>
             </div>
             <div class="gcap">Load a shared driver</div>
@@ -487,7 +501,8 @@
         /* ---------------- persistence ---------------- */
         function save() { if (!champion) return; try { localStorage.setItem('neurodrift', JSON.stringify({ g: Array.from(champion), best: bestEver, gen, bestGen, seed: trackSeed })); } catch (e) {} }
         let savedSeed = null;
-        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d) { if (d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; bestGen = d.bestGen || 0; } if (typeof d.seed === 'number') savedSeed = d.seed >>> 0; } } catch (e) {} })();
+        // restored champions show as "loaded" (their record came from a previous run; the gen counter restarts at 1)
+        (function load() { try { const d = JSON.parse(localStorage.getItem('neurodrift')); if (d) { if (d.g && d.g.length === GLEN) { champion = Float32Array.from(d.g); bestEver = d.best || 0; bestGen = 0; } if (typeof d.seed === 'number') savedSeed = d.seed >>> 0; } } catch (e) {} })();
 
         /* ---------------- share a trained model (export / import) ---------------- */
         const b64e = s => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -583,36 +598,48 @@
             }
             return { fin: false, laps: Math.max(0, car.prog / total) };
         }
+        // run fn while it's free to mutate the track globals, then deterministically restore the live track
+        function withTracks(fn) { const liveSeed = trackSeed; const out = fn(); genTrack(liveSeed >>> 0); return out; }
+        function evalHome(models) { return withTracks(() => { const map = {}; models.forEach(m => { try { map[m.id] = evalOnTrack(b64f32(m.w), m.s >>> 0); } catch (e) { map[m.id] = null; } }); return map; }); }
         function computeMatrix() {
             const models = loadModels();
             const seen = new Map(), cols = [];
-            for (const m of models) { const s = m.s >>> 0; if (!seen.has(s)) { seen.set(s, cols.length); cols.push({ seed: s, label: seedLabel(s), owners: 1 }); } else cols[seen.get(s)].owners++; }
-            const liveSeed = trackSeed;                     // remember the live track to restore afterwards
-            const rows = models.map(m => { const g = b64f32(m.w); return { m, cells: cols.map(c => evalOnTrack(g, c.seed)) }; });
-            genTrack(liveSeed >>> 0);                        // deterministic regen — live cars/gen untouched
+            for (const m of models) { const s = m.s >>> 0; if (!seen.has(s)) { seen.set(s, cols.length); cols.push({ seed: s, label: seedLabel(s), names: [m.name] }); } else cols[seen.get(s)].names.push(m.name); }
+            const rows = withTracks(() => models.map(m => { const g = b64f32(m.w); return { m, cells: cols.map(c => evalOnTrack(g, c.seed)) }; }));
             return { cols, rows };
         }
         function renderMatrix() {
             const mx = $('gMatrix'), models = loadModels();
             if (models.length < 1) { mx.innerHTML = '<div class="gmxempty">No saved drivers yet — save a few, then compare them across tracks.</div>'; return; }
-            const { cols, rows } = computeMatrix();
-            // find the winner (per column) to highlight
-            const bestIdx = cols.map((c, ci) => { let bi = -1, bt = Infinity, bl = -1; rows.forEach((r, ri) => { const cell = r.cells[ci]; if (cell.fin) { if (cell.time < bt) { bt = cell.time; bi = ri; } } else if (bt === Infinity && cell.laps > bl) { bl = cell.laps; bi = ri; } }); return bi; });
-            let html = '<table class="gtable"><thead><tr><th class="name">Driver \\ Track</th>';
-            cols.forEach(c => html += '<th>' + c.label + '<small>' + c.owners + ' here</small></th>');
-            html += '</tr></thead><tbody>';
-            rows.forEach((r, ri) => {
-                html += '<tr><td class="name" title="' + esc(r.m.name) + '">' + esc(r.m.name) + '</td>';
+            const { cols, rows } = computeMatrix(), M = cols.length;
+            // per-column fastest / slowest finish (drives the heat-map shading + winner)
+            const colBest = cols.map((c, ci) => { let b = Infinity; rows.forEach(r => { const cell = r.cells[ci]; if (cell.fin && cell.time < b) b = cell.time; }); return b; });
+            const colWorst = cols.map((c, ci) => { let w = 0; rows.forEach(r => { const cell = r.cells[ci]; if (cell.fin && cell.time > w) w = cell.time; }); return w; });
+            // generalization: how many tracks each driver actually finishes, and how fast on average
+            rows.forEach(r => { const f = r.cells.filter(c => c.fin); r.fins = f.length; r.avg = f.length ? f.reduce((s, c) => s + c.time, 0) / f.length : Infinity; });
+            const order = rows.map((r, i) => i).sort((a, b) => rows[b].fins - rows[a].fins || rows[a].avg - rows[b].avg);
+            const medal = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
+            let html = '<table class="gtable gmx2"><thead><tr><th class="name">Driver</th>';
+            cols.forEach((c, ci) => html += '<th class="trk"><canvas class="mxthumb" data-seed="' + c.seed + '"></canvas><div class="mxname">Track ' + (ci + 1) + '</div></th>');
+            html += '<th class="sumh">Across all<br>' + M + ' tracks</th></tr></thead><tbody>';
+            order.forEach((ri, rank) => {
+                const r = rows[ri];
+                html += '<tr><td class="name" title="' + esc(r.m.name) + '"><span class="rk">' + medal(rank) + '</span> ' + esc(r.m.name) + '</td>';
                 r.cells.forEach((cell, ci) => {
-                    const home = (r.m.s >>> 0) === cols[ci].seed, best = bestIdx[ci] === ri;
-                    const cls = [cell.fin ? '' : 'dnf', best ? 'best' : '', home ? 'home' : ''].filter(Boolean).join(' ');
-                    const txt = cell.fin ? cell.time.toFixed(2) + 's' : (cell.laps >= 0.05 ? cell.laps.toFixed(1) + 'L' : '—');
-                    html += '<td class="' + cls + '">' + txt + '</td>';
+                    const home = (r.m.s >>> 0) === cols[ci].seed; let style = '', txt, cls = [];
+                    if (cell.fin) {
+                        const lo = colBest[ci], hi = colWorst[ci], tn = hi > lo ? (hi - cell.time) / (hi - lo) : 1;
+                        style = 'background:rgba(158,255,90,' + (0.12 + 0.5 * tn).toFixed(3) + ')';
+                        txt = cell.time.toFixed(2) + 's'; if (Math.abs(cell.time - lo) < 1e-6) cls.push('best');
+                    } else { cls.push('dnf'); txt = '<span class="dnfx">DNF</span><span class="dnfl">' + cell.laps.toFixed(1) + ' laps</span>'; }
+                    if (home) cls.push('home');
+                    html += '<td class="' + cls.join(' ') + '"' + (style ? ' style="' + style + '"' : '') + '>' + txt + '</td>';
                 });
-                html += '</tr>';
+                html += '<td class="sum' + (rank === 0 ? ' top' : '') + '"><b>' + r.fins + '/' + M + '</b> finished' + (r.fins ? ' · avg <b>' + r.avg.toFixed(1) + 's</b>' : '') + '</td></tr>';
             });
             html += '</tbody></table>';
             mx.innerHTML = html;
+            requestAnimationFrame(() => mx.querySelectorAll('.mxthumb').forEach(cv => drawThumb(cv, +cv.dataset.seed)));
         }
 
         /* ---------------- state + loop ---------------- */
@@ -716,7 +743,11 @@
         const sp = $('spark'), spx = sp.getContext('2d'); let spW = 0, spH = 0;
         function drawSpark() {
             if (sp.width !== sp.clientWidth * DPR) { sp.width = sp.clientWidth * DPR; sp.height = sp.clientHeight * DPR; spx.setTransform(DPR, 0, 0, DPR, 0, 0); spW = sp.clientWidth; spH = sp.clientHeight; }
-            spx.clearRect(0, 0, spW, spH); if (sparkHist.length < 2) return;
+            spx.clearRect(0, 0, spW, spH);
+            if (sparkHist.length < 2) {   // placeholder so the panel doesn't look broken before any history exists
+                spx.fillStyle = 'rgba(147,180,138,.55)'; spx.font = '600 10px Inter, sans-serif'; spx.textAlign = 'center'; spx.textBaseline = 'middle';
+                spx.fillText('Evolving — the curve grows each generation', spW / 2, spH / 2); spx.textAlign = 'left'; return;
+            }
             const mx = Math.max(...sparkHist, 1); spx.strokeStyle = '#9eff5a'; spx.lineWidth = 2; spx.shadowColor = '#9eff5a'; spx.shadowBlur = 6; spx.beginPath();
             sparkHist.forEach((v, i) => { const x = i / (sparkHist.length - 1) * spW, y = spH - 4 - (v / mx) * (spH - 8); i ? spx.lineTo(x, y) : spx.moveTo(x, y); }); spx.stroke(); spx.shadowBlur = 0;
         }
@@ -801,13 +832,15 @@
             $('gSave').disabled = !champion; $('gShareCur').disabled = !champion;
             const list = loadModels(), grid = $('gGrid');
             if (!list.length) { grid.innerHTML = '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>'; return; }
+            const home = evalHome(list);   // authoritative fitness on each driver's own track
             grid.innerHTML = list.map(m => {
-                const meta = ((+m.b) >= RACE_LAPS ? '✓ finishes' : 'best ' + (+m.b).toFixed(2) + ' laps') + ' · gen ' + m.g;
+                const r = home[m.id], fit = r ? (r.fin ? '🏁 ' + r.time.toFixed(2) + 's' : '✗ crashes · ' + r.laps.toFixed(1) + ' laps') : '—';
                 return '<div class="gcard" data-id="' + m.id + '">' +
                     '<canvas class="gthumb"></canvas>' +
                     '<div class="gchead"><span class="gnm" title="' + esc(m.name) + '">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span></div>' +
                     '<canvas class="gdna" title="genome — every weight"></canvas>' +
-                    '<div class="gmeta">' + meta + ' · track ' + seedLabel(m.s) + '</div>' +
+                    '<div class="gfit ' + (r && r.fin ? 'ok' : 'no') + '">' + fit + ' <span class="gfh">on home track</span></div>' +
+                    '<div class="gmeta">gen ' + m.g + ' · track ' + seedLabel(m.s) + '</div>' +
                     '<div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div>' +
                     '</div>';
             }).join('');
