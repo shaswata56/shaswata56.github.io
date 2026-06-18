@@ -275,8 +275,8 @@
                 <span class="v" id="hLap">0/3</span>
             </div>
             <div class="hmini">
-                <div><i>Racing</i><b id="hAlive">140</b></div>
-                <div><i>This gen</i><b id="hCur">—</b></div>
+                <div><i id="hAliveLbl">Racing</i><b id="hAlive">140</b></div>
+                <div><i id="hCurLbl">This gen</i><b id="hCur">—</b></div>
             </div>
             <button class="hudhelp" id="helpBtn">ⓘ What do these numbers mean?</button>
         </div>
@@ -286,7 +286,7 @@
         </div>
     </div>
 
-    <div id="brain"><div class="brain-cap">Leader net · <span id="archTxt"></span></div><canvas id="brainc"></canvas><canvas id="gene" title="genome — every weight"></canvas><div id="ndata" class="mono"></div></div>
+    <div id="brain"><div class="brain-cap"><span id="brainWho">Recurrent neural net</span> · <span id="archTxt"></span></div><canvas id="brainc"></canvas><canvas id="gene" title="genome — every weight"></canvas><div id="ndata" class="mono"></div></div>
 
     <div class="ui controls">
         <div class="controls-inner">
@@ -344,10 +344,11 @@
             <div class="mtitle">How the race works</div>
             <div class="hbody">
                 <p>It's a <b>race</b>: every car starts together and the first to finish <b id="hLaps">3</b> full laps wins. There's <b>no speed limit</b> — cars accelerate as hard as they dare.</p>
-                <p><b>Best time</b> = the fastest time (in seconds) any car has ever completed the race on this track — <b>lower is better</b>. <b>from gen</b> is the generation that produced that record holder (★ Watch best · Share).</p>
-                <p>Before any car finishes, scores show as <b>laps completed</b> (more = better). <b>This gen</b> = the best of the current generation; <b>Leader now</b> = laps done by the car you're watching.</p>
-                <p><b>The skill</b>: with no speed cap, flooring it is easy — the hard part is <i>not flying off the track in the corners</i>. The network has to learn when to brake and how to carry speed through bends. Braver, smoother cornering = a faster time.</p>
-                <p class="hnote">A car dies if it leaves the track or stops making progress. The generation ends as soon as the leader finishes the race (the rest are ranked by how far they got) — so training speeds up once a winner emerges. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
+                <p><b>The track changes every generation</b>, so a driver can't just memorise one circuit — it has to learn to drive <i>any</i> track. That's what lets a driver you train work when you share it to another device.</p>
+                <p><b>Generalist</b> = how the all-time best driver does on a fixed set of <i>benchmark</i> tracks it never trained on — <b>higher is better</b>. While it's still learning to finish, this shows <b>average laps</b> (out of 3). Once it finishes every benchmark track, laps would just sit at 3, so it switches to a <b>0–100 performance score</b> based on how <i>fast</i> it finishes them — that keeps climbing as the driver gets quicker. <b>from gen</b> is the generation that produced that record holder (★ Watch best · Share). This is the driver that gets saved and shared, so what you share is your best <i>all-round</i> driver, not a one-track fluke.</p>
+                <p><b>This gen</b> = best of the current generation on today's track; <b>Leader now</b> = laps done by the car you're watching.</p>
+                <p><b>The skill</b>: with no speed cap, flooring it is easy — the hard part is <i>not flying off the track in the corners</i>. The network has to learn when to brake and how to carry speed through bends on tracks it has never seen.</p>
+                <p class="hnote">A car dies if it leaves the track or stops making progress. The generation ends as soon as the leader finishes the race (the rest are ranked by how far they got) — so training speeds up once a winner emerges. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
             </div>
             <div class="mrow"><button class="mbtn primary" id="helpClose">Got it</button></div>
         </div>
@@ -403,7 +404,7 @@
         const rnd = (a, b) => a + Math.random() * (b - a);
         function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
         function randGenome() { const g = new Float32Array(GLEN); for (let i = 0; i < GLEN; i++) g[i] = rnd(-1, 1); return g; }
-        const ACT = { in: new Float32Array(NIN), hid: new Float32Array(NHID), out: new Float32Array(NOUT) };
+        const ACT = { in: new Float32Array(NIN), hid: new Float32Array(NHID), prev: new Float32Array(NHID), out: new Float32Array(NOUT) };
         const _hid = new Float32Array(NHID), _out = new Float32Array(NOUT);
         // state = the car's previous hidden activations; advanced in place every call
         function forward(g, inp, state) {
@@ -493,7 +494,9 @@
         }
         function step(car, capture) {
             if (!car.alive) return;
-            sense(car); const inp = inputsOf(car), o = forward(car.g, inp, car.h), steer = o[0], thr = o[1];
+            sense(car); const inp = inputsOf(car);
+            if (capture) for (let j = 0; j < NHID; j++) ACT.prev[j] = car.h[j];   // memory carried in from last tick (before forward overwrites it)
+            const o = forward(car.g, inp, car.h), steer = o[0], thr = o[1];
             if (capture) { for (let i = 0; i < NIN; i++) ACT.in[i] = inp[i]; for (let j = 0; j < NHID; j++) ACT.hid[j] = _hid[j]; ACT.out[0] = o[0]; ACT.out[1] = o[1]; }
             // no top-speed clamp: engine force vs. drag sets a natural terminal speed (~520); braking is up to the brain
             car.sp += thr * 360 * DT; car.sp -= car.sp * 0.7 * DT; if (car.sp < -80) car.sp = -80;
@@ -516,7 +519,14 @@
         function evolve() {
             cars.sort((a, b) => b.fit - a.fit);
             meanFit = cars.reduce((s, c) => s + c.fit, 0) / cars.length;
-            const top = cars[0]; if (top.fit > bestEver) { bestEver = top.fit; bestGen = gen; champion = top.g.slice(); save(); }
+            // Tracks rotate every gen, so a single-track score is luck. When the gen's leader can actually finish
+            // today's track, benchmark it across a FIXED set of unseen tracks — true generality — and keep the best
+            // generalist as the champion we save/share. (Gated + throttled so it costs nothing until it matters.)
+            const top = cars[0];
+            if (top.fit >= RACE_LAPS && gen % 3 === 0) {
+                const genFit = genEval(top.g);
+                if (genFit > bestEver) { bestEver = genFit; bestGen = gen; champion = top.g.slice(); save(); }
+            }
             if (top.lap + (top.prog % total) / total > bestLap) bestLap = Math.max(bestLap, top.lap);
             sparkHist.push(top.fit); if (sparkHist.length > 80) sparkHist.shift();
             const genomes = [];
@@ -588,7 +598,7 @@
         function useModel(m, target) {
             target = target || 'home';
             const seed = target === 'current' ? (trackSeed >>> 0) : target === 'random' ? ((Math.random() * 4294967296) >>> 0) : (m.s >>> 0);
-            return useWeights(m.w, seed, target === 'home' ? m.b : 0);   // its recorded best only applies on its home track
+            return useWeights(m.w, seed, m.b);   // generalist score is track-independent, so it carries to any track
         }
         function importToLibrary(code, useNow) { const { p } = parseCode(code); const m = addModel(p.nm || 'Shared driver', p.w, p.s, p.g, p.b, 'shared'); if (useNow) useModel(m); return m; }
         const seedLabel = s => '#' + ((s >>> 0).toString(16).toUpperCase().padStart(8, '0')).slice(-4);
@@ -646,6 +656,24 @@
         // run fn while it's free to mutate the track globals, then deterministically restore the live track
         function withTracks(fn) { const liveSeed = trackSeed; const out = fn(); genTrack(liveSeed >>> 0); return out; }
         function evalHome(models) { return withTracks(() => { const map = {}; models.forEach(m => { try { map[m.id] = evalOnTrack(b64f32(m.w), m.s >>> 0); } catch (e) { map[m.id] = null; } }); return map; }); }
+        // Fixed, varied benchmark tracks. A driver's "generality" = average result here, so the champion we keep is the
+        // one that does well on tracks it has NEVER trained on — exactly what must survive being shared to another device.
+        const PROBE = [4099, 90125, 271828, 1618033];
+        function genEval(genome) {
+            return withTracks(() => {
+                let score = 0;
+                for (const s of PROBE) { const r = evalOnTrack(genome, s); score += r.fin ? RACE_LAPS + (MAXTICK - r.time / DT) / MAXTICK : r.laps; }
+                return score / PROBE.length;   // 0..(RACE_LAPS+1); ~RACE_LAPS means it finishes every benchmark track
+            });
+        }
+        // Below RACE_LAPS the driver can't finish every benchmark track yet → show laps (more = better). Once it
+        // finishes them all, "laps" pins at 3 and stops being informative, so switch to a 0–100 performance score
+        // built from the finish-speed margin (score's fractional part), which keeps improving as it gets faster.
+        function genLabel(score) {
+            if (score <= 0) return '—';
+            if (score < RACE_LAPS) return score.toFixed(2) + ' laps';
+            return Math.round(Math.min(1, score - RACE_LAPS) * 100) + ' pts';
+        }
         function computeMatrix() {
             const models = loadModels();
             const seen = new Map(), cols = [];
@@ -742,6 +770,7 @@
             if (showSensors && leader && leader.alive) {
                 ctx.lineWidth = 1; for (let s = 0; s < SENS.length; s++) { const ang = leader.a + SENS[s], dist = leader.sens[s] * SRANGE; ctx.strokeStyle = `rgba(255,255,255,${0.12 + (1 - leader.sens[s]) * 0.5})`; ctx.beginPath(); ctx.moveTo(sx(leader.x), sy(leader.y)); ctx.lineTo(sx(leader.x + Math.cos(ang) * dist), sy(leader.y + Math.sin(ang) * dist)); ctx.stroke(); }
             }
+            $('brainWho').textContent = watch ? 'Best generalist — recurrent net' : 'Live leader — recurrent net';
             drawBrain(leader);
             drawGene(leader);
             telemetry(leader);
@@ -758,16 +787,39 @@
         }
         const IN_LAB = SENS.map((_, i) => 'S' + (i + 1)).concat('spd'), OUT_LAB = ['steer', 'thr'];
         const bc = $('brainc'), bx = bc.getContext('2d'); let bW = 0, bH = 0;
+        // Authentic Elman-RNN view, unrolled across one tick. Four node groups laid out as the math actually runs:
+        //   input x[t] ─┐                         context h[t-1] ─┐
+        //               ├─W1─▶ hidden h[t] ─W2─▶ output            └─WR─▶ hidden h[t]   (every WR[r][j] drawn as a real edge)
+        // The context column holds the previous hidden state (ACT.prev); recurrent edges are the genome's actual WR matrix.
         function drawBrain(leader) {
             if (bc.width !== bc.clientWidth * DPR) { bc.width = bc.clientWidth * DPR; bc.height = bc.clientHeight * DPR; bx.setTransform(DPR, 0, 0, DPR, 0, 0); bW = bc.clientWidth; bH = bc.clientHeight; }
             bx.clearRect(0, 0, bW, bH);
             if (!leader) return;   // activations are captured live in step() for the leader (don't re-run forward — it would advance the recurrent state)
-            const cols = [[ACT.in, NIN], [ACT.hid, NHID], [ACT.out, NOUT]], padL = 30, padR = 40, top = 22;
-            const colX = i => padL + i * (bW - padL - padR) / 2, posY = (k, cnt) => top + k * (bH - top - 12) / Math.max(1, cnt - 1);
-            const wsets = [[W1, NIN, NHID, 0, 1], [W2, NHID, NOUT, 1, 2]];
-            for (const [off, a, b, ca, cb] of wsets) for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) { const w = leader.g[off + i * b + j]; bx.strokeStyle = w >= 0 ? `rgba(158,255,90,${Math.min(.55, Math.abs(w) * .4)})` : `rgba(255,45,149,${Math.min(.55, Math.abs(w) * .4)})`; bx.lineWidth = Math.min(2.2, Math.abs(w)); bx.beginPath(); bx.moveTo(colX(ca), posY(i, a)); bx.lineTo(colX(cb), posY(j, b)); bx.stroke(); }
+            const g = leader.g, padL = 26, padR = 36, top = 20, bot = 14;
+            // X positions: input | hidden | output, with the context (memory) column sitting just left of hidden, lower band.
+            const X_IN = padL, X_HID = padL + (bW - padL - padR) * 0.52, X_OUT = bW - padR, X_CTX = padL + (bW - padL - padR) * 0.2;
+            const yOf = (k, cnt, t = top, b = bH - bot) => t + k * (b - t) / Math.max(1, cnt - 1);
+            const inY = k => yOf(k, NIN), hidY = j => yOf(j, NHID), outY = k => yOf(k, NOUT, bH * 0.34, bH * 0.66);
+            const ctxY = r => yOf(r, NHID, top + 6, bH - bot);   // context nodes parallel the hidden column
+            const edge = (x1, y1, x2, y2, w, posCol, negCol, maxA) => { const a = Math.min(maxA, Math.abs(w) * .4); bx.strokeStyle = (w >= 0 ? posCol : negCol)(a); bx.lineWidth = Math.min(2.2, Math.abs(w)); bx.beginPath(); bx.moveTo(x1, y1); bx.lineTo(x2, y2); bx.stroke(); };
+            const grn = a => `rgba(158,255,90,${a})`, mag = a => `rgba(255,45,149,${a})`, cyP = a => `rgba(90,210,255,${a})`, cyN = a => `rgba(255,150,90,${a})`;
+            // 1) recurrent edges first (behind), drawn faintly from the context column into the hidden column — the real WR matrix
+            for (let r = 0; r < NHID; r++) for (let j = 0; j < NHID; j++) edge(X_CTX, ctxY(r), X_HID, hidY(j), g[WR + r * NHID + j], cyP, cyN, .32);
+            // 2) input→hidden (W1) and 3) hidden→output (W2)
+            for (let i = 0; i < NIN; i++) for (let j = 0; j < NHID; j++) edge(X_IN, inY(i), X_HID, hidY(j), g[W1 + i * NHID + j], grn, mag, .5);
+            for (let j = 0; j < NHID; j++) for (let k = 0; k < NOUT; k++) edge(X_HID, hidY(j), X_OUT, outY(k), g[W2 + j * NOUT + k], grn, mag, .5);
+            // nodes
             bx.font = '7px Fira Mono, monospace'; bx.textBaseline = 'middle';
-            for (let ci = 0; ci < 3; ci++) { const [vals, cnt] = cols[ci]; for (let k = 0; k < cnt; k++) { const val = vals[k], v = Math.abs(val), pos = val >= 0, x = colX(ci), y = posY(k, cnt); bx.fillStyle = pos ? `rgba(158,255,90,${0.3 + v * 0.7})` : `rgba(255,45,149,${0.3 + v * 0.7})`; bx.shadowColor = pos ? '#9eff5a' : '#ff2d95'; bx.shadowBlur = v * 9; bx.beginPath(); bx.arc(x, y, 5, 0, TAU); bx.fill(); bx.shadowBlur = 0; bx.fillStyle = 'rgba(230,255,210,.9)'; if (ci === 0) { bx.textAlign = 'right'; bx.fillText(IN_LAB[k], x - 8, y); } else if (ci === 2) { bx.textAlign = 'left'; bx.fillText(OUT_LAB[k], x + 8, y); } } }
+            const node = (x, y, val, r = 5) => { const v = Math.min(1, Math.abs(val)), pos = val >= 0; bx.fillStyle = pos ? grn(0.3 + v * 0.7) : mag(0.3 + v * 0.7); bx.shadowColor = pos ? '#9eff5a' : '#ff2d95'; bx.shadowBlur = v * 8; bx.beginPath(); bx.arc(x, y, r, 0, TAU); bx.fill(); bx.shadowBlur = 0; };
+            const ctxNode = (x, y, val, r = 3.4) => { const v = Math.min(1, Math.abs(val)), pos = val >= 0; bx.fillStyle = pos ? cyP(0.35 + v * 0.65) : cyN(0.35 + v * 0.65); bx.shadowColor = pos ? '#5ad2ff' : '#ff965a'; bx.shadowBlur = v * 6; bx.beginPath(); bx.arc(x, y, r, 0, TAU); bx.fill(); bx.shadowBlur = 0; };
+            for (let r = 0; r < NHID; r++) ctxNode(X_CTX, ctxY(r), ACT.prev[r]);   // h[t-1] context units (real previous state)
+            for (let i = 0; i < NIN; i++) { node(X_IN, inY(i), ACT.in[i]); bx.fillStyle = 'rgba(230,255,210,.9)'; bx.textAlign = 'right'; bx.fillText(IN_LAB[i], X_IN - 8, inY(i)); }
+            for (let j = 0; j < NHID; j++) node(X_HID, hidY(j), ACT.hid[j]);
+            for (let k = 0; k < NOUT; k++) { node(X_OUT, outY(k), ACT.out[k]); bx.fillStyle = 'rgba(230,255,210,.9)'; bx.textAlign = 'left'; bx.fillText(OUT_LAB[k], X_OUT + 8, outY(k)); }
+            // small honest legend so the cyan column isn't a mystery
+            bx.font = '6px Fira Mono, monospace'; bx.textAlign = 'center'; bx.fillStyle = cyP(.85);
+            bx.fillText('h(t-1)', X_CTX, top - 9);
+            bx.fillStyle = 'rgba(230,255,210,.55)'; bx.fillText('h(t)', X_HID, top - 9);
         }
         const ge = $('gene'), gex = ge.getContext('2d'); let geW = 0;
         function drawGene(leader) {
@@ -782,9 +834,10 @@
             const fmtA = a => Array.from(a).map(v => (v >= 0 ? '+' : '') + v.toFixed(2)).join(' ');
             $('ndata').innerHTML =
                 `<div class="r"><span>in</span><span class="v">${fmtA(ACT.in)} +${(leader.sp / SPDREF).toFixed(2)}</span></div>` +
+                `<div class="r"><span>mem</span><span class="v">${fmtA(ACT.prev)}</span></div>` +
                 `<div class="r"><span>hid</span><span class="v">${fmtA(ACT.hid)}</span></div>` +
                 `<div class="r"><span>out</span><span class="v">steer ${ACT.out[0].toFixed(2)} · thr ${ACT.out[1].toFixed(2)}</span></div>` +
-                `<div class="r"><span>fit</span><span class="v">best <b>${bestEver <= 0 ? '—' : fitToLabel(bestEver)}</b> · μ <b>${meanFit.toFixed(2)} laps</b></span></div>` +
+                `<div class="r"><span>fit</span><span class="v">generalist <b>${bestEver <= 0 ? '—' : genLabel(bestEver)}</b> · μ <b>${meanFit.toFixed(2)} laps</b></span></div>` +
                 `<div class="r"><span>|w|</span><span class="v">max ${wmax.toFixed(2)} · μ ${(wsum / GLEN).toFixed(2)}</span></div>`;
         }
         const sp = $('spark'), spx = sp.getContext('2d'); let spW = 0, spH = 0;
@@ -813,12 +866,18 @@
         function hud(leader) {
             $('hGen').textContent = watch ? '★' : gen;
             $('hTarget').textContent = RACE_LAPS + '-lap race';
-            $('hAlive').textContent = cars.filter(c => c.alive).length;
-            const bl = bestEver > 0 ? fitToLabel(bestEver) : '—';
-            $('hBest').textContent = bl;
-            $('hBestLbl').textContent = bestEver <= 0 ? 'Best result' : (bl.endsWith('s') ? 'Fastest race' : 'Best so far');
+            $('hBest').textContent = bestEver > 0 ? genLabel(bestEver) : '—';
+            $('hBestLbl').textContent = 'Generalist';
             $('hBestGen').textContent = bestEver <= 0 ? 'no record' : (bestGen > 0 ? 'gen ' + bestGen : 'loaded');
-            $('hCur').textContent = curBest <= 0 ? '—' : fitToLabel(curBest);
+            const lapsDriven = leader ? Math.max(0, leader.lap + (leader.prog % total) / (total || 1)) : 0;
+            if (watch) {
+                // watching one champion drive: "Racing/This gen" don't apply — show how far this run has gone instead
+                $('hAliveLbl').textContent = 'Watching'; $('hAlive').textContent = '★ best';
+                $('hCurLbl').textContent = 'Distance'; $('hCur').textContent = lapsDriven.toFixed(2) + ' laps';
+            } else {
+                $('hAliveLbl').textContent = 'Racing'; $('hAlive').textContent = cars.filter(c => c.alive).length;
+                $('hCurLbl').textContent = 'This gen'; $('hCur').textContent = curBest <= 0 ? '—' : fitToLabel(curBest);
+            }
             const lap = leader ? Math.max(0, Math.min(RACE_LAPS, leader.lap)) : 0;
             $('hLap').textContent = lap + '/' + RACE_LAPS;
             const dots = $('hDots'); if (dots.childElementCount !== RACE_LAPS) { dots.innerHTML = Array.from({ length: RACE_LAPS }, () => '<span></span>').join(''); }
@@ -879,7 +938,7 @@
         modal.onclick = e => { if (e.target === modal) modal.classList.remove('show'); };
 
         function renderGarage() {
-            $('gCur').innerHTML = champion ? ('Current driver — best <b>' + (bestEver > 0 ? fitToLabel(bestEver) : 'untested') + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
+            $('gCur').innerHTML = champion ? ('Current driver — generalist <b>' + (bestEver > 0 ? genLabel(bestEver) : 'untested') + '</b> · gen ' + gen) : 'No trained driver yet — evolve a few generations, then Save.';
             $('gSave').disabled = !champion; $('gShareCur').disabled = !champion;
             const list = loadModels(), grid = $('gGrid');
             if (!list.length) { grid.innerHTML = '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>'; return; }
@@ -943,13 +1002,13 @@
         help.onclick = e => { if (e.target === help) help.classList.remove('show'); };
         addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); confirmM.classList.remove('show'); } });
         $('allBtn').classList.add('on');
-        $('archTxt').textContent = NIN + '→' + NHID + '↺→' + NOUT + ' · recurrent · ' + GLEN + ' weights';
+        $('archTxt').textContent = NIN + '→' + NHID + '↺→' + NOUT + ' · ' + GLEN + ' weights';
 
         resize();
         if (/ND1\.[A-Za-z0-9\-_]+/.test(location.hash)) {
             try {
                 importToLibrary(location.hash, true);
-                const p = document.querySelector('#intro .icard p'); if (p) p.innerHTML = 'A <b>shared, pre-trained driver</b> is loaded and saved to your Garage (best <b>' + (bestEver > 0 ? fitToLabel(bestEver) : 'untested') + '</b>). Press Begin to keep evolving it — or use <b>★ Watch best</b> to watch it drive its track.';
+                const p = document.querySelector('#intro .icard p'); if (p) p.innerHTML = 'A <b>shared, pre-trained driver</b> is loaded and saved to your Garage (generalist <b>' + (bestEver > 0 ? genLabel(bestEver) : 'untested') + '</b>). Press Begin to keep evolving it — or use <b>★ Watch best</b> to watch it drive its track.';
                 $('enterBtn').textContent = '▸ Begin from this model';
                 setTimeout(() => toast('Shared model loaded & saved to Garage.'), 250);
             }
