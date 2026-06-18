@@ -111,7 +111,10 @@
             .hbest-head .l { font-size: 8.5px; letter-spacing: 1px; }
             .htag { font-size: 8px; padding: 2px 6px; }
             .hlead, .hmini { margin-top: 10px; }
-            .hmini > div { padding: 6px 8px; }
+            .hmini { gap: 6px; }
+            .hmini > div { padding: 6px 7px; }
+            .hmini i { font-size: 8px; letter-spacing: .6px; margin-bottom: 2px; }
+            .hmini b { font-size: 12px; white-space: normal; line-height: 1.1; word-break: break-word; }
             .spark { height: 34px; }
             .cap { font-size: 8.5px; }
             .hudhelp { font-size: 9px; padding: 6px; margin-top: 10px; }
@@ -177,6 +180,19 @@
         .gtab { flex: 1; background: #06100a; border: 1px solid var(--border); color: var(--muted); border-radius: 10px; padding: 9px; font-weight: 800; font-size: 12px; letter-spacing: .5px; cursor: pointer; transition: background .15s, color .15s; }
         .gtab.on { background: var(--acc); color: #06140a; border-color: var(--acc); }
         .gpanel { margin-bottom: 14px; }
+        /* pick which track a saved driver loads onto */
+        .gtarget { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+        .gtarget > span { font-size: 11.5px; color: var(--muted); }
+        .gtgt { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); padding: 5px 11px; border-radius: 999px; font-size: 11px; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+        .gtgt:hover { color: var(--text); }
+        .gtgt.on { background: rgba(158,255,90,.16); border-color: rgba(158,255,90,.5); color: var(--acc); font-weight: 700; }
+        /* thin, minimal, premium scrollbars inside the garage */
+        .ggrid, .gmxwrap, .glist, .mcard { scrollbar-width: thin; scrollbar-color: rgba(158,255,90,.32) transparent; scroll-behavior: smooth; }
+        .ggrid::-webkit-scrollbar, .gmxwrap::-webkit-scrollbar, .glist::-webkit-scrollbar, .mcard::-webkit-scrollbar { width: 7px; height: 7px; }
+        .ggrid::-webkit-scrollbar-track, .gmxwrap::-webkit-scrollbar-track, .glist::-webkit-scrollbar-track, .mcard::-webkit-scrollbar-track { background: transparent; }
+        .ggrid::-webkit-scrollbar-thumb, .gmxwrap::-webkit-scrollbar-thumb, .glist::-webkit-scrollbar-thumb, .mcard::-webkit-scrollbar-thumb { background: rgba(158,255,90,.26); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+        .ggrid::-webkit-scrollbar-thumb:hover, .gmxwrap::-webkit-scrollbar-thumb:hover, .glist::-webkit-scrollbar-thumb:hover, .mcard::-webkit-scrollbar-thumb:hover { background: rgba(158,255,90,.5); background-clip: padding-box; }
+        .ggrid::-webkit-scrollbar-corner, .gmxwrap::-webkit-scrollbar-corner { background: transparent; }
         /* driver grid */
         .ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(154px, 1fr)); gap: 10px; max-height: 44vh; overflow-y: auto; padding-right: 3px; }
         .gcard { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 9px; display: flex; flex-direction: column; gap: 7px; }
@@ -190,6 +206,9 @@
         .gcard .gfit .gfh { font-size: 8.5px; color: var(--muted); font-weight: 400; font-family: 'Inter', sans-serif; }
         .gcard .gacts { margin-top: 1px; }
         .gcard .gacts button { flex: 1; padding: 6px 0; font-size: 11px; }
+        .gcard.incompat { opacity: .72; }
+        .gcard.incompat .gfit { color: #ffd166; font-size: 11px; }
+        .gcard .gacts button[disabled] { opacity: .4; cursor: not-allowed; }
         /* performance matrix */
         .gmxnote { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 9px; }
         .gmxnote b { color: var(--acc); } .gmxnote .dnf { color: #c9d6c2; }
@@ -305,7 +324,10 @@
                 <button class="gtab on" id="gtabGrid">▦ Drivers</button>
                 <button class="gtab" id="gtabCmp">▦ Compare tracks</button>
             </div>
-            <div id="gpGrid" class="gpanel"><div class="ggrid" id="gGrid"></div></div>
+            <div id="gpGrid" class="gpanel">
+                <div class="gtarget"><span>Use a driver on</span><button class="gtgt on" data-tgt="home">its home track</button><button class="gtgt" data-tgt="current">the current track</button><button class="gtgt" data-tgt="random">a new track</button></div>
+                <div class="ggrid" id="gGrid"></div>
+            </div>
             <div id="gpCmp" class="gpanel" style="display:none">
                 <div class="gmxnote">Every driver raced on every track. <b>Greener &amp; faster = better</b>; <span class="dnf">DNF</span> = crashed. Drivers are ranked 🥇 by how many tracks they finish (then average time) — that's who <b>generalizes</b> best. Cyan ring = home track.</div>
                 <div class="gmxwrap"><div id="gMatrix"></div></div>
@@ -325,7 +347,7 @@
                 <p><b>Best time</b> = the fastest time (in seconds) any car has ever completed the race on this track — <b>lower is better</b>. <b>from gen</b> is the generation that produced that record holder (★ Watch best · Share).</p>
                 <p>Before any car finishes, scores show as <b>laps completed</b> (more = better). <b>This gen</b> = the best of the current generation; <b>Leader now</b> = laps done by the car you're watching.</p>
                 <p><b>The skill</b>: with no speed cap, flooring it is easy — the hard part is <i>not flying off the track in the corners</i>. The network has to learn when to brake and how to carry speed through bends. Braver, smoother cornering = a faster time.</p>
-                <p class="hnote">A car dies if it leaves the track or stops making progress. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
+                <p class="hnote">A car dies if it leaves the track or stops making progress. The generation ends as soon as the leader finishes the race (the rest are ranked by how far they got) — so training speeds up once a winner emerges. New track resets these numbers, but your trained drivers carry over. Each generation also adds fresh-random and bold-mutated cars, so you'll always see variety.</p>
             </div>
             <div class="mrow"><button class="mbtn primary" id="helpClose">Got it</button></div>
         </div>
@@ -370,22 +392,31 @@
         addEventListener('resize', resize);
         if (vv) { vv.addEventListener('resize', resize); vv.addEventListener('scroll', resize); }
 
-        /* ---------------- neural net (flat genome, 6 -> 8 -> 2) ---------------- */
+        /* ---------------- neural net: Elman recurrent (8 -> 12 -> 2, hidden feeds back) ----------------
+           The hidden layer is recurrent: each tick it sees the sensors + speed AND its own previous state.
+           That gives the car short-term memory ("awareness") — it can carry context through a corner and
+           anticipate rather than react purely to the instant. Per-car hidden state lives on car.h. */
         const SENS = [-1.4, -0.85, -0.4, 0, 0.4, 0.85, 1.4];
-        const NIN = SENS.length + 1, NHID = 10, NOUT = 2;
-        const W1 = 0, B1 = NIN * NHID, W2 = B1 + NHID, B2 = W2 + NHID * NOUT, GLEN = B2 + NOUT;
+        const NIN = SENS.length + 1, NHID = 12, NOUT = 2;
+        // genome: input->hidden, hidden->hidden (recurrent), hidden bias, hidden->out, out bias
+        const W1 = 0, WR = W1 + NIN * NHID, B1 = WR + NHID * NHID, W2 = B1 + NHID, B2 = W2 + NHID * NOUT, GLEN = B2 + NOUT;
         const rnd = (a, b) => a + Math.random() * (b - a);
         function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
         function randGenome() { const g = new Float32Array(GLEN); for (let i = 0; i < GLEN; i++) g[i] = rnd(-1, 1); return g; }
         const ACT = { in: new Float32Array(NIN), hid: new Float32Array(NHID), out: new Float32Array(NOUT) };
-        function forward(g, inp, capture) {
-            const hid = capture ? ACT.hid : _hid;
-            for (let j = 0; j < NHID; j++) { let s = g[B1 + j]; for (let i = 0; i < NIN; i++) s += inp[i] * g[W1 + i * NHID + j]; hid[j] = Math.tanh(s); }
-            for (let k = 0; k < NOUT; k++) { let s = g[B2 + k]; for (let j = 0; j < NHID; j++) s += hid[j] * g[W2 + j * NOUT + k]; _out[k] = Math.tanh(s); }
-            if (capture) { for (let i = 0; i < NIN; i++) ACT.in[i] = inp[i]; ACT.out[0] = _out[0]; ACT.out[1] = _out[1]; }
+        const _hid = new Float32Array(NHID), _out = new Float32Array(NOUT);
+        // state = the car's previous hidden activations; advanced in place every call
+        function forward(g, inp, state) {
+            for (let j = 0; j < NHID; j++) {
+                let s = g[B1 + j];
+                for (let i = 0; i < NIN; i++) s += inp[i] * g[W1 + i * NHID + j];
+                for (let r = 0; r < NHID; r++) s += state[r] * g[WR + r * NHID + j];   // recurrent feedback
+                _hid[j] = Math.tanh(s);
+            }
+            for (let k = 0; k < NOUT; k++) { let s = g[B2 + k]; for (let j = 0; j < NHID; j++) s += _hid[j] * g[W2 + j * NOUT + k]; _out[k] = Math.tanh(s); }
+            for (let j = 0; j < NHID; j++) state[j] = _hid[j];   // carry hidden state forward to next tick
             return _out;
         }
-        const _hid = new Float32Array(NHID), _out = new Float32Array(NOUT);
         function crossover(a, b) { const c = new Float32Array(GLEN); for (let i = 0; i < GLEN; i++) c[i] = Math.random() < 0.5 ? a[i] : b[i]; return c; }
         function mutate(g, rate, amt) { for (let i = 0; i < GLEN; i++) if (Math.random() < rate) { g[i] += gauss() * amt; if (g[i] > 3) g[i] = 3; else if (g[i] < -3) g[i] = -3; } return g; }
 
@@ -443,10 +474,12 @@
         // No artificial speed cap — top speed is limited only by engine vs. drag. The race ends when a car
         // completes RACE_LAPS; SPDREF is used purely to normalise the speed sensor fed to the network.
         const SRANGE = 170, SPDREF = 520, RACE_LAPS = 3;
+        // the race is decided when the leader finishes; give trailing cars this many ticks to also cross, then end the gen
+        const FINISH_GRACE = 45;
         const COLS = ['#9eff5a', '#7ef0ff', '#ff8ad6', '#ffe06b', '#b18bff'];
         let cars = [], gen = 1, bestEver = 0, bestGen = 0, curBest = 0, bestLap = 0, sparkHist = [], champion = null;
-        function newCar(genome, i) { return { g: genome, x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, finished: false, finishTick: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
-        function spawn(genomes) { cars = genomes.map((g, i) => newCar(g, i)); }
+        function newCar(genome, i) { return { g: genome, h: new Float32Array(NHID), x: cl[0][0], y: cl[0][1], a: Math.atan2(cl[1][1] - cl[0][1], cl[1][0] - cl[0][0]), sp: 0, alive: true, idx: 0, lap: 0, prog: 0, best: 0, lastRaw: cum[0], stag: 0, fit: 0, finished: false, finishTick: 0, trail: [], col: COLS[i % COLS.length], sens: new Array(SENS.length).fill(0) }; }
+        function spawn(genomes) { cars = genomes.map((g, i) => newCar(g, i)); finishCutAt = -1; }
         function initPop() { const gs = []; for (let i = 0; i < POP; i++) gs.push(randGenome()); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
 
         function sense(car) {
@@ -460,7 +493,8 @@
         }
         function step(car, capture) {
             if (!car.alive) return;
-            sense(car); const o = forward(car.g, inputsOf(car), capture), steer = o[0], thr = o[1];
+            sense(car); const inp = inputsOf(car), o = forward(car.g, inp, car.h), steer = o[0], thr = o[1];
+            if (capture) { for (let i = 0; i < NIN; i++) ACT.in[i] = inp[i]; for (let j = 0; j < NHID; j++) ACT.hid[j] = _hid[j]; ACT.out[0] = o[0]; ACT.out[1] = o[1]; }
             // no top-speed clamp: engine force vs. drag sets a natural terminal speed (~520); braking is up to the brain
             car.sp += thr * 360 * DT; car.sp -= car.sp * 0.7 * DT; if (car.sp < -80) car.sp = -80;
             car.a += steer * 2.8 * Math.min(1, Math.abs(car.sp) / 50) * DT * (car.sp < 0 ? -1 : 1);
@@ -468,9 +502,10 @@
             const pr = project(car.x, car.y, car.idx); car.idx = pr.idx;
             let draw = pr.raw - car.lastRaw; if (draw < -total / 2) car.lap++; else if (draw > total / 2) car.lap--; car.lastRaw = pr.raw;
             car.prog = car.lap * total + pr.raw;
-            // race finish: first to RACE_LAPS wins. Fitness = base + time bonus so earlier finishers rank higher.
-            if (!watch && !car.finished && car.lap >= RACE_LAPS) { car.finished = true; car.finishTick = tick; car.fit = RACE_LAPS * total + (MAXTICK - tick); car.alive = false; if (capture) car.trail.push([car.x, car.y]); return; }
-            car.fit = car.prog;
+            // track-independent fitness (tracks rotate every gen): laps completed, or for finishers a value in
+            // (RACE_LAPS, RACE_LAPS+1] that encodes finish time — so it compares fairly across different tracks.
+            if (!watch && !car.finished && car.lap >= RACE_LAPS) { car.finished = true; car.finishTick = tick; car.fit = RACE_LAPS + (MAXTICK - tick) / MAXTICK; car.alive = false; if (capture) car.trail.push([car.x, car.y]); return; }
+            car.fit = car.prog / (total || 1);
             if (Math.abs(pr.lat) > HW - 4) { car.alive = false; return; }
             if (car.prog > car.best + 1) { car.best = car.prog; car.stag = 0; } else { car.stag++; if (car.stag > 150) car.alive = false; }
             if (capture) { car.trail.push([car.x, car.y]); if (car.trail.length > 26) car.trail.shift(); }
@@ -495,7 +530,7 @@
                 else if (r < IMMIG + EXPLORE) genomes.push(mutate(cars[(Math.random() * ELITE) | 0].g.slice(), 0.35, 0.9));
                 else genomes.push(mutate(crossover(tourn(), tourn()), MUT_RATE, MUT_AMT));
             }
-            gen++; curBest = 0; spawn(genomes);
+            gen++; curBest = 0; genTrack(); spawn(genomes);   // rotate to a fresh track each gen → drivers must generalize, not memorize
         }
 
         /* ---------------- persistence ---------------- */
@@ -511,8 +546,9 @@
         const b64utf8 = s => decodeURIComponent(escape(b64d(s)));
         function f32b64(f32) { const u = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return b64e(s); }
         function b64f32(str) { const bin = b64d(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Float32Array(u.buffer); }
+        function wLen(wB64) { try { return b64f32(wB64).length; } catch (e) { return -1; } }   // genome length of a stored model (for compatibility checks)
         function buildCode(wB64, s, g, bLaps, name) { const p = { v: 1, n: NIN, h: NHID, o: NOUT, s: (s >>> 0), g: g || 1, b: Math.round((bLaps || 0) * 100) / 100, w: wB64 }; const nm = (name || '').trim().slice(0, 40); if (nm) p.nm = nm; return 'ND1.' + utf8b64(JSON.stringify(p)); }
-        function exportCode(name) { return champion ? buildCode(f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver / (total || 1), name) : ''; }
+        function exportCode(name) { return champion ? buildCode(f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver, name) : ''; }
         function shareURL(name) { const c = exportCode(name); return c ? location.origin + location.pathname + '#m=' + c : ''; }
         function spawnFrom(seedG) { const gs = []; for (let i = 0; i < ELITE && gs.length < POP; i++) gs.push(seedG.slice()); while (gs.length < POP) gs.push(mutate(seedG.slice(), MUT_RATE, MUT_AMT)); spawn(gs); gen = 1; curBest = 0; sparkHist = []; }
         function parseCode(code) {
@@ -525,11 +561,14 @@
         }
         // load weights into the live run, on the model's own track, and seed the population from it (train-from)
         function useWeights(wB64, s, bLaps) {
+            const w = b64f32(wB64);
+            if (w.length !== GLEN) { toast('That driver was built on an older network and can’t run in this version.'); return false; }
             watch = false; $('watchBtn').classList.remove('on');
-            champion = b64f32(wB64); bestLap = 0; bestGen = 0;
+            champion = w; bestLap = 0; bestGen = 0;
             genTrack(typeof s === 'number' ? (s >>> 0) : undefined);
-            bestEver = (bLaps || 0) * (total || 1);
+            bestEver = bLaps || 0;
             spawnFrom(champion); tick = 0; save();
+            return true;
         }
 
         /* ---- model garage: personal + shared drivers, persisted ---- */
@@ -544,8 +583,13 @@
             a.unshift(m); if (a.length > 60) a.length = 60; saveModels(a); return m;
         }
         function deleteModel(id) { saveModels(loadModels().filter(m => m.id !== id)); }
-        function saveCurrent(name) { if (!champion) throw new Error('No trained driver yet — evolve a few generations first.'); return addModel(name, f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver / (total || 1), 'personal'); }
-        function useModel(m) { useWeights(m.w, m.s, m.b); }
+        function saveCurrent(name) { if (!champion) throw new Error('No trained driver yet — evolve a few generations first.'); return addModel(name, f32b64(Float32Array.from(champion)), trackSeed, gen, bestEver, 'personal'); }
+        // a saved driver can be loaded onto its home track, the current track, or a brand-new random one
+        function useModel(m, target) {
+            target = target || 'home';
+            const seed = target === 'current' ? (trackSeed >>> 0) : target === 'random' ? ((Math.random() * 4294967296) >>> 0) : (m.s >>> 0);
+            return useWeights(m.w, seed, target === 'home' ? m.b : 0);   // its recorded best only applies on its home track
+        }
         function importToLibrary(code, useNow) { const { p } = parseCode(code); const m = addModel(p.nm || 'Shared driver', p.w, p.s, p.g, p.b, 'shared'); if (useNow) useModel(m); return m; }
         const seedLabel = s => '#' + ((s >>> 0).toString(16).toUpperCase().padStart(8, '0')).slice(-4);
 
@@ -582,10 +626,11 @@
 
         /* ---- headless race: run one genome on a seed's track, return finish time or laps reached ---- */
         function evalOnTrack(genome, seed) {
+            if (!genome || genome.length !== GLEN) return { fin: false, laps: 0 };   // incompatible (older architecture)
             genTrack(seed >>> 0);                          // sets cl/total/inner/outer for this track (restored by caller)
             const car = newCar(genome, 0);
             for (let t = 0; t < MAXTICK; t++) {
-                sense(car); const o = forward(car.g, inputsOf(car), false), steer = o[0], thr = o[1];
+                sense(car); const o = forward(car.g, inputsOf(car), car.h), steer = o[0], thr = o[1];
                 car.sp += thr * 360 * DT; car.sp -= car.sp * 0.7 * DT; if (car.sp < -80) car.sp = -80;
                 car.a += steer * 2.8 * Math.min(1, Math.abs(car.sp) / 50) * DT * (car.sp < 0 ? -1 : 1);
                 car.x += Math.cos(car.a) * car.sp * DT; car.y += Math.sin(car.a) * car.sp * DT;
@@ -643,12 +688,14 @@
         }
 
         /* ---------------- state + loop ---------------- */
-        let running = true, simX = 1, tick = 0, showSensors = true, showAll = true, watch = false, turbo = false, meanFit = 0;
+        let running = true, simX = 1, tick = 0, showSensors = true, showAll = true, watch = false, turbo = false, meanFit = 0, finishCutAt = -1;
         function tickAll(capture) {
-            let alive = 0, cb = 0, leader = capture ? currentLeader() : null;
-            for (const c of cars) { step(c, capture && c === leader); if (c.alive) alive++; if (c.fit > cb) cb = c.fit; }
+            let alive = 0, cb = 0, anyFin = false, leader = capture ? currentLeader() : null;
+            for (const c of cars) { step(c, capture && c === leader); if (c.alive) alive++; if (c.finished) anyFin = true; if (c.fit > cb) cb = c.fit; }
             curBest = Math.max(curBest, cb); tick++;
-            if (!watch && (alive === 0 || tick > MAXTICK)) { evolve(); tick = 0; }
+            // leader has finished → arm a short grace window so the lead pack can also cross, then end the generation
+            if (!watch && anyFin && finishCutAt < 0) finishCutAt = tick + FINISH_GRACE;
+            if (!watch && (alive === 0 || tick > MAXTICK || (finishCutAt >= 0 && tick >= finishCutAt))) { evolve(); tick = 0; }
             else if (watch && alive === 0) startWatch();
             return alive;
         }
@@ -714,7 +761,7 @@
         function drawBrain(leader) {
             if (bc.width !== bc.clientWidth * DPR) { bc.width = bc.clientWidth * DPR; bc.height = bc.clientHeight * DPR; bx.setTransform(DPR, 0, 0, DPR, 0, 0); bW = bc.clientWidth; bH = bc.clientHeight; }
             bx.clearRect(0, 0, bW, bH);
-            if (!leader) return; forward(leader.g, inputsOf(leader), true);
+            if (!leader) return;   // activations are captured live in step() for the leader (don't re-run forward — it would advance the recurrent state)
             const cols = [[ACT.in, NIN], [ACT.hid, NHID], [ACT.out, NOUT]], padL = 30, padR = 40, top = 22;
             const colX = i => padL + i * (bW - padL - padR) / 2, posY = (k, cnt) => top + k * (bH - top - 12) / Math.max(1, cnt - 1);
             const wsets = [[W1, NIN, NHID, 0, 1], [W2, NHID, NOUT, 1, 2]];
@@ -737,7 +784,7 @@
                 `<div class="r"><span>in</span><span class="v">${fmtA(ACT.in)} +${(leader.sp / SPDREF).toFixed(2)}</span></div>` +
                 `<div class="r"><span>hid</span><span class="v">${fmtA(ACT.hid)}</span></div>` +
                 `<div class="r"><span>out</span><span class="v">steer ${ACT.out[0].toFixed(2)} · thr ${ACT.out[1].toFixed(2)}</span></div>` +
-                `<div class="r"><span>fit</span><span class="v">best <b>${bestEver <= 0 ? '—' : fitToLabel(bestEver)}</b> · μ <b>${(meanFit / (total || 1)).toFixed(2)} laps</b></span></div>` +
+                `<div class="r"><span>fit</span><span class="v">best <b>${bestEver <= 0 ? '—' : fitToLabel(bestEver)}</b> · μ <b>${meanFit.toFixed(2)} laps</b></span></div>` +
                 `<div class="r"><span>|w|</span><span class="v">max ${wmax.toFixed(2)} · μ ${(wsum / GLEN).toFixed(2)}</span></div>`;
         }
         const sp = $('spark'), spx = sp.getContext('2d'); let spW = 0, spH = 0;
@@ -745,19 +792,23 @@
             if (sp.width !== sp.clientWidth * DPR) { sp.width = sp.clientWidth * DPR; sp.height = sp.clientHeight * DPR; spx.setTransform(DPR, 0, 0, DPR, 0, 0); spW = sp.clientWidth; spH = sp.clientHeight; }
             spx.clearRect(0, 0, spW, spH);
             if (sparkHist.length < 2) {   // placeholder so the panel doesn't look broken before any history exists
-                spx.fillStyle = 'rgba(147,180,138,.55)'; spx.font = '600 10px Inter, sans-serif'; spx.textAlign = 'center'; spx.textBaseline = 'middle';
-                spx.fillText('Evolving — the curve grows each generation', spW / 2, spH / 2); spx.textAlign = 'left'; return;
+                let msg = 'The curve grows each generation', fs = 10;
+                spx.fillStyle = 'rgba(147,180,138,.6)'; spx.textAlign = 'center'; spx.textBaseline = 'middle';
+                spx.font = '600 ' + fs + 'px Inter, sans-serif';
+                while (spx.measureText(msg).width > spW - 10 && fs > 7) { fs--; spx.font = '600 ' + fs + 'px Inter, sans-serif'; }
+                if (spx.measureText(msg).width > spW - 10) { msg = 'evolving…'; spx.font = '600 10px Inter, sans-serif'; }
+                spx.fillText(msg, spW / 2, spH / 2); spx.textAlign = 'left'; return;
             }
             const mx = Math.max(...sparkHist, 1); spx.strokeStyle = '#9eff5a'; spx.lineWidth = 2; spx.shadowColor = '#9eff5a'; spx.shadowBlur = 6; spx.beginPath();
             sparkHist.forEach((v, i) => { const x = i / (sparkHist.length - 1) * spW, y = spH - 4 - (v / mx) * (spH - 8); i ? spx.lineTo(x, y) : spx.moveTo(x, y); }); spx.stroke(); spx.shadowBlur = 0;
         }
-        // a finisher's fitness encodes its race time; everyone else is still measured in laps driven
+        // track-independent fitness: finishers score in (RACE_LAPS, RACE_LAPS+1] encoding finish time; others = laps
         function fitToLabel(fitVal) {
-            if (total > 0 && fitVal >= RACE_LAPS * total) {
-                const ticks = MAXTICK - (fitVal - RACE_LAPS * total);
+            if (fitVal > RACE_LAPS) {
+                const ticks = MAXTICK * (1 - (fitVal - RACE_LAPS));
                 if (ticks > 0 && ticks <= MAXTICK) return (ticks * DT).toFixed(2) + 's';
             }
-            return (fitVal / (total || 1)).toFixed(2) + ' laps';
+            return fitVal.toFixed(2) + ' laps';
         }
         function hud(leader) {
             $('hGen').textContent = watch ? '★' : gen;
@@ -834,14 +885,15 @@
             if (!list.length) { grid.innerHTML = '<div class="gempty">No saved drivers yet — train a bit, then “Save current”.</div>'; return; }
             const home = evalHome(list);   // authoritative fitness on each driver's own track
             grid.innerHTML = list.map(m => {
-                const r = home[m.id], fit = r ? (r.fin ? '🏁 ' + r.time.toFixed(2) + 's' : '✗ crashes · ' + r.laps.toFixed(1) + ' laps') : '—';
-                return '<div class="gcard" data-id="' + m.id + '">' +
+                const ok = wLen(m.w) === GLEN, r = home[m.id];
+                const fit = !ok ? '⚠ older network — incompatible' : r ? (r.fin ? '🏁 ' + r.time.toFixed(2) + 's' : '✗ crashes · ' + r.laps.toFixed(1) + ' laps') : '—';
+                return '<div class="gcard' + (ok ? '' : ' incompat') + '" data-id="' + m.id + '">' +
                     '<canvas class="gthumb"></canvas>' +
                     '<div class="gchead"><span class="gnm" title="' + esc(m.name) + '">' + esc(m.name) + '</span><span class="gbadge ' + (m.o === 'shared' ? 'sh' : 'pe') + '">' + (m.o === 'shared' ? 'shared' : 'personal') + '</span></div>' +
                     '<canvas class="gdna" title="genome — every weight"></canvas>' +
-                    '<div class="gfit ' + (r && r.fin ? 'ok' : 'no') + '">' + fit + ' <span class="gfh">on home track</span></div>' +
+                    '<div class="gfit ' + (ok && r && r.fin ? 'ok' : 'no') + '">' + fit + (ok ? ' <span class="gfh">on home track</span>' : '') + '</div>' +
                     '<div class="gmeta">gen ' + m.g + ' · track ' + seedLabel(m.s) + '</div>' +
-                    '<div class="gacts"><button data-act="use">Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div>' +
+                    '<div class="gacts"><button data-act="use"' + (ok ? '' : ' disabled') + '>Use</button><button data-act="share">Share</button><button data-act="del" title="Delete">✕</button></div>' +
                     '</div>';
             }).join('');
             requestAnimationFrame(() => list.forEach(m => { const c = grid.querySelector('.gcard[data-id="' + m.id + '"]'); if (!c) return; drawThumb(c.querySelector('.gthumb'), m.s); drawDNA(c.querySelector('.gdna'), m.w); }));
@@ -866,11 +918,22 @@
             garage.classList.remove('show'); showShareLink(shareURL(nm), '“' + nm + '”');
         };
         $('gImport').onclick = () => { try { const m = importToLibrary($('gPaste').value, true); garage.classList.remove('show'); toast('Imported “' + m.name + '” — now training from it. Tap ★ to watch.'); } catch (e) { gNote.textContent = e.message || String(e); gNote.className = 'mnote err'; } };
+        let useTarget = 'home';
+        $('gpGrid').addEventListener('click', e => {
+            const t = e.target.closest('.gtgt'); if (!t) return;
+            useTarget = t.dataset.tgt;
+            $('gpGrid').querySelectorAll('.gtgt').forEach(b => b.classList.toggle('on', b === t));
+        });
         $('gGrid').onclick = e => {
             const btn = e.target.closest('button[data-act]'); if (!btn) return;
             const row = e.target.closest('.gcard'), id = row && row.dataset.id, m = loadModels().find(x => x.id === id); if (!m) return;
             const act = btn.dataset.act;
-            if (act === 'use') { useModel(m); garage.classList.remove('show'); toast('Loaded “' + m.name + '” — training from it. Tap ★ Watch best.'); }
+            if (act === 'use') {
+                if (!useModel(m, useTarget)) return;   // incompatible driver — useWeights already explained
+                garage.classList.remove('show');
+                const where = useTarget === 'home' ? 'its home track' : useTarget === 'current' ? 'the current track' : 'a fresh track';
+                toast('Loaded “' + m.name + '” on ' + where + ' — training from it. Tap ★ Watch best.');
+            }
             else if (act === 'share') { garage.classList.remove('show'); showShareLink(urlFromModel(m), '“' + m.name + '”'); }
             else if (act === 'del') { deleteModel(id); renderGarage(); toast('Deleted “' + m.name + '”.'); }
         };
@@ -880,7 +943,7 @@
         help.onclick = e => { if (e.target === help) help.classList.remove('show'); };
         addEventListener('keydown', e => { if (e.key === 'Escape') { modal.classList.remove('show'); garage.classList.remove('show'); help.classList.remove('show'); confirmM.classList.remove('show'); } });
         $('allBtn').classList.add('on');
-        $('archTxt').textContent = NIN + '→' + NHID + '→' + NOUT + ' · ' + GLEN + ' weights';
+        $('archTxt').textContent = NIN + '→' + NHID + '↺→' + NOUT + ' · recurrent · ' + GLEN + ' weights';
 
         resize();
         if (/ND1\.[A-Za-z0-9\-_]+/.test(location.hash)) {
