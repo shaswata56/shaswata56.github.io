@@ -344,7 +344,7 @@
             <div class="mtitle">How the race works</div>
             <div class="hbody">
                 <p>It's a <b>race</b>: every car starts together and the first to finish <b id="hLaps">3</b> full laps wins. There's <b>no speed limit</b> — cars accelerate as hard as they dare.</p>
-                <p><b>The track changes every generation</b>, so a driver can't just memorise one circuit — it has to learn to drive <i>any</i> track. That's what lets a driver you train work when you share it to another device.</p>
+                <p><b>The track changes once a driver finishes the race</b> — the circuit stays put until someone completes all 3 laps, then a fresh one is drawn. So a driver can't just memorise one circuit — it has to learn to drive <i>any</i> track. That's what lets a driver you train work when you share it to another device.</p>
                 <p><b>Generalist</b> = how the all-time best driver does on a fixed set of <i>benchmark</i> tracks it never trained on — <b>higher is better</b>. While it's still learning to finish, this shows <b>average laps</b> (out of 3). Once it finishes every benchmark track, laps would just sit at 3, so it switches to a <b>0–100 performance score</b> based on how <i>fast</i> it finishes them — that keeps climbing as the driver gets quicker. <b>from gen</b> is the generation that produced that record holder (★ Watch best · Share). This is the driver that gets saved and shared, so what you share is your best <i>all-round</i> driver, not a one-track fluke.</p>
                 <p><b>This gen</b> = best of the current generation on today's track; <b>Leader now</b> = laps done by the car you're watching.</p>
                 <p><b>The skill</b>: with no speed cap, flooring it is easy — the hard part is <i>not flying off the track in the corners</i>. The network has to learn when to brake and how to carry speed through bends on tracks it has never seen.</p>
@@ -540,7 +540,9 @@
                 else if (r < IMMIG + EXPLORE) genomes.push(mutate(cars[(Math.random() * ELITE) | 0].g.slice(), 0.35, 0.9));
                 else genomes.push(mutate(crossover(tourn(), tourn()), MUT_RATE, MUT_AMT));
             }
-            gen++; curBest = 0; genTrack(); spawn(genomes);   // rotate to a fresh track each gen → drivers must generalize, not memorize
+            // only rotate to a fresh track once a driver has actually completed the full RACE_LAPS race on this one;
+            // until someone finishes, keep the same track so the population can learn to crack it
+            gen++; curBest = 0; if (top.fit >= RACE_LAPS) genTrack(); spawn(genomes);
         }
 
         /* ---------------- persistence ---------------- */
