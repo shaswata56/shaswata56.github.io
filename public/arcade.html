@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcade · Shaswata Das</title>
-    <meta name="description" content="Play browser games — Neon Run and Tower Defense — in the arcade.">
+    <meta name="description" content="Play browser games — Neon Run, Tower Defense, Solar System, Cosmos, Neuro Drift, and Aether — in the arcade.">
     <style>
         @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 
@@ -181,7 +181,7 @@
             <div class="brand"><span class="dot"></span> ARCADE</div>
             <div class="telemetry">
                 <span class="tchip">SYS <b>ONLINE</b></span>
-                <span class="tchip">SECTOR <b id="tSector">01/02</b></span>
+                <span class="tchip">SECTOR <b id="tSector">01/06</b></span>
                 <span class="tchip">FPS <b id="tFps">60</b></span>
                 <span class="tchip" id="tClock">--:--:--</span>
             </div>
@@ -364,6 +364,35 @@
             ctx.textBaseline = 'alphabetic';
         }
 
+        let aetherStars = null;
+        function aetherThumb(ctx, w, h, t) {
+            const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#7ba6d0'); g.addColorStop(.6, '#f7e6c9'); g.addColorStop(1, '#e6d8bd');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            // clouds
+            ctx.fillStyle = 'rgba(255,255,255,.45)';
+            for (let i = 0; i < 6; i++) { const cx = (w * 0.15 + i * w * 0.16 + Math.sin(t * 0.3 + i) * w * 0.04) % w, cy = h * 0.22 + Math.sin(i * 1.3) * h * 0.08, cw = w * 0.18 + Math.sin(i * 2.1) * w * 0.06; ctx.beginPath(); ctx.ellipse(cx, cy, cw, cw * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
+            // terrain
+            ctx.fillStyle = '#1a4a2a'; ctx.beginPath(); ctx.moveTo(0, h); for (let x = 0; x <= w; x += 3) { const y = h * 0.62 + Math.sin(x * 0.025 + 1) * h * 0.08 + Math.sin(x * 0.06 + 3) * h * 0.04; ctx.lineTo(x, y); } ctx.lineTo(w, h); ctx.fill();
+            ctx.fillStyle = '#7bc45a'; ctx.beginPath(); ctx.moveTo(0, h); for (let x = 0; x <= w; x += 3) { const y = h * 0.66 + Math.sin(x * 0.025 + 1) * h * 0.07 + Math.sin(x * 0.06 + 3) * h * 0.035; ctx.lineTo(x, y); } ctx.lineTo(w, h); ctx.fill();
+            // water
+            ctx.fillStyle = 'rgba(31,85,112,.5)'; ctx.fillRect(0, h * 0.78, w, h * 0.22);
+            // glider
+            const gx = w * 0.45 + Math.sin(t * 0.7) * w * 0.1, gy = h * 0.38 + Math.sin(t * 1.1) * h * 0.03;
+            ctx.save(); ctx.translate(gx, gy); ctx.rotate(Math.sin(t * 0.7) * 0.08);
+            ctx.fillStyle = '#2c333b'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.06, w * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#7fefff'; ctx.shadowColor = '#7fefff'; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(w * 0.04, 0, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.restore();
+            // portal ring
+            const px = w * 0.7, py = h * 0.28, pr = w * 0.07;
+            ctx.strokeStyle = 'rgba(123,196,90,.7)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(123,196,90,.15)'; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+            // particles
+            if (!aetherStars) { aetherStars = []; for (let i = 0; i < 20; i++) aetherStars.push([Math.random(), Math.random(), Math.random() * 0.5 + 0.3]); }
+            ctx.fillStyle = '#f4e6c4';
+            for (const s of aetherStars) { ctx.globalAlpha = s[2] * (0.5 + 0.5 * Math.sin(t * 1.5 + s[0] * 10)); ctx.beginPath(); ctx.arc(s[0] * w, s[1] * h, 1.2, 0, Math.PI * 2); ctx.fill(); }
+            ctx.globalAlpha = 1;
+        }
+
         const games = [
             { id: 'neonrun', title: 'Neon Run', href: 'NeonRun.html', badge: '3D · WebGL', accent: '#00e5ff', glow: 'rgba(0,229,255,.5)',
               tags: ['Three.js', 'Synthwave', 'Endless'], render: neonRunThumb, bestKey: 'neonrun_best', bestLabel: 'High score',
@@ -379,7 +408,10 @@
               desc: 'One continuous zoom from the Sun to the edge of the observable universe — real planets, nearby stars, the Milky Way and Sagittarius A*, the Local Group and the Laniakea Great Attractor.' },
             { id: 'neuro', title: 'Neuro Drift', href: 'NeuroDrift.html', badge: 'AI · Cars that learn', accent: '#9eff5a', glow: 'rgba(158,255,90,.5)',
               tags: ['Neural network', 'Genetic algorithm', 'Reinforcement-style learning'], render: neuroThumb, stat: 'Learns to drive',
-              desc: 'Robot cars start out clueless and crash instantly. Each round, the ones that drove farthest “have babies” that drive a little better — so generation by generation they teach themselves the track. Nobody programs how to drive; you just watch them get good. The green feelers are how each car “sees” the walls.' }
+              desc: 'Robot cars start out clueless and crash instantly. Each round, the ones that drove farthest “have babies” that drive a little better — so generation by generation they teach themselves the track. Nobody programs how to drive; you just watch them get good. The green feelers are how each car “sees” the walls.' },
+            { id: 'aether', title: 'Aether', href: 'Aether.html', badge: '3D · Three.js', accent: '#e8c88a', glow: 'rgba(232,200,138,.5)',
+              tags: ['Three.js', 'Flight', 'Procedural worlds'], render: aetherThumb, stat: 'Endless flyover',
+              desc: 'Soar an unbroken sky over procedurally generated biomes. Fly through portal rings to cross into worlds of fire, frost, jungle light and more — an endless journey of altitude and wonder.' }
         ];
 
         /* ---------- background ---------- */
@@ -529,7 +561,7 @@
 
         /* ---------- boot sequence ---------- */
         const boot = $('boot'), bootlog = $('bootlog'), bootfill = $('bootfill');
-        const lines = ['> ARCADE OS v1.2  [shaswata.me]', '> power core .................. ONLINE', '> mounting WebGL renderer ..... OK', '> input + haptics ............. OK', '> sector 01 :: NEON RUN ....... OK', '> sector 02 :: TOWER DEFENSE .. OK', '> sector 03 :: SOLAR SYSTEM ... OK', '> sector 04 :: COSMOS ......... OK', '> calibrating holo-display .... OK', '> sync astrometrics .......... OK', '> SYSTEM ONLINE'];
+        const lines = ['> ARCADE OS v1.2  [shaswata.me]', '> power core .................. ONLINE', '> mounting WebGL renderer ..... OK', '> input + haptics ............. OK', '> sector 01 :: NEON RUN ....... OK', '> sector 02 :: TOWER DEFENSE .. OK', '> sector 03 :: SOLAR SYSTEM ... OK', '> sector 04 :: COSMOS ......... OK', '> sector 05 :: NEURO DRIFT .... OK', '> sector 06 :: AETHER ......... OK', '> calibrating holo-display .... OK', '> sync astrometrics .......... OK', '> SYSTEM ONLINE'];
         let li = 0, bootDone = false;
         function step() { if (bootDone) return; if (li < lines.length) { bootlog.textContent += lines[li] + '\n'; bootfill.style.width = Math.round((li + 1) / lines.length * 100) + '%'; li++; setTimeout(step, 110 + Math.random() * 130); } else setTimeout(endBoot, 340); }
         function endBoot() { if (bootDone) return; bootDone = true; const fl = $('flash'); fl.classList.add('go'); setTimeout(() => fl.classList.remove('go'), 600); boot.classList.add('done'); document.body.classList.add('ready'); setTimeout(() => boot.remove(), 650); }
