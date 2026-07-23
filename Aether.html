@@ -158,6 +158,7 @@
             </div>
             <div><button class="primary" id="resumeBtn">Resume flight</button></div>
             <button class="ghost" id="restartBtn">Restart journey</button>
+            <button class="ghost" id="exitBtn">Exit to title</button>
         </div>
     </div>
     <div id="flash"></div>
@@ -944,6 +945,16 @@
     el('playBtn').addEventListener('click', startGame);
     el('resumeBtn').addEventListener('click', togglePause);
     el('restartBtn').addEventListener('click', restart);
+    el('exitBtn').addEventListener('click', ()=>{
+        started=false; running=false; paused=false;
+        worldOffset=0; speed=SPEED_BASE; targetSpeed=SPEED_BASE; portalsCrossed=0;
+        glider.position.set(0,78,0); glider.rotation.set(0,0,0);
+        steerX=steerY=tgtX=tgtY=0; cruiseY=62;
+        displayBiome=targetBiome=0; morph=1;
+        portal.visible=false; portalState.active=false; nextPortalAt=520;
+        startScreen.hidden=false; pauseScreen.hidden=true; hud.classList.remove('live');
+        pauseBtn.classList.add('hidden'); fsBtn.classList.add('hidden');
+    });
     pauseBtn.addEventListener('click', togglePause);
     fsBtn.addEventListener('click', ()=>{
         const d=document;
