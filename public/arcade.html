@@ -364,32 +364,70 @@
             ctx.textBaseline = 'alphabetic';
         }
 
-        let aetherStars = null;
+        let aetherClouds = null;
+        let aetherParticles = null;
+        let aetherTrees = null;
         function aetherThumb(ctx, w, h, t) {
-            const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#7ba6d0'); g.addColorStop(.6, '#f7e6c9'); g.addColorStop(1, '#e6d8bd');
-            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-            // clouds
-            ctx.fillStyle = 'rgba(255,255,255,.45)';
-            for (let i = 0; i < 6; i++) { const cx = (w * 0.15 + i * w * 0.16 + Math.sin(t * 0.3 + i) * w * 0.04) % w, cy = h * 0.22 + Math.sin(i * 1.3) * h * 0.08, cw = w * 0.18 + Math.sin(i * 2.1) * w * 0.06; ctx.beginPath(); ctx.ellipse(cx, cy, cw, cw * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
-            // terrain
-            ctx.fillStyle = '#1a4a2a'; ctx.beginPath(); ctx.moveTo(0, h); for (let x = 0; x <= w; x += 3) { const y = h * 0.62 + Math.sin(x * 0.025 + 1) * h * 0.08 + Math.sin(x * 0.06 + 3) * h * 0.04; ctx.lineTo(x, y); } ctx.lineTo(w, h); ctx.fill();
-            ctx.fillStyle = '#7bc45a'; ctx.beginPath(); ctx.moveTo(0, h); for (let x = 0; x <= w; x += 3) { const y = h * 0.66 + Math.sin(x * 0.025 + 1) * h * 0.07 + Math.sin(x * 0.06 + 3) * h * 0.035; ctx.lineTo(x, y); } ctx.lineTo(w, h); ctx.fill();
-            // water
-            ctx.fillStyle = 'rgba(31,85,112,.5)'; ctx.fillRect(0, h * 0.78, w, h * 0.22);
-            // glider
-            const gx = w * 0.45 + Math.sin(t * 0.7) * w * 0.1, gy = h * 0.38 + Math.sin(t * 1.1) * h * 0.03;
-            ctx.save(); ctx.translate(gx, gy); ctx.rotate(Math.sin(t * 0.7) * 0.08);
-            ctx.fillStyle = '#2c333b'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.06, w * 0.02, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#7fefff'; ctx.shadowColor = '#7fefff'; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(w * 0.04, 0, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            // sky — warm parchment fading to blue at top
+            const sky = ctx.createLinearGradient(0, 0, 0, h);
+            sky.addColorStop(0, '#7ba6d0'); sky.addColorStop(0.35, '#b8c8d8'); sky.addColorStop(0.6, '#f7e6c9'); sky.addColorStop(1, '#e6d8bd');
+            ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+            // clouds — white puffy, scattered
+            if (!aetherClouds) { aetherClouds = []; for (let i = 0; i < 8; i++) aetherClouds.push({ x: Math.random(), y: 0.08 + Math.random() * 0.3, r: 0.06 + Math.random() * 0.06, n: 3 + Math.floor(Math.random() * 3) }); }
+            for (const c of aetherClouds) {
+                const cx = (c.x * w + Math.sin(t * 0.2 + c.x * 5) * w * 0.02) % w, cy = c.y * h;
+                ctx.fillStyle = 'rgba(255,255,255,.7)';
+                for (let k = 0; k < c.n; k++) { const ox = (k - c.n / 2) * c.r * w * 0.35, oy = Math.sin(k * 1.8) * c.r * h * 0.12; ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, c.r * w * 0.45, c.r * h * 0.28, 0, 0, Math.PI * 2); ctx.fill(); }
+            }
+            // terrain — rolling sage-green hills with flat shading layers
+            const layers = [
+                { y: 0.55, col: '#6a9a6a', amp: 0.06, freq: 0.02 },
+                { y: 0.62, col: '#5a8a5a', amp: 0.05, freq: 0.025 },
+                { y: 0.70, col: '#4a7a4a', amp: 0.04, freq: 0.03 },
+            ];
+            for (const l of layers) {
+                ctx.fillStyle = l.col; ctx.beginPath(); ctx.moveTo(0, h);
+                for (let x = 0; x <= w; x += 2) { ctx.lineTo(x, h * l.y + Math.sin(x * l.freq + 1.5) * h * l.amp + Math.sin(x * l.freq * 2.3 + 3) * h * l.amp * 0.4); }
+                ctx.lineTo(w, h); ctx.fill();
+            }
+            // water patches
+            ctx.fillStyle = 'rgba(31,85,112,.35)';
+            ctx.beginPath(); ctx.ellipse(w * 0.85, h * 0.74, w * 0.08, h * 0.015, 0.1, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(w * 0.1, h * 0.78, w * 0.05, h * 0.01, -0.2, 0, Math.PI * 2); ctx.fill();
+            // small pine trees
+            if (!aetherTrees) { aetherTrees = []; for (let i = 0; i < 10; i++) aetherTrees.push({ x: 0.05 + Math.random() * 0.9, y: 0.62 + Math.random() * 0.22, s: 0.6 + Math.random() * 0.8 }); }
+            for (const tr of aetherTrees) {
+                const tx = tr.x * w, ty = tr.y * h, ts = tr.s * 5;
+                ctx.fillStyle = '#2b5730';
+                ctx.beginPath(); ctx.moveTo(tx, ty - ts * 1.8); ctx.lineTo(tx - ts * 0.6, ty); ctx.lineTo(tx + ts * 0.6, ty); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(tx, ty - ts * 2.4); ctx.lineTo(tx - ts * 0.4, ty - ts * 1.2); ctx.lineTo(tx + ts * 0.4, ty - ts * 1.2); ctx.fill();
+            }
+            // portal ring — glowing white/gold with swirl
+            const px = w * 0.55, py = h * 0.3, pr = w * 0.1;
+            ctx.save(); ctx.shadowColor = '#fff3d8'; ctx.shadowBlur = 22;
+            ctx.strokeStyle = 'rgba(255,243,216,.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0; ctx.restore();
+            // swirl inside portal
+            const sg = ctx.createConicGradient(t * 1.5, px, py);
+            sg.addColorStop(0, 'rgba(255,243,216,.7)'); sg.addColorStop(0.3, 'rgba(232,200,138,.3)'); sg.addColorStop(0.6, 'rgba(255,243,216,.5)'); sg.addColorStop(1, 'rgba(232,200,138,.2)');
+            ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(px, py, pr - 4, 0, Math.PI * 2); ctx.fill();
+            // glider — dark hull, cyan glow
+            const gx = w * 0.42 + Math.sin(t * 0.7) * w * 0.04, gy = h * 0.48 + Math.sin(t * 1.1) * h * 0.015;
+            ctx.save(); ctx.translate(gx, gy);
+            ctx.fillStyle = '#2c333b'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.04, w * 0.012, 0, 0, Math.PI * 2); ctx.fill();
+            // wings
+            ctx.fillStyle = '#141a20';
+            ctx.beginPath(); ctx.moveTo(-w * 0.04, 0); ctx.lineTo(-w * 0.06, -w * 0.015); ctx.lineTo(-w * 0.02, 0); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(w * 0.04, 0); ctx.lineTo(w * 0.06, -w * 0.015); ctx.lineTo(w * 0.02, 0); ctx.fill();
+            // cyan glow underneath
+            ctx.fillStyle = '#7fefff'; ctx.shadowColor = '#7fefff'; ctx.shadowBlur = 10;
+            ctx.beginPath(); ctx.ellipse(0, w * 0.008, w * 0.025, w * 0.004, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
             ctx.restore();
-            // portal ring
-            const px = w * 0.7, py = h * 0.28, pr = w * 0.07;
-            ctx.strokeStyle = 'rgba(123,196,90,.7)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = 'rgba(123,196,90,.15)'; ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
-            // particles
-            if (!aetherStars) { aetherStars = []; for (let i = 0; i < 20; i++) aetherStars.push([Math.random(), Math.random(), Math.random() * 0.5 + 0.3]); }
+            // floating particles
+            if (!aetherParticles) { aetherParticles = []; for (let i = 0; i < 15; i++) aetherParticles.push([Math.random(), Math.random() * 0.7 + 0.15, Math.random()]); }
             ctx.fillStyle = '#f4e6c4';
-            for (const s of aetherStars) { ctx.globalAlpha = s[2] * (0.5 + 0.5 * Math.sin(t * 1.5 + s[0] * 10)); ctx.beginPath(); ctx.arc(s[0] * w, s[1] * h, 1.2, 0, Math.PI * 2); ctx.fill(); }
+            for (const p of aetherParticles) { ctx.globalAlpha = 0.4 + 0.4 * Math.sin(t * 1.2 + p[2] * 8); ctx.fillRect(p[0] * w, p[1] * h, 2, 2); }
             ctx.globalAlpha = 1;
         }
 
