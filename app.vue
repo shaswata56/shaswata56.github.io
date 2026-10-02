@@ -423,10 +423,10 @@ useSeoMeta({
   --background-color: #faf9f7;
   --accent-color: #f0ece6;
   --border-color: #d6cfc8;
-  --link-color: #85602a;
+  --link-color: #a07840;
   --text-color: #2a2420;
   --accent-text-color: #705f4f;
-  --link-color-hover: #6b4a1a;
+  --link-color-hover: #c4891e;
   --text-color-secondary: #705f4f;
   --box-shadow: none;
 }

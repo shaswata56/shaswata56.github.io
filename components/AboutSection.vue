@@ -93,7 +93,7 @@ p {
 
 .stat-num {
   font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
-  font-size: 1.4rem;
+  font-size: 1.5rem; /* 24px = "large text" for WCAG, so the gold link colour passes contrast */
   font-weight: 600;
   color: var(--link-color);
   line-height: 1;

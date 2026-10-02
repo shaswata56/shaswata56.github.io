@@ -132,6 +132,15 @@ export default {
       ],
     };
   },
+  mounted() {
+    // On desktop, warm the hover previews once the page has finished loading so the first
+    // hover is instant; phones (where previews are hidden) never download them.
+    if (!window.matchMedia('(min-width: 1101px)').matches) return;
+    const warm = () => this.projects.forEach((p, i) => { if (p.image) this.seenProjects[i] = true; });
+    const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(warm) : setTimeout(warm, 1000));
+    if (document.readyState === 'complete') idle();
+    else window.addEventListener('load', idle, { once: true });
+  },
   methods: {
     onRowEnter(index, project) {
       this.hoveredProject = index;

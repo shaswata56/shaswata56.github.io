@@ -235,9 +235,9 @@ export default {
 
 .tagline {
   font-size: 0.85rem;
-  /* The text is typed in after hydration; reserve one line (global p line-height is 1.8)
-     so the page below doesn't jump when typing starts. */
-  min-height: 1.8em;
+  /* The text is typed in after hydration; reserve exactly one line so the page below
+     doesn't jump when typing starts. */
+  min-height: 1lh;
   color: var(--text-color);
   font-style: italic;
   margin: 0 0 0.25rem;

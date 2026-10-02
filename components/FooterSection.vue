@@ -16,6 +16,7 @@
           alt="love"
           width="23"
           height="23"
+          loading="lazy"
         />
       </span>
     </div>
