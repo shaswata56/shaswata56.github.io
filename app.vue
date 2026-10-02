@@ -380,9 +380,9 @@ useHead({
     {
       rel: "icon",
       type: "image/icon",
-      href: "/favicon.ico",
+      href: "/favicon.ico?v=2",
     },
-    { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+    { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
     { rel: "manifest", href: "/site.webmanifest" },
   ],
 });
