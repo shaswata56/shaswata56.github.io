@@ -12,8 +12,8 @@
       with Nuxt 3 and
       <span class="heart">
         <img
-          src="@/assets/icons/RedHeart.png"
-          alt="Red Heart"
+          src="@/assets/icons/heart.webp"
+          alt="love"
           width="23"
           height="23"
         />
@@ -37,7 +37,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.85rem;
   color: var(--accent-text-color);
   gap: 0.35rem;

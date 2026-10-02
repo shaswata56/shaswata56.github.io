@@ -235,7 +235,10 @@ export default {
 
 .tagline {
   font-size: 0.85rem;
-  color: #d4c9bb;
+  /* The text is typed in after hydration; reserve one line (global p line-height is 1.8)
+     so the page below doesn't jump when typing starts. */
+  min-height: 1.8em;
+  color: var(--text-color);
   font-style: italic;
   margin: 0 0 0.25rem;
   font-family: "Fira Mono", "Courier New", monospace;
@@ -254,7 +257,7 @@ export default {
 .status-pill {
   display: inline-block;
   margin-top: 0.75rem;
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.72rem;
   color: var(--accent-text-color);
   background: var(--accent-color);
@@ -265,7 +268,7 @@ export default {
 }
 
 .left-side h2 {
-  font-family: "Merriweather", Georgia, serif;
+  font-family: "Merriweather", "Merriweather Fallback", Georgia, serif;
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -281,7 +284,7 @@ export default {
 }
 
 .mini-content p.tagline {
-  color: #d4c9bb;
+  color: var(--text-color);
 }
 
 @media (max-width: 640px) {

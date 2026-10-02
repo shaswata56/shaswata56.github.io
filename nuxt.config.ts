@@ -14,7 +14,9 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  css: ['~/assets/css/main.css',
+  css: ['~/assets/css/fonts.css',
+        '~/assets/css/main.css',
+        '~/assets/css/devicon-subset.css',
         '@fortawesome/fontawesome-svg-core/styles.css'
   ],
   postcss: {

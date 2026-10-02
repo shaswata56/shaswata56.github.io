@@ -63,7 +63,8 @@
           class="project-image-hover"
           :class="{ visible: hoveredProject === index }"
         >
-          <img :src="project.image" :alt="project.title" />
+          <!-- Only requested once the row has been hovered, so the page doesn't pay for previews nobody opens -->
+          <img v-if="seenProjects[index]" :src="project.image" :alt="project.title" />
         </div>
       </div>
     </div>
@@ -81,6 +82,7 @@ export default {
   data() {
     return {
       hoveredProject: null,
+      seenProjects: {},
       toastVisible: false,
       toastMessage: '',
       activeTag: null,
@@ -93,7 +95,7 @@ export default {
           description: "Agentic AI assistant built on the ReAct framework. Integrates LangChain, Gradio, and MongoDB — capable of web browsing, PDF analysis, image interpretation, and persistent memory across sessions.",
           tags: ["Python", "LangChain", "RAG", "MongoDB"],
           codeLink: "https://github.com/shaswata56/GenericAI",
-          image: "https://raw.githubusercontent.com/shaswata56/GenericAI/refs/heads/master/assets/demo.png",
+          image: "/projects/genericai.webp",
         },
         {
           title: "Facial Expression Recognition",
@@ -101,7 +103,7 @@ export default {
           description: "CNN-based vision system for real-time facial expression and mood classification. Built during university — trained and competed in Vision AI contests and Kaggle challenges.",
           tags: ["Python", "PyTorch", "CNN", "OpenCV"],
           codeLink: "https://github.com/shaswata56/Facial_Expression_Recognition",
-          image: "https://raw.githubusercontent.com/shaswata56/Facial_Expression_Recognition/master/res/test.gif",
+          image: "/projects/facial-expression.webp",
         },
         {
           title: "microOS",
@@ -109,7 +111,7 @@ export default {
           description: "Minimal OS built from scratch — custom bootloader, IDT interrupt handling, VGA display, and keyboard driver. Runs on QEMU or bare metal via USB.",
           tags: ["C", "Assembly", "Kernel", "QEMU"],
           codeLink: "https://github.com/shaswata56/microOS",
-          image: "https://raw.githubusercontent.com/shaswata56/microOS/master/res/screenplay.gif",
+          image: "/projects/microos.webp",
         },
         {
           title: "klogger",
@@ -125,7 +127,7 @@ export default {
           description: "Cross-platform 2D platformer built from scratch with 200+ commits. Multi-world level design, physics, collision, and keyboard controls — no engine, just C++ and SFML.",
           tags: ["C++", "SFML", "Game", "Physics"],
           codeLink: "https://github.com/shaswata56/Taos-Adventure",
-          image: "https://a.fsdn.com/con/app/proj/taos-adventure/screenshots/Screenshot%20from%202019-02-14%2021-56-13.png",
+          image: "/projects/taos-adventure.webp",
         },
       ],
     };
@@ -133,6 +135,10 @@ export default {
   methods: {
     onRowEnter(index, project) {
       this.hoveredProject = index;
+      // Previews are hidden below 1100px (see CSS), so don't fetch them there
+      if (project.image && window.matchMedia('(min-width: 1101px)').matches) {
+        this.seenProjects[index] = true;
+      }
       if (project.title === 'klogger') {
         this._hoverTimer = setTimeout(() => {
           this.toastMessage = '⌨ keylogging initiated...';
@@ -167,7 +173,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -224,13 +230,12 @@ export default {
 }
 
 .project-num {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.75rem;
   color: var(--accent-text-color);
   padding-top: 0.35rem;
   flex-shrink: 0;
   min-width: 1.5rem;
-  opacity: 0.6;
 }
 
 .project-info {
@@ -245,7 +250,7 @@ export default {
 }
 
 .project-title {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-color);
@@ -253,14 +258,13 @@ export default {
 }
 
 .project-year {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.8rem;
   color: var(--accent-text-color);
-  opacity: 0.7;
 }
 
 .project-description {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.9rem;
   color: var(--accent-text-color);
   line-height: 1.65;
@@ -274,7 +278,7 @@ export default {
 }
 
 .tag {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.62rem;
   color: var(--accent-text-color);
   background: var(--accent-color);
@@ -301,7 +305,7 @@ export default {
 }
 
 .project-link {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.8rem;
   color: var(--accent-text-color);
   text-decoration: none;

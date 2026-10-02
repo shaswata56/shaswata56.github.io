@@ -72,7 +72,7 @@ export default {
 
 <style scoped>
 p {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.95rem;
   line-height: 1.75;
 }
@@ -92,7 +92,7 @@ p {
 }
 
 .stat-num {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--link-color);
@@ -100,7 +100,7 @@ p {
 }
 
 .stat-label {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;

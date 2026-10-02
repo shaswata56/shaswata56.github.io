@@ -53,7 +53,7 @@ export default {
   <style scoped>
 .section-label {
   font-size: 0.7rem;
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--accent-text-color);
@@ -107,28 +107,28 @@ section.revealed .education-item:nth-child(2) .timeline-dot { transition-delay: 
 
 .institution {
   color: var(--link-color-hover);
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   font-size: 1.3rem;
   font-weight: bold;
   margin: 0;
 }
 
 .degree {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.95rem;
   margin: 0;
   color: var(--accent-text-color);
 }
 
 .timeframe {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.9rem;
   color: var(--accent-text-color);
   margin: 0;
 }
 
 .education-body {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.95rem;
   color: var(--text-color);
   line-height: 1.75;

@@ -1,11 +1,17 @@
 <template>
   <div
     class="theme-switcher"
-    :style="{ top: pos.y + 'px', left: pos.x + 'px' }"
+    :style="pos ? { top: pos.y + 'px', left: pos.x + 'px', right: 'auto' } : undefined"
     @mousedown="startDrag"
     @touchstart.passive="startDragTouch"
   >
-    <button @click="handleClick" class="theme-button" :class="{ dragging, spinning }">
+    <button
+      @click="handleClick"
+      class="theme-button"
+      :class="{ dragging, spinning }"
+      :aria-label="currentTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      :title="currentTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+    >
       <font-awesome-icon
         :icon="currentTheme === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun'"
       />
@@ -31,7 +37,9 @@ export default {
   data() {
     return {
       currentTheme: 'dark',
-      pos: { x: 0, y: 0 },
+      // null = use the CSS default (top-right), which also works for the server-rendered HTML and
+      // survives window resizes. Only set once the visitor has dragged the button (or has a saved spot).
+      pos: null,
       dragging: false,
       spinning: false,
       _dragStart: null,
@@ -62,9 +70,12 @@ export default {
       const saved = loadPosFromCookie();
       if (saved && saved.x >= 0 && saved.y >= 0) {
         this.pos = { x: Math.min(saved.x, window.innerWidth - 40), y: Math.min(saved.y, window.innerHeight - 40) };
-      } else {
-        this.pos = { x: window.innerWidth - 60, y: 20 };
       }
+    },
+    currentPos() {
+      if (this.pos) return this.pos;
+      const r = this.$el.getBoundingClientRect();
+      return { x: r.left, y: r.top };
     },
     setInitialTheme() {
       const savedTheme = localStorage.getItem('theme');
@@ -85,15 +96,17 @@ export default {
       setTimeout(() => { this.spinning = false; }, 400);
     },
     startDrag(e) {
+      const p = this.currentPos();
       this.dragging = true;
       this._moved = false;
-      this._dragStart = { mx: e.clientX, my: e.clientY, px: this.pos.x, py: this.pos.y };
+      this._dragStart = { mx: e.clientX, my: e.clientY, px: p.x, py: p.y };
     },
     startDragTouch(e) {
       const t = e.touches[0];
+      const p = this.currentPos();
       this.dragging = true;
       this._moved = false;
-      this._dragStart = { mx: t.clientX, my: t.clientY, px: this.pos.x, py: this.pos.y };
+      this._dragStart = { mx: t.clientX, my: t.clientY, px: p.x, py: p.y };
     },
     onDragMove(e) {
       if (!this.dragging || !this._dragStart) return;
@@ -118,7 +131,7 @@ export default {
       };
     },
     stopDrag() {
-      if (this.dragging) {
+      if (this.dragging && this.pos) {
         savePosTocookie(this.pos.x, this.pos.y);
       }
       this.dragging = false;
@@ -134,6 +147,8 @@ export default {
 <style scoped>
 .theme-switcher {
   position: fixed;
+  top: 20px;
+  right: 24px; /* same spot as the JS default: left = innerWidth - 60, button is 36px wide */
   z-index: 1000;
   user-select: none;
   touch-action: none;

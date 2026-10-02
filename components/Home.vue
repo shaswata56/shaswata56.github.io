@@ -3,7 +3,7 @@
     <Theme />
     <SectionPill />
     <div class="content-wrapper">
-      <div class="main-content">
+      <main class="main-content">
         <ProfileHeader />
         <AboutSection />
         <ProjectsSection />
@@ -12,7 +12,7 @@
         <EducationSection />
         <HobbiesSection />
         <FooterSection />
-      </div>
+      </main>
     </div>
   </div>
 </template>

@@ -126,7 +126,7 @@ export default {
   background-color: var(--accent-color);
   color: var(--accent-text-color);
   border: 1px solid var(--border-color);
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.85rem;
   padding: 0.5rem 1rem;
   border-radius: 4px;
@@ -150,7 +150,7 @@ export default {
 .tech-text {
   padding-top: 5px;
   max-width: 90px;
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   color: var(--text-color);
 }
 

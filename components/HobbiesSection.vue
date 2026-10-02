@@ -66,7 +66,7 @@ export default {
   align-items: center;
   gap: 0.65rem;
   padding: 0.5rem 1rem;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.9rem;
   color: var(--text-color);
   border: 1px solid var(--border-color);

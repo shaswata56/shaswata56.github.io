@@ -89,7 +89,7 @@ export default {
 }
 
 .pill-label {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -101,24 +101,33 @@ export default {
 .pill-dots {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
 }
 
+/* The link is a 24px tap target (WCAG 2.5.8); the visible 7px dot is drawn by ::before */
 .pill-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.pill-dot::before {
+  content: "";
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--border-color);
   transition: background 0.2s ease, transform 0.2s ease;
-  flex-shrink: 0;
 }
 
-.pill-dot.active {
+.pill-dot.active::before {
   background: var(--link-color);
   transform: scale(1.4);
 }
 
-.pill-dot:hover {
+.pill-dot:hover::before {
   background: var(--link-color-hover);
 }
 </style>

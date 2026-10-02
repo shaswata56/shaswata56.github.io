@@ -61,7 +61,7 @@ export default {
 <style scoped>
 .section-label {
   font-size: 0.7rem;
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--accent-text-color);
@@ -119,7 +119,7 @@ section.revealed .experience-item:nth-child(3) .timeline-dot { transition-delay:
 .experience-header .company,
 .experience-header .timeframe {
   color: var(--accent-text-color);
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
 }
 
 .experience-header .role {
@@ -143,7 +143,7 @@ section.revealed .experience-item:nth-child(3) .timeline-dot { transition-delay:
 }
 
 .description {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.95rem;
   line-height: 1.75;
   margin: 0.5rem 0 0;

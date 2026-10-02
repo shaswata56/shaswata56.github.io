@@ -9,11 +9,14 @@ import { onMounted, ref } from 'vue';
 const wallpaperActive = ref(false);
 
 onMounted(() => {
-  // Scroll reveal
+  // Scroll reveal. Sections already on screen are left untouched (they're visible in the
+  // server-rendered HTML, so first paint isn't gated on hydration); only sections below the
+  // fold are hidden and faded in as they scroll into view.
   const obs = new IntersectionObserver(
     (entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
+          e.target.classList.remove('reveal-pending');
           e.target.classList.add('revealed');
           obs.unobserve(e.target);
         }
@@ -21,7 +24,14 @@ onMounted(() => {
     },
     { threshold: 0.08 }
   );
-  document.querySelectorAll('section').forEach((s) => obs.observe(s));
+  document.querySelectorAll('section').forEach((s) => {
+    if (s.getBoundingClientRect().top < window.innerHeight) {
+      s.classList.add('revealed');
+    } else {
+      s.classList.add('reveal-pending');
+      obs.observe(s);
+    }
+  });
 
   // Console easter egg
   console.log(
@@ -254,8 +264,6 @@ onMounted(() => {
     if (init.x || init.y) section.style.transform = `translate(${init.x}px,${init.y}px)`;
 
     handle.style.cursor = 'grab';
-    const anchor = handle.closest('a');
-    if (anchor) anchor.removeAttribute('href');
 
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -360,42 +368,43 @@ useHead({
     {
       name: "description",
       content:
-        "Portfolio of Shaswata Das. Software Enginner, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
+        "Portfolio of Shaswata Das. Software Engineer, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
     },
   ],
   htmlAttrs: {
     lang: "en",
   },
   link: [
+    // Inter carries most of the body text; Merriweather (headings, 180 KB) is left to load normally
+    { rel: "preload", as: "font", type: "font/woff2", href: "/fonts/inter-latin.woff2", crossorigin: "anonymous" },
     {
       rel: "icon",
       type: "image/icon",
       href: "/favicon.ico",
     },
+    { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+    { rel: "manifest", href: "/site.webmanifest" },
   ],
 });
 useSeoMeta({
   title: "Shaswata Das",
   ogTitle: "Shaswata Das",
   description:
-    "Portfolio of Shaswata Das. Software Enginner, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
+    "Portfolio of Shaswata Das. Software Engineer, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
   ogDescription:
-    "Portfolio of Shaswata Das. Software Enginner, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
-  ogImage: "https://shaswata56.github.io/assets/profile_picture.DNMGGUvM.jpg",
-  ogUrl: "shaswata56.github.io",
+    "Portfolio of Shaswata Das. Software Engineer, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
+  ogImage: "https://shaswata.me/og-image.jpg",
+  ogUrl: "https://shaswata.me",
   twitterCard: "summary_large_image",
   twitterTitle: "Shaswata Das",
   twitterDescription: "Portfolio of Shaswata Das",
   twitterImage:
-    "https://shaswata56.github.io/assets/profile_picture.DNMGGUvM.jpg",
+    "https://shaswata.me/og-image.jpg",
 });
 </script>
 
 
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
-@import url("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css");
 
 :root {
   --background-color: #1a1917;
@@ -403,9 +412,9 @@ useSeoMeta({
   --border-color: #4a4440;
   --link-color: #c4a67a;
   --text-color: #d4c9bb;
-  --accent-text-color: #7a6a5a;
+  --accent-text-color: #9c8c7a;
   --link-color-hover: #d9bc94;
-  --text-color-secondary: #7a6a5a;
+  --text-color-secondary: #9c8c7a;
   --box-shadow: none;
   --transition-duration: 0.2s;
 }
@@ -414,11 +423,11 @@ useSeoMeta({
   --background-color: #faf9f7;
   --accent-color: #f0ece6;
   --border-color: #d6cfc8;
-  --link-color: #a07840;
+  --link-color: #85602a;
   --text-color: #2a2420;
-  --accent-text-color: #7a6a5a;
-  --link-color-hover: #c4891e;
-  --text-color-secondary: #7a6a5a;
+  --accent-text-color: #705f4f;
+  --link-color-hover: #6b4a1a;
+  --text-color-secondary: #705f4f;
   --box-shadow: none;
 }
 
@@ -427,7 +436,7 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: clip;
-  font-family: "Merriweather", Georgia, serif;
+  font-family: "Merriweather", "Merriweather Fallback", Georgia, serif;
   font-weight: 400;
   font-size: 16px;
   color: var(--text-color);
@@ -486,14 +495,12 @@ p {
 
 section {
   margin-bottom: 2rem;
-  opacity: 0;
-  transform: translateY(8px);
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 
-section.revealed {
-  opacity: 1;
-  transform: none;
+section.reveal-pending {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 section > a {
@@ -509,11 +516,11 @@ section > a h2::before {
 }
 
 .name {
-  font-family: "Merriweather", Georgia, serif;
+  font-family: "Merriweather", "Merriweather Fallback", Georgia, serif;
 }
 
 h3 {
-  font-family: "Inter", "ui-sans-serif", system-ui, sans-serif;
+  font-family: "Inter", "Inter Fallback", "ui-sans-serif", system-ui, sans-serif;
 }
 
 ::-webkit-scrollbar-track
@@ -542,18 +549,16 @@ h3 {
 .tech-item,
 .experience-item,
 .education-item {
-  opacity: 0;
-  transform: translateY(6px);
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
-section.revealed .project-row,
-section.revealed .hobby-item,
-section.revealed .tech-item,
-section.revealed .experience-item,
-section.revealed .education-item {
-  opacity: 1;
-  transform: none;
+section.reveal-pending .project-row,
+section.reveal-pending .hobby-item,
+section.reveal-pending .tech-item,
+section.reveal-pending .experience-item,
+section.reveal-pending .education-item {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 /* Stagger delays */
