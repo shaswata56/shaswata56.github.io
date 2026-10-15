@@ -1,7 +1,7 @@
 <template>
   <header class="flex items-start sm:items-center justify-between">
     <div class="left-side">
-      <h2 class="text-3xl font-bold name" @click="onNameClick" style="cursor:default;user-select:none">Shaswata Das</h2>
+      <h1 class="text-3xl font-bold name" @click="onNameClick" style="cursor:default;user-select:none">Shaswata Das</h1>
       <div class="mini-content">
         <p class="text-base sm:text-left text-center">Software Engineer & Hacker</p>
         <p class="tagline sm:text-left text-center">{{ typedTagline }}<span class="cursor" v-if="typing">|</span></p>
@@ -267,7 +267,7 @@ export default {
   letter-spacing: 0.03em;
 }
 
-.left-side h2 {
+.left-side h1 {
   font-family: "Merriweather", "Merriweather Fallback", Georgia, serif;
   font-size: 1.6rem;
   font-weight: 700;
