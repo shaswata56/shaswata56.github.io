@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     },
   },
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   css: ['~/assets/css/fonts.css',
         '~/assets/css/main.css',
         '~/assets/css/devicon-subset.css',
@@ -28,7 +28,4 @@ export default defineNuxtConfig({
   build: {
     transpile: ['@fortawesome/vue-fontawesome']
   },
-  experimental: {
-    payloadExtraction: false
-  }
 })
