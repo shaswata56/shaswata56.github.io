@@ -373,7 +373,7 @@ useHead({
     {
       "http-equiv": "Content-Security-Policy",
       content:
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloud.umami.is; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
     },
     {
       name: "description",
@@ -394,6 +394,13 @@ useHead({
     },
     { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
     { rel: "manifest", href: "/site.webmanifest" },
+  ],
+  script: [
+    {
+      src: "https://cloud.umami.is/script.js",
+      defer: true,
+      "data-website-id": "62618430-ebcb-4777-a26f-fc295df24b26",
+    },
   ],
 });
 useSeoMeta({
