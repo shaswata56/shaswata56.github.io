@@ -366,6 +366,11 @@ useHead({
   meta: [
     { name: "viewport", content: "width=device-width, initial-scale=1.0" },
     {
+      "http-equiv": "Content-Security-Policy",
+      content:
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+    },
+    {
       name: "description",
       content:
         "Portfolio of Shaswata Das. Software Engineer, Developer, Hacker. Currently Software Engineer at Orbitax Bangladesh Limited, sister concern of Orbitax LLC. B.Eng from Shahjalal University of Science and Technology, Sylhet, Bangladesh.",
