@@ -264,9 +264,11 @@ onMounted(() => {
     if (init.x || init.y) section.style.transform = `translate(${init.x}px,${init.y}px)`;
 
     handle.style.cursor = 'grab';
+    handle.style.touchAction = 'none';
 
-    handle.addEventListener('mousedown', (e) => {
+    handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
       const cx = savedPos[id]?.x ?? 0;
       const cy = savedPos[id]?.y ?? 0;
       activeDrag = { section, handle, sx: e.clientX - cx, sy: e.clientY - cy, cx, cy };
@@ -293,7 +295,7 @@ onMounted(() => {
     });
   });
 
-  window.addEventListener('mousemove', (e) => {
+  window.addEventListener('pointermove', (e) => {
     if (!activeDrag) return;
     activeDrag.cx = e.clientX - activeDrag.sx;
     activeDrag.cy = e.clientY - activeDrag.sy;
@@ -317,7 +319,7 @@ onMounted(() => {
     hideWallpaper();
   });
 
-  window.addEventListener('mouseup', () => {
+  const endDrag = () => {
     if (!activeDrag) return;
     const { section, handle, cx, cy } = activeDrag;
     const id = section.id;
@@ -328,7 +330,10 @@ onMounted(() => {
     activeDrag = null;
     updateResetBtn();
     showWallpaper();
-  });
+  };
+
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
 
   // Idle 60s toast
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
