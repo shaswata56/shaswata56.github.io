@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://shaswata.me/</loc>
+    <lastmod>2026-10-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/arcade.html</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/Aether.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/Cosmos.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/NeonRun.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/NeuroDrift.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/SolarSystem.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shaswata.me/TowerDefense.html</loc>
+    <priority>0.5</priority>
+  </url>
+</urlset>
