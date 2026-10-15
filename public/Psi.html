@@ -146,6 +146,7 @@
             <button class="btn" data-p="tunnel">Tunnel<small>E &lt; V — leak through</small></button>
             <button class="btn" data-p="free">Free wave<small>dispersion</small></button>
             <button class="btn wide" data-p="trap">Harmonic trap — coherent state oscillation</button>
+            <button class="btn wide" data-p="whichpath">Which-path — a detector kills the fringes</button>
         </div>
         <div class="preset-hint" id="phint"></div>
 
@@ -169,6 +170,7 @@
             <div class="tog on" id="togDet"><span>Detector screen</span><span class="sw"></span></div>
             <div class="tog on" id="togAuto"><span>Auto-refire</span><span class="sw"></span></div>
             <div class="tog" id="togPause"><span>Pause</span><span class="sw"></span></div>
+            <div class="tog on" id="togPath" style="display:none"><span>Path detector @ slit A</span><span class="sw"></span></div>
         </div>
 
         <div class="plabel">Reset</div>
@@ -186,7 +188,7 @@
             <span class="ph" style="color:#ff4d4d;background:#ff4d4d"></span><span class="ph" style="color:#ffd24d;background:#ffd24d"></span><span class="ph" style="color:#4dff88;background:#4dff88"></span><span class="ph" style="color:#4dd2ff;background:#4dd2ff"></span><span class="ph" style="color:#7a4dff;background:#7a4dff"></span>
         </p>
     </div>
-    <div class="hint mono">wheel zoom · right-drag orbit · <kbd>1</kbd>–<kbd>5</kbd> experiments · <kbd>space</kbd> pause</div>
+    <div class="hint mono">wheel zoom · right-drag orbit · <kbd>1</kbd>–<kbd>6</kbd> experiments · <kbd>space</kbd> pause</div>
     <div class="logline mono" id="logline"></div>
 
     <div id="boot">
@@ -214,6 +216,9 @@
         const MARGIN = 10;         // absorbing border width
         const EDGE_DAMP = 0.12;    // absorption strength ramp at edges
         const DET_DAMP = 0.86;     // per-step multiplier inside detector strip
+        // which-path patch — absorber over slit A (gaps A:36-44, B:56-64, wall x=84)
+        const PATH = { x0: 82, x1: 87, y0: 35, y1: 44, damp: 0.8 };
+        let preset = 'slit2', pathDet = true, slitDet = 0;
 
         const R = new Float32Array(N), I = new Float32Array(N), V = new Float32Array(N);
         const edgeDamp = new Float32Array(N);   // static border mask
@@ -233,6 +238,13 @@
             damp.set(edgeDamp);
             if (detOn) for (let y = 0; y < H; y++) for (let x = DET0; x <= DET1; x++) {
                 const i = y * W + x; damp[i] = Math.min(damp[i], DET_DAMP);
+            }
+            // which-path patch: strong absorber over slit A — a "measurement" there
+            // gains path knowledge at the cost of the amplitude it detects
+            if (preset === 'whichpath' && pathDet) {
+                for (let y = PATH.y0; y <= PATH.y1; y++) for (let x = PATH.x0; x <= PATH.x1; x++) {
+                    const i = y * W + x; damp[i] = Math.min(damp[i], PATH.damp);
+                }
             }
         }
         applyDetector();
@@ -257,7 +269,9 @@
                 const gone = b - R[i] * R[i] - I[i] * I[i];
                 if (gone > 0) {
                     absorbed += gone;
-                    if (detOn) { const x = i % W; if (x >= DET0 && x <= DET1) hist[(i / W) | 0] += gone; }
+                    const x = i % W, y = (i / W) | 0;
+                    if (detOn && x >= DET0 && x <= DET1) hist[y] += gone;
+                    if (preset === 'whichpath' && pathDet && x >= PATH.x0 && x <= PATH.x1 && y >= PATH.y0 && y <= PATH.y1) slitDet += gone;
                 }
             }
             simT += DT;
@@ -339,9 +353,19 @@
                     }
                     detOn = false;
                 }, fire() { emitPsi(W / 2 - 34, H / 2, 0, 0, 5.5); }
+            },
+            whichpath: {
+                hint: 'Two widely spaced slits — the screen shows bright <i>stripes</i> of constructive interference… except a detector now sits at slit A. Every electron it catches is <i>known</i> to have gone that way — and a known path cannot interfere. Toggle <b>Path detector</b> off and watch the stripes come back to life.',
+                build() {
+                    for (let y = 0; y < H; y++) {
+                        const gap = (y >= 36 && y < 44) || (y >= 56 && y < 64);
+                        if (!gap) V[y * W + 84] = WALL_V;
+                    }
+                    detOn = true; pathDet = true; slitDet = 0;
+                }, fire() { emitPsi(26, H / 2, 1.1, 0, 6.5); }
             }
         };
-        let preset = 'slit2', autoFire = true, lastFire = -1e9;
+        let autoFire = true, lastFire = -1e9;
 
         /* ---------------- three.js scene ---------------- */
         const canvas = document.getElementById('stage3d');
@@ -408,6 +432,14 @@
             }
             detMesh.count = H; detMesh.instanceMatrix.needsUpdate = true;
         }
+
+        // which-path detector marker — glowing red panel over slit A
+        const pathMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(PATH.x1 - PATH.x0 + 1, 3.2, PATH.y1 - PATH.y0 + 1),
+            new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.55, depthWrite: false }));
+        pathMesh.position.set((PATH.x0 + PATH.x1) / 2 - (W - 1) / 2, 1.4, (H - 1) / 2 - (PATH.y0 + PATH.y1) / 2);
+        pathMesh.visible = false; scene.add(pathMesh);
+        function syncPathMesh() { pathMesh.visible = preset === 'whichpath' && pathDet; }
 
         // emit drag arrow + collapse rings
         const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0x00e5ff, 4, 2.2);
@@ -577,6 +609,10 @@
             presets[name].fire(); lastFire = simT;
             document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.p === name));
             document.getElementById('phint').innerHTML = presets[name].hint;
+            const tp = document.getElementById('togPath');
+            tp.style.display = name === 'whichpath' ? 'flex' : 'none';
+            tp.classList.toggle('on', pathDet);
+            syncPathMesh();
             syncDet();
         }
         document.getElementById('presets').addEventListener('click', e => {
@@ -603,12 +639,20 @@
         document.getElementById('togPause').addEventListener('click', function () {
             paused = !paused; this.classList.toggle('on', paused);
         });
+        document.getElementById('togPath').addEventListener('click', function () {
+            pathDet = !pathDet; this.classList.toggle('on', pathDet);
+            if (!pathDet && slitDet > 0) log('Detector disabled — it had caught ' + (slitDet * 100).toFixed(0) + '% of ψ at slit A');
+            else if (pathDet) log('Path detector ON — which-path is now known. Interference must die.');
+            slitDet = 0; hist.fill(0); clearPsi(); applyDetector();
+            presets[preset].fire(); lastFire = simT;
+            syncPathMesh();
+        });
         document.getElementById('btnClearPsi').addEventListener('click', () => { clearPsi(); log('ψ field cleared'); });
         document.getElementById('btnClearWalls').addEventListener('click', () => { clearWalls(); rebuildWalls(); log('landscape cleared'); });
         addEventListener('keydown', e => {
             if (e.key === ' ') { e.preventDefault(); document.getElementById('togPause').click(); }
             else if (e.key === 'Escape') window.location.href = 'arcade.html';
-            else if (e.key >= '1' && e.key <= '5') runPreset(Object.keys(presets)[+e.key - 1]);
+            else if (e.key >= '1' && e.key <= '6') runPreset(Object.keys(presets)[+e.key - 1]);
         });
 
         /* ---------------- custom cursor ---------------- */
@@ -668,6 +712,8 @@
                 const sc = 1 + age * 26; rg.m.scale.set(sc, sc, sc); rg.m.material.opacity = 0.95 * (1 - age);
             }
 
+            if (pathMesh.visible) pathMesh.material.opacity = 0.42 + 0.22 * Math.sin(now / 280);
+
             hudAcc += dt;
             if (hudAcc > 0.25) {
                 hudAcc = 0;
@@ -688,6 +734,15 @@
         /* ---------------- boot ---------------- */
         setTool('observe');
         runPreset('slit2');
+        // deep-linkable experiments: Psi.html?exp=whichpath&path=off
+        (function () {
+            const q = new URLSearchParams(location.search);
+            const ex = q.get('exp');
+            if (ex && presets[ex]) {
+                runPreset(ex);
+                if (ex === 'whichpath' && q.get('path') === 'off') document.getElementById('togPath').click();
+            }
+        })();
         render();
         const boot = document.getElementById('boot'), bootlog = document.getElementById('bootlog'), bootfill = document.getElementById('bootfill');
         const lines = ['> QUANTUM LAB v1.0  [shaswata.me]', '> init ψ field ............. 200×100 lattice', '> Visscher integrator ...... dt=0.08 STABLE', '> potential landscape ....... MOUNTED', '> observer mode ............. STANDBY', '> READY — fire the electron'];
