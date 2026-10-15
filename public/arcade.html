@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcade · Shaswata Das</title>
     <script defer src="https://cloud.umami.is/script.js" data-website-id="62618430-ebcb-4777-a26f-fc295df24b26"></script>
-    <meta name="description" content="Play browser games — Neon Run, Tower Defense, Solar System, Cosmos, Neuro Drift, and Aether — in the arcade.">
+    <meta name="description" content="Play browser games — Neon Run, Tower Defense, Solar System, Cosmos, Neuro Drift, Aether and Ψ Psi, a live quantum physics lab — in the arcade.">
     <style>
         @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 
@@ -182,7 +182,7 @@
             <div class="brand"><span class="dot"></span> ARCADE</div>
             <div class="telemetry">
                 <span class="tchip">SYS <b>ONLINE</b></span>
-                <span class="tchip">SECTOR <b id="tSector">01/06</b></span>
+                <span class="tchip">SECTOR <b id="tSector">01/07</b></span>
                 <span class="tchip">FPS <b id="tFps">60</b></span>
                 <span class="tchip" id="tClock">--:--:--</span>
             </div>
@@ -432,6 +432,45 @@
             ctx.globalAlpha = 1;
         }
 
+        // the ψ lab — a wavepacket with phase rings approaching a double slit,
+        // interference stripes accumulating on the detector screen at right.
+        function psiThumb(ctx, w, h, t) {
+            const bg = ctx.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#0b0620'); bg.addColorStop(1, '#04030e');
+            ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(139,92,246,.12)'; ctx.lineWidth = 1; const step = Math.max(9, w / 9);
+            for (let x = step; x < w; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+            for (let y = step; y < h; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+            const cy = h / 2, wx = w * 0.52;
+            // interference stripes on the detector side — horizontal fringe bands, pulsing in
+            const reveal = 0.55 + 0.45 * Math.sin(t * 1.6);
+            for (let y = 3; y < h - 3; y += 3) {
+                const d = (y - cy) / h, env = Math.exp(-d * d * 9), fr = 0.5 + 0.5 * Math.cos(d * 34);
+                const a = env * (0.25 + 0.75 * fr) * reveal;
+                if (a < 0.04) continue;
+                ctx.fillStyle = `rgba(${192 + 40 * fr | 0},${132 + 60 * fr | 0},252,${a.toFixed(3)})`;
+                ctx.fillRect(w * 0.66, y, w * 0.30, 2);
+            }
+            // double-slit wall
+            ctx.fillStyle = '#8b5cf6'; ctx.shadowColor = '#8b5cf6'; ctx.shadowBlur = 8;
+            const gap = h * 0.09;
+            ctx.fillRect(wx - 1.5, 0, 3, cy - gap * 1.6);
+            ctx.fillRect(wx - 1.5, cy - gap * 0.55, 3, gap * 1.1);
+            ctx.fillRect(wx - 1.5, cy + gap * 1.6, 3, h - cy - gap * 1.6);
+            ctx.shadowBlur = 0;
+            // wavepacket breathing toward the wall — phase-colored rings around a gaussian core
+            const px = w * 0.22 + Math.sin(t * 0.7) * w * 0.03, pr = Math.min(w * 0.16, h * 0.34);
+            const core = ctx.createRadialGradient(px, cy, 0, px, cy, pr);
+            core.addColorStop(0, 'rgba(255,255,255,.95)'); core.addColorStop(.35, 'rgba(216,180,254,.7)'); core.addColorStop(1, 'rgba(139,92,246,0)');
+            ctx.fillStyle = core; ctx.beginPath(); ctx.arc(px, cy, pr, 0, Math.PI * 2); ctx.fill();
+            const hues = ['#ff4d6d', '#ffd24d', '#4dff88', '#4dd2ff', '#b14bff'];
+            for (let r = 0; r < 5; r++) {
+                const rr = pr * (0.25 + r * 0.19), ph = (t * 0.5 + r / 5) % 1;
+                ctx.strokeStyle = hues[(r + Math.floor(t * 0.5)) % 5]; ctx.globalAlpha = 0.65 * Math.sin(ph * Math.PI);
+                ctx.beginPath(); ctx.arc(px, cy, rr, 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+
         const games = [
             { id: 'neonrun', title: 'Neon Run', href: 'NeonRun.html', badge: '3D · WebGL', accent: '#00e5ff', glow: 'rgba(0,229,255,.5)',
               tags: ['Three.js', 'Synthwave', 'Endless'], render: neonRunThumb, bestKey: 'neonrun_best', bestLabel: 'High score',
@@ -450,7 +489,10 @@
               desc: 'Robot cars start out clueless and crash instantly. Each round, the ones that drove farthest “have babies” that drive a little better — so generation by generation they teach themselves the track. Nobody programs how to drive; you just watch them get good. The green feelers are how each car “sees” the walls.' },
             { id: 'aether', title: 'Aether', href: 'Aether.html', badge: '3D · Three.js', accent: '#e8c88a', glow: 'rgba(232,200,138,.5)',
               tags: ['Three.js', 'Flight', 'Procedural worlds'], render: aetherThumb, stat: 'Endless flyover',
-              desc: 'Soar an unbroken sky over procedurally generated biomes. Fly through portal rings to cross into worlds of fire, frost, jungle light and more — an endless journey of altitude and wonder.' }
+              desc: 'Soar an unbroken sky over procedurally generated biomes. Fly through portal rings to cross into worlds of fire, frost, jungle light and more — an endless journey of altitude and wonder.' },
+            { id: 'psi', title: 'Ψ Psi', href: 'Psi.html', badge: 'Sim · Quantum', accent: '#c084fc', glow: 'rgba(192,132,252,.5)',
+              tags: ['Schrödinger equation', 'Real physics', '3D'], render: psiThumb, stat: 'Solved live',
+              desc: 'Fire a wavepacket at the double slit and watch probability itself interfere. A real-time Schrödinger equation solver — height is |ψ|², color is quantum phase. Paint walls, tunnel through barriers, collapse ψ with a click.' }
         ];
 
         /* ---------- background ---------- */
@@ -600,7 +642,7 @@
 
         /* ---------- boot sequence ---------- */
         const boot = $('boot'), bootlog = $('bootlog'), bootfill = $('bootfill');
-        const lines = ['> ARCADE OS v1.2  [shaswata.me]', '> power core .................. ONLINE', '> mounting WebGL renderer ..... OK', '> input + haptics ............. OK', '> sector 01 :: NEON RUN ....... OK', '> sector 02 :: TOWER DEFENSE .. OK', '> sector 03 :: SOLAR SYSTEM ... OK', '> sector 04 :: COSMOS ......... OK', '> sector 05 :: NEURO DRIFT .... OK', '> sector 06 :: AETHER ......... OK', '> calibrating holo-display .... OK', '> sync astrometrics .......... OK', '> SYSTEM ONLINE'];
+        const lines = ['> ARCADE OS v1.3  [shaswata.me]', '> power core .................. ONLINE', '> mounting WebGL renderer ..... OK', '> input + haptics ............. OK', '> sector 01 :: NEON RUN ....... OK', '> sector 02 :: TOWER DEFENSE .. OK', '> sector 03 :: SOLAR SYSTEM ... OK', '> sector 04 :: COSMOS ......... OK', '> sector 05 :: NEURO DRIFT .... OK', '> sector 06 :: AETHER ......... OK', '> sector 07 :: PSI QUANTUM .... OK', '> calibrating holo-display .... OK', '> sync astrometrics .......... OK', '> SYSTEM ONLINE'];
         let li = 0, bootDone = false;
         function step() { if (bootDone) return; if (li < lines.length) { bootlog.textContent += lines[li] + '\n'; bootfill.style.width = Math.round((li + 1) / lines.length * 100) + '%'; li++; setTimeout(step, 110 + Math.random() * 130); } else setTimeout(endBoot, 340); }
         function endBoot() { if (bootDone) return; bootDone = true; const fl = $('flash'); fl.classList.add('go'); setTimeout(() => fl.classList.remove('go'), 600); boot.classList.add('done'); document.body.classList.add('ready'); setTimeout(() => boot.remove(), 650); }
