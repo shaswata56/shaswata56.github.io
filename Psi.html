@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ψ · Quantum Lab · Shaswata Das</title>
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="62618430-ebcb-4777-a26f-fc295df24b26"></script>
+    <meta name="description" content="A real-time Schrödinger equation solver in your browser. Fire wavepackets at the double slit, paint walls, tunnel through barriers and collapse the wavefunction — height is probability, color is quantum phase.">
+    <style>
+        :root {
+            --c1: #c084fc; --c2: #00e5ff; --c3: #ff2d95;
+            --bg: #04030e; --text: #eafcff; --muted: #8f97b8;
+            --panel: rgba(12, 10, 32, .72); --border: rgba(192, 132, 252, .25);
+            --accent: var(--c1); --glow: rgba(192, 132, 252, .5);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text); overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .mono { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; }
+
+        #stage3d { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: none; }
+        .scanlines { position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: .32;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 1px, transparent 1px 3px); }
+        .vignette { position: fixed; inset: 0; z-index: 4; pointer-events: none;
+            background: radial-gradient(circle at 50% 42%, transparent 44%, rgba(4,3,14,.82) 100%); }
+
+        @media (hover: hover) and (pointer: fine) { body, a, button { cursor: none; } }
+        #cursor { position: fixed; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; z-index: 300; pointer-events: none;
+            border: 1px solid var(--accent); border-radius: 50%; mix-blend-mode: screen; transition: width .15s, height .15s, margin .15s, background .15s; }
+        #cursor::before { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
+        #cursor::after { content: ''; position: absolute; inset: -5px; border: 1px solid var(--accent); border-radius: 50%; opacity: .25; }
+        #cursor.hot { width: 40px; height: 40px; margin: -20px 0 0 -20px; background: rgba(192,132,252,.12); }
+        #cursor.paint { width: 34px; height: 34px; margin: -17px 0 0 -17px; border-style: dashed; }
+
+        /* status bar */
+        .statusbar { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 9px 14px; margin: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            opacity: 0; transform: translateY(-8px); transition: opacity .5s ease, transform .5s ease; }
+        body.ready .statusbar { opacity: 1; transform: none; }
+        .brand { font-weight: 900; letter-spacing: 4px; font-size: 15px; display: flex; align-items: center; gap: 10px; white-space: nowrap;
+            background: linear-gradient(90deg, var(--c1), var(--c2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c1); box-shadow: 0 0 12px var(--c1); animation: blink 1.5s ease-in-out infinite; }
+        @keyframes blink { 50% { opacity: .25; } }
+        .telemetry { display: flex; gap: 8px; flex: 1; justify-content: center; flex-wrap: wrap; }
+        .tchip { font-size: 10.5px; letter-spacing: 1.2px; color: var(--muted); border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; white-space: nowrap; }
+        .tchip b { color: var(--accent); }
+        .exit { text-decoration: none; color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+            border: 1px solid var(--border); border-radius: 9px; padding: 7px 13px; white-space: nowrap; transition: color .2s, box-shadow .2s, transform .2s; }
+        .exit:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 6px 20px var(--glow); }
+
+        /* control panel */
+        .panel { position: fixed; right: 12px; top: 74px; bottom: 12px; z-index: 10; width: 248px; overflow-y: auto; overscroll-behavior: contain;
+            border: 1px solid var(--border); border-radius: 16px; background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 14px; display: flex; flex-direction: column; gap: 13px; scrollbar-width: thin; scrollbar-color: rgba(192,132,252,.3) transparent;
+            opacity: 0; transform: translateX(14px); transition: opacity .5s ease, transform .5s ease; }
+        body.ready .panel { opacity: 1; transform: none; }
+        .plabel { font-size: 10px; letter-spacing: 2.5px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
+        .plabel::before { content: '// '; color: var(--accent); }
+        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+        .btn { font-family: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .5px; color: var(--text); text-align: left;
+            background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; transition: border-color .15s, box-shadow .15s, background .15s; }
+        .btn small { display: block; font-weight: 500; font-size: 9.5px; color: var(--muted); letter-spacing: .2px; margin-top: 2px; }
+        .btn:hover { border-color: rgba(192,132,252,.6); }
+        .btn.on { background: rgba(192,132,252,.14); border-color: var(--accent); box-shadow: 0 0 18px -4px var(--glow); }
+        .btn.wide { grid-column: 1 / -1; }
+        .seg { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .seg button { flex: 1; font-family: inherit; font-size: 11px; font-weight: 800; padding: 7px 0; color: var(--muted); background: rgba(0,0,0,.28); border: none; transition: background .15s, color .15s; }
+        .seg button + button { border-left: 1px solid var(--border); }
+        .seg button.on { background: rgba(192,132,252,.16); color: #fff; }
+        .preset-hint { font-size: 11px; line-height: 1.55; color: #b9c6e8; border-left: 2px solid var(--accent); padding-left: 10px; min-height: 34px; }
+        .toggles { display: flex; flex-direction: column; gap: 7px; }
+        .tog { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; font-weight: 700; color: var(--text);
+            background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+        .tog .sw { width: 30px; height: 16px; border-radius: 16px; background: rgba(0,0,0,.5); border: 1px solid var(--border); position: relative; transition: background .2s, border-color .2s; flex: none; }
+        .tog .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: left .2s, background .2s; }
+        .tog.on .sw { background: rgba(192,132,252,.25); border-color: var(--accent); }
+        .tog.on .sw::after { left: 16px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+        /* explainer */
+        .about { position: fixed; left: 12px; bottom: 12px; z-index: 10; width: min(360px, calc(100vw - 24px));
+            border: 1px solid var(--border); border-radius: 16px; background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 14px 16px; opacity: 0; transform: translateY(10px); transition: opacity .5s ease .2s, transform .5s ease .2s; }
+        body.ready .about { opacity: 1; transform: none; }
+        .about h2 { font-size: 13px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+        .about p { font-size: 11.5px; line-height: 1.6; color: #b9c6e8; margin-bottom: 7px; }
+        .about p:last-child { margin-bottom: 0; }
+        .about b { color: #fff; }
+        .about .ph { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 1px; vertical-align: -1px; box-shadow: 0 0 6px currentColor; }
+        .hint { position: fixed; left: 12px; bottom: 12px; z-index: 9; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+        .logline { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 10; font-size: 11.5px; letter-spacing: 1px; color: var(--accent);
+            text-shadow: 0 0 14px var(--glow); opacity: 0; transition: opacity .4s; pointer-events: none; white-space: nowrap; }
+        .logline.show { opacity: 1; }
+
+        /* boot overlay */
+        #boot { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: #04030e; overflow: hidden; }
+        #boot::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+            background: repeating-linear-gradient(0deg, rgba(192,132,252,.05) 0 2px, transparent 2px 4px); }
+        #boot.done { opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+        .boot-inner { position: relative; z-index: 2; width: min(430px, 86vw); padding: 26px; }
+        .boot-title { font-weight: 900; letter-spacing: 6px; font-size: 19px; color: var(--c1); text-shadow: 0 0 18px var(--glow); margin-bottom: 16px; }
+        #bootlog { white-space: pre-wrap; font-size: 12.5px; line-height: 1.7; color: #d9c6ff; min-height: 120px; }
+        #bootlog::after { content: '▋'; color: var(--c1); animation: caret .8s steps(1) infinite; }
+        @keyframes caret { 50% { opacity: 0; } }
+        .boot-bar { height: 4px; border-radius: 4px; background: rgba(192,132,252,.15); overflow: hidden; margin-top: 14px; }
+        #bootfill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--c1), var(--c2)); box-shadow: 0 0 12px var(--c1); transition: width .15s ease; }
+
+        @media (max-width: 900px) {
+            .telemetry { display: none; }
+            .panel { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 42vh; padding: 12px; gap: 10px; }
+            .about { display: none; }
+            .hint { display: none; }
+            .logline { bottom: auto; top: 78px; }
+        }
+        @media (max-width: 520px) { .brand { letter-spacing: 2px; font-size: 13px; } .btns { grid-template-columns: 1fr 1fr 1fr; } }
+    </style>
+</head>
+
+<body>
+    <canvas id="stage3d"></canvas>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <div id="cursor"></div>
+
+    <div class="statusbar mono">
+        <div class="brand"><span class="dot"></span> Ψ QUANTUM LAB</div>
+        <div class="telemetry">
+            <span class="tchip">Σ|ψ|² <b id="tNorm">1.000</b></span>
+            <span class="tchip">t <b id="tTime">0</b></span>
+            <span class="tchip">MODE <b id="tMode">ORBIT</b></span>
+            <span class="tchip">FPS <b id="tFps">60</b></span>
+        </div>
+        <a class="exit" href="arcade.html"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.14em"><line x1="12" y1="3" x2="12" y2="12"/><path d="M7.6 6.3a7 7 0 1 0 8.8 0"/></svg> Exit</a>
+    </div>
+
+    <aside class="panel mono" id="panel">
+        <div class="plabel">Experiment</div>
+        <div class="btns" id="presets">
+            <button class="btn on" data-p="slit2">Double slit<small>interference</small></button>
+            <button class="btn" data-p="slit1">Single slit<small>diffraction</small></button>
+            <button class="btn" data-p="tunnel">Tunnel<small>E &lt; V — leak through</small></button>
+            <button class="btn" data-p="free">Free wave<small>dispersion</small></button>
+            <button class="btn wide" data-p="trap">Harmonic trap — coherent state oscillation</button>
+            <button class="btn wide" data-p="whichpath">Which-path — a detector kills the fringes</button>
+        </div>
+        <div class="preset-hint" id="phint"></div>
+
+        <div class="plabel">Tool</div>
+        <div class="btns" id="tools">
+            <button class="btn" data-t="orbit">Orbit<small>drag to rotate</small></button>
+            <button class="btn" data-t="wall">Wall<small>paint barriers</small></button>
+            <button class="btn" data-t="erase">Erase<small>remove walls</small></button>
+            <button class="btn" data-t="emit">Emit ψ<small>drag = momentum</small></button>
+            <button class="btn wide on" data-t="observe" id="toolObs">Observe — click to collapse ψ</button>
+        </div>
+
+        <div class="plabel">Time</div>
+        <div class="seg" id="speed">
+            <button data-s="3">½×</button>
+            <button data-s="6" class="on">1×</button>
+            <button data-s="12">2×</button>
+            <button data-s="24">4×</button>
+        </div>
+        <div class="toggles">
+            <div class="tog on" id="togDet"><span>Detector screen</span><span class="sw"></span></div>
+            <div class="tog on" id="togAuto"><span>Auto-refire</span><span class="sw"></span></div>
+            <div class="tog" id="togPause"><span>Pause</span><span class="sw"></span></div>
+            <div class="tog on" id="togPath" style="display:none"><span>Path detector @ slit A</span><span class="sw"></span></div>
+        </div>
+
+        <div class="plabel">Reset</div>
+        <div class="btns">
+            <button class="btn" id="btnClearPsi">Clear ψ</button>
+            <button class="btn" id="btnClearWalls">Clear walls</button>
+        </div>
+    </aside>
+
+    <div class="about" id="about">
+        <h2>An object that is not a thing</h2>
+        <p>You are watching <b>|ψ|²</b> — where an electron <i>might</i> be. <b>Height is probability. Color is quantum phase.</b></p>
+        <p>This is the real time-dependent <b>Schrödinger equation</b>, solved live (Visscher leapfrog scheme). Nothing is scripted — interference, tunneling and dispersion all emerge from the math.</p>
+        <p>Phase wheel:
+            <span class="ph" style="color:#ff4d4d;background:#ff4d4d"></span><span class="ph" style="color:#ffd24d;background:#ffd24d"></span><span class="ph" style="color:#4dff88;background:#4dff88"></span><span class="ph" style="color:#4dd2ff;background:#4dd2ff"></span><span class="ph" style="color:#7a4dff;background:#7a4dff"></span>
+        </p>
+    </div>
+    <div class="hint mono">wheel zoom · right-drag orbit · <kbd>1</kbd>–<kbd>6</kbd> experiments · <kbd>space</kbd> pause</div>
+    <div class="logline mono" id="logline"></div>
+
+    <div id="boot">
+        <div class="boot-inner mono">
+            <div class="boot-title">Ψ&nbsp;QUANTUM&nbsp;LAB</div>
+            <pre id="bootlog"></pre>
+            <div class="boot-bar"><i id="bootfill"></i></div>
+        </div>
+    </div>
+
+    <script src="/vendor/three.r128.min.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        /* =====================================================================
+           Ψ · Quantum Lab — a real-time Schrödinger equation solver.
+           Physics: Visscher explicit leapfrog for i∂ψ/∂t = −½∇²ψ + Vψ
+           (ħ = m = dx = dy = 1). Validated headless: group velocity sin(k),
+           norm conserved to 1e-3, double-slit fringes, visible tunneling.
+           Lattice dispersion E(k) = 1 − cos k. dt = 0.08 « stability bound.
+           ===================================================================== */
+        const W = 200, H = 100, N = W * H;
+        const DT = 0.08;
+        const WALL_V = 6;          // painted / slit wall potential
+        const MARGIN = 10;         // absorbing border width
+        const EDGE_DAMP = 0.12;    // absorption strength ramp at edges
+        const DET_DAMP = 0.86;     // per-step multiplier inside detector strip
+        // which-path patch — absorber over slit A (gaps A:36-44, B:56-64, wall x=84)
+        const PATH = { x0: 82, x1: 87, y0: 35, y1: 44, damp: 0.8 };
+        let preset = 'slit2', pathDet = true, slitDet = 0;
+
+        const R = new Float32Array(N), I = new Float32Array(N), V = new Float32Array(N);
+        const edgeDamp = new Float32Array(N);   // static border mask
+        const damp = new Float32Array(N);       // live mask (edge ∪ detector)
+        const hist = new Float32Array(H);       // detector arrivals per row
+        let simT = 0, absorbed = 0, detOn = true;
+        const DET0 = W - 8, DET1 = W - 2;
+
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const d = Math.min(Math.min(x, W - 1 - x), Math.min(y, H - 1 - y));
+            let m = 1;
+            if (d < MARGIN) { const s = 0.5 * (1 - Math.cos(Math.PI * (MARGIN - d) / MARGIN)); m = 1 - EDGE_DAMP * s; }
+            edgeDamp[y * W + x] = m;
+            damp[y * W + x] = m;
+        }
+        function applyDetector() {
+            damp.set(edgeDamp);
+            if (detOn) for (let y = 0; y < H; y++) for (let x = DET0; x <= DET1; x++) {
+                const i = y * W + x; damp[i] = Math.min(damp[i], DET_DAMP);
+            }
+            // which-path patch: strong absorber over slit A — a "measurement" there
+            // gains path knowledge at the cost of the amplitude it detects
+            if (preset === 'whichpath' && pathDet) {
+                for (let y = PATH.y0; y <= PATH.y1; y++) for (let x = PATH.x0; x <= PATH.x1; x++) {
+                    const i = y * W + x; damp[i] = Math.min(damp[i], PATH.damp);
+                }
+            }
+        }
+        applyDetector();
+
+        function hAct(src, i) { // −½∇² + V on a cell (interior only)
+            return -0.5 * (src[i - 1] + src[i + 1] + src[i - W] + src[i + W] - 4 * src[i]) + V[i] * src[i];
+        }
+        function stepSim() {
+            for (let y = 1; y < H - 1; y++) {
+                const row = y * W;
+                for (let x = 1; x < W - 1; x++) { const i = row + x; I[i] -= DT * hAct(R, i); }
+            }
+            for (let y = 1; y < H - 1; y++) {
+                const row = y * W;
+                for (let x = 1; x < W - 1; x++) { const i = row + x; R[i] += DT * hAct(I, i); }
+            }
+            for (let i = 0; i < N; i++) {
+                const dm = damp[i];
+                if (dm === 1) continue;
+                const b = R[i] * R[i] + I[i] * I[i];
+                R[i] *= dm; I[i] *= dm;
+                const gone = b - R[i] * R[i] - I[i] * I[i];
+                if (gone > 0) {
+                    absorbed += gone;
+                    const x = i % W, y = (i / W) | 0;
+                    if (detOn && x >= DET0 && x <= DET1) hist[y] += gone;
+                    if (preset === 'whichpath' && pathDet && x >= PATH.x0 && x <= PATH.x1 && y >= PATH.y0 && y <= PATH.y1) slitDet += gone;
+                }
+            }
+            simT += DT;
+        }
+        function emitPsi(x0, y0, kx, ky, sigma) {
+            let nrm = 0;
+            for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+                const dx = x - x0, dy = y - y0, g = Math.exp(-(dx * dx + dy * dy) / (4 * sigma * sigma));
+                const ph = kx * x + ky * y, i = y * W + x;
+                R[i] += g * Math.cos(ph); I[i] += g * Math.sin(ph); nrm += g * g;
+            }
+            const s = 1 / Math.sqrt(nrm);
+            for (let i = 0; i < N; i++) { R[i] *= s; I[i] *= s; }
+        }
+        function norm() { let s = 0; for (let i = 0; i < N; i++) s += R[i] * R[i] + I[i] * I[i]; return s; }
+        function clearPsi() { R.fill(0); I.fill(0); hist.fill(0); absorbed = 0; }
+        function clearWalls() { V.fill(0); }
+        function observe(xm, ym) { // fuzzy position measurement: ψ → gaussian·ψ, renormalized
+            const sc = 4;
+            let nrm = 0;
+            for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+                const dx = x - xm, dy = y - ym, g = Math.exp(-(dx * dx + dy * dy) / (2 * sc * sc));
+                const i = y * W + x; R[i] *= g; I[i] *= g; nrm += R[i] * R[i] + I[i] * I[i];
+            }
+            if (nrm < 1e-12) return false;
+            const s = 1 / Math.sqrt(nrm);
+            for (let i = 0; i < N; i++) { R[i] *= s; I[i] *= s; }
+            return true;
+        }
+        function samplePosition(pMax) { // rejection-sample a cell ∝ |ψ|²
+            for (let tries = 0; tries < 20000; tries++) {
+                const i = (Math.random() * N) | 0;
+                if (Math.random() * pMax < R[i] * R[i] + I[i] * I[i]) return i;
+            }
+            let best = 0, bi = 0;
+            for (let i = 0; i < N; i++) { const p = R[i] * R[i] + I[i] * I[i]; if (p > best) { best = p; bi = i; } }
+            return bi;
+        }
+
+        /* ---------------- experiments ---------------- */
+        const presets = {
+            slit2: {
+                hint: 'One electron, two slits. Each half of ψ goes through one slit — and interferes with itself. Watch the stripes build on the detector: that pattern is proof the electron passed through <i>both</i>.',
+                build() {
+                    for (let y = 0; y < H; y++) {
+                        const gap = (y >= 42 && y < 50) || (y >= 52 && y < 60);
+                        if (!gap) V[y * W + 84] = WALL_V;
+                    }
+                    detOn = true;
+                }, fire() { emitPsi(26, H / 2, 1.0, 0, 6); }
+            },
+            slit1: {
+                hint: 'One wide slit: ψ squeezes through and <i>diffracts</i> — spreading the way a wave must. No interference partner this time, so no stripes, just smooth bending.',
+                build() {
+                    for (let y = 0; y < H; y++) {
+                        const gap = y >= 44 && y < 56;
+                        if (!gap) V[y * W + 84] = WALL_V;
+                    }
+                    detOn = true;
+                }, fire() { emitPsi(26, H / 2, 1.0, 0, 6); }
+            },
+            tunnel: {
+                hint: 'The packet’s energy E ≈ 0.64 is <i>less than</i> the barrier V = 0.75. Classically forbidden — yet part of ψ leaks through. Watch the faint ghost emerge on the far side: that is tunneling.',
+                build() {
+                    for (let y = 0; y < H; y++) for (let x = 118; x < 120; x++) V[y * W + x] = 0.75;
+                    detOn = false;
+                }, fire() { emitPsi(40, H / 2, 1.2, 0, 5); }
+            },
+            free: {
+                hint: 'A free gaussian packet does not hold its shape — momentum components travel at different speeds and it <i>disperses</i>. Notice the phase colors spiral fastest where ψ is smallest.',
+                build() { detOn = false; }, fire() { emitPsi(60, H / 2, 1.1, 0.15, 5); }
+            },
+            trap: {
+                hint: 'A parabolic bowl (harmonic oscillator). An off-center gaussian is a <b>coherent state</b>: it sloshes back and forth like a classical mass on a spring, breathing as it goes.',
+                build() {
+                    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                        const dx = x - W / 2, dy = (y - H / 2) * 2;
+                        V[y * W + x] = Math.min(0.004 * (dx * dx + dy * dy), 3.5);
+                    }
+                    detOn = false;
+                }, fire() { emitPsi(W / 2 - 34, H / 2, 0, 0, 5.5); }
+            },
+            whichpath: {
+                hint: 'Two widely spaced slits — the screen shows bright <i>stripes</i> of constructive interference… except a detector now sits at slit A. Every electron it catches is <i>known</i> to have gone that way — and a known path cannot interfere. Toggle <b>Path detector</b> off and watch the stripes come back to life.',
+                build() {
+                    for (let y = 0; y < H; y++) {
+                        const gap = (y >= 36 && y < 44) || (y >= 56 && y < 64);
+                        if (!gap) V[y * W + 84] = WALL_V;
+                    }
+                    detOn = true; pathDet = true; slitDet = 0;
+                }, fire() { emitPsi(26, H / 2, 1.1, 0, 6.5); }
+            }
+        };
+        let autoFire = true, lastFire = -1e9;
+
+        /* ---------------- three.js scene ---------------- */
+        const canvas = document.getElementById('stage3d');
+        let renderer;
+        try {
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        } catch (e) {
+            document.getElementById('bootlog').textContent = '> WebGL unavailable — this cartridge needs GPU rendering.';
+            return;
+        }
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050314);
+        scene.fog = new THREE.Fog(0x050314, 210, 460);
+        const camera = new THREE.PerspectiveCamera(55, 1, 0.5, 1200);
+
+        const HMAX = 24;                                  // peak surface height
+        // vertex lattice: PlaneGeometry(W-1, H-1, W-1, H-1) → W×H integer grid on XZ
+        const geo = new THREE.PlaneGeometry(W - 1, H - 1, W - 1, H - 1);
+        geo.rotateX(-Math.PI / 2);
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+        const pos = geo.attributes.position, col = geo.attributes.color;
+        const surface = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.96 }));
+        const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
+        scene.add(surface); scene.add(wire);
+
+        // grid floor + domain frame
+        const gridHelper = new THREE.GridHelper(Math.max(W, H) * 1.7, 34, 0x2a1a55, 0x150b30);
+        gridHelper.position.y = -4; scene.add(gridHelper);
+        (function frame() {
+            const hw = (W - 1) / 2, hh = (H - 1) / 2;
+            const pts = [new THREE.Vector3(-hw, 0, -hh), new THREE.Vector3(hw, 0, -hh), new THREE.Vector3(hw, 0, hh), new THREE.Vector3(-hw, 0, hh), new THREE.Vector3(-hw, 0, -hh)];
+            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.5 })));
+        })();
+
+        // walls — instanced glowing boxes, rebuilt when V changes
+        const wallMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 7, 1),
+            new THREE.MeshBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.55 }), N);
+        wallMesh.count = 0; scene.add(wallMesh);
+        const _m4 = new THREE.Matrix4();
+        function rebuildWalls() {
+            let c = 0;
+            const hw = (W - 1) / 2, hh = (H - 1) / 2;
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (V[y * W + x] < 0.01) continue;
+                if (c >= N) break;
+                _m4.makeTranslation(x - hw, 2.6, hh - y);
+                wallMesh.setMatrixAt(c++, _m4);
+            }
+            wallMesh.count = c; wallMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // detector bars along the right edge
+        const detMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 1, 0.8),
+            new THREE.MeshBasicMaterial({ color: 0xe9d5ff, transparent: true, opacity: 0.9 }), H);
+        detMesh.count = 0; scene.add(detMesh);
+        function rebuildDetector(histMax) {
+            if (!detOn || histMax <= 1e-9) { detMesh.count = 0; detMesh.instanceMatrix.needsUpdate = true; return; }
+            const hw = (W - 1) / 2, hh = (H - 1) / 2, xw = W - 3 - hw;
+            for (let y = 0; y < H; y++) {
+                const hgt = Math.max(0.001, hist[y] / histMax * 34);
+                _m4.makeScale(1, hgt, 1); _m4.setPosition(xw, hgt / 2, hh - y);
+                detMesh.setMatrixAt(y, _m4);
+            }
+            detMesh.count = H; detMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // which-path detector marker — glowing red panel over slit A
+        const pathMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(PATH.x1 - PATH.x0 + 1, 3.2, PATH.y1 - PATH.y0 + 1),
+            new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.55, depthWrite: false }));
+        pathMesh.position.set((PATH.x0 + PATH.x1) / 2 - (W - 1) / 2, 1.4, (H - 1) / 2 - (PATH.y0 + PATH.y1) / 2);
+        pathMesh.visible = false; scene.add(pathMesh);
+        function syncPathMesh() { pathMesh.visible = preset === 'whichpath' && pathDet; }
+
+        // emit drag arrow + collapse rings
+        const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0x00e5ff, 4, 2.2);
+        arrow.visible = false; scene.add(arrow);
+        const rings = [];
+        function spawnRing(wx, wz) {
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 48),
+                new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+            ring.rotation.x = -Math.PI / 2; ring.position.set(wx, 0.4, wz);
+            scene.add(ring); rings.push({ m: ring, t0: performance.now() });
+        }
+
+        /* phase LUT — 256 hues around the color wheel */
+        const LUT = new Float32Array(256 * 3);
+        for (let i = 0; i < 256; i++) {
+            const h = i / 256, s = 1, l = 0.55;
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+            const f = t => { t = ((t % 1) + 1) % 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+            LUT[i * 3] = f(h + 1 / 3); LUT[i * 3 + 1] = f(h); LUT[i * 3 + 2] = f(h - 1 / 3);
+        }
+
+        /* ---------------- camera orbit ---------------- */
+        const orbit = { r: 205, th: -1.12, ph: 1.02, tgt: new THREE.Vector3(0, 5, 0) };
+        function applyCam() {
+            orbit.ph = Math.max(0.18, Math.min(1.5, orbit.ph));
+            orbit.r = Math.max(70, Math.min(430, orbit.r));
+            camera.position.set(
+                orbit.tgt.x + orbit.r * Math.sin(orbit.ph) * Math.sin(orbit.th),
+                orbit.tgt.y + orbit.r * Math.cos(orbit.ph),
+                orbit.tgt.z + orbit.r * Math.sin(orbit.ph) * Math.cos(orbit.th));
+            camera.lookAt(orbit.tgt);
+        }
+        applyCam();
+
+        /* ---------------- input ---------------- */
+        const ray = new THREE.Raycaster();
+        const planeMath = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const ndc = new THREE.Vector2(), hitW = new THREE.Vector3();
+        function pick(cx, cy) {
+            const r = canvas.getBoundingClientRect();
+            ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+            ray.setFromCamera(ndc, camera);
+            if (!ray.ray.intersectPlane(planeMath, hitW)) return null;
+            const x = Math.round(hitW.x + (W - 1) / 2), y = Math.round((H - 1) / 2 - hitW.z);
+            return (x >= 0 && x < W && y >= 0 && y < H) ? { x, y, wx: hitW.x, wz: hitW.z } : null;
+        }
+        function toGrid(wx, wz) { return { x: Math.round(wx + (W - 1) / 2), y: Math.round((H - 1) / 2 - wz) }; }
+
+        let tool = 'observe', speed = 6, paused = false;
+        const ptrs = new Map();
+        let drag = null; // {kind:'orbit'|'tool', x0,y0, lastX,lastY, pinchD, pick0}
+        let wallTimer = 0;
+
+        function paintAt(x, y, erase) {
+            const rad = 2.4;
+            for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+                if (dx * dx + dy * dy > rad * rad) continue;
+                const xx = x + dx, yy = y + dy;
+                if (xx < 2 || xx >= W - 2 || yy < 2 || yy >= H - 2) continue;
+                V[yy * W + xx] = erase ? 0 : WALL_V;
+            }
+        }
+        function setTool(t) {
+            tool = t;
+            document.querySelectorAll('#tools .btn').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+            document.getElementById('tMode').textContent = { orbit: 'ORBIT', wall: 'WALL', erase: 'ERASE', emit: 'EMIT ψ', observe: 'OBSERVE' }[t];
+        }
+        function log(msg) {
+            const el = document.getElementById('logline');
+            el.innerHTML = msg; el.classList.add('show');
+            clearTimeout(log._t); log._t = setTimeout(() => el.classList.remove('show'), 2600);
+        }
+
+        canvas.addEventListener('pointerdown', e => {
+            canvas.setPointerCapture(e.pointerId);
+            ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (ptrs.size === 2) { // second finger → pinch/orbit takes over
+                if (drag && drag.kind === 'tool') { arrow.visible = false; drag = null; }
+                const a = [...ptrs.values()];
+                drag = { kind: 'orbit', x0: (a[0].x + a[1].x) / 2, y0: (a[0].y + a[1].y) / 2, lastX: e.clientX, lastY: e.clientY, pinchD: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), pinchR: orbit.r };
+                return;
+            }
+            const pickRes = (e.button === 2 || tool === 'orbit') ? null : pick(e.clientX, e.clientY);
+            if (e.button === 2 || tool === 'orbit' || !pickRes) { drag = { kind: 'orbit', lastX: e.clientX, lastY: e.clientY }; return; }
+            if (tool === 'wall' || tool === 'erase') {
+                drag = { kind: 'tool', tool, x: pickRes.x, y: pickRes.y };
+                paintAt(pickRes.x, pickRes.y, tool === 'erase'); wallTimer = performance.now();
+            } else if (tool === 'emit') {
+                drag = { kind: 'tool', tool: 'emit', wx0: pickRes.wx, wz0: pickRes.wz, g0: pickRes };
+                arrow.visible = true; arrow.position.set(pickRes.wx, 0.5, pickRes.wz);
+            } else if (tool === 'observe') {
+                const pMax = frameMax || 1e-9;
+                if (norm() < 1e-4) { log('ψ is empty — fire a packet first'); return; }
+                const i = samplePosition(pMax);
+                const gx = i % W, gy = (i / W) | 0;
+                observe(gx, gy);
+                spawnRing(gx - (W - 1) / 2, (H - 1) / 2 - gy);
+                log('MEASUREMENT — ψ collapsed at (' + gx + ', ' + gy + '). One world, picked at random.');
+            }
+        });
+        canvas.addEventListener('pointermove', e => {
+            const p = ptrs.get(e.pointerId);
+            if (p) { p.x = e.clientX; p.y = e.clientY; }
+            if (!drag) return;
+            if (drag.kind === 'orbit') {
+                if (ptrs.size === 2) {
+                    const a = [...ptrs.values()];
+                    const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+                    if (drag.pinchD) { orbit.r = drag.pinchR * drag.pinchD / Math.max(20, d); applyCam(); }
+                    const mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2;
+                    orbit.th -= (mx - drag.x0) * 0.004; orbit.ph -= (my - drag.y0) * 0.004; drag.x0 = mx; drag.y0 = my;
+                } else {
+                    orbit.th -= (e.clientX - drag.lastX) * 0.005;
+                    orbit.ph -= (e.clientY - drag.lastY) * 0.005;
+                    drag.lastX = e.clientX; drag.lastY = e.clientY;
+                }
+                applyCam();
+                return;
+            }
+            if (drag.tool === 'wall' || drag.tool === 'erase') {
+                const pk = pick(e.clientX, e.clientY);
+                if (pk) { paintAt(pk.x, pk.y, drag.tool === 'erase'); drag.x = pk.x; drag.y = pk.y; }
+                if (performance.now() - wallTimer > 120) { wallTimer = performance.now(); rebuildWalls(); }
+            } else if (drag.tool === 'emit') {
+                const pk = pick(e.clientX, e.clientY);
+                if (pk) {
+                    const dx = pk.wx - drag.wx0, dz = pk.wz - drag.wz0, len = Math.hypot(dx, dz);
+                    if (len > 0.5) { arrow.setDirection(new THREE.Vector3(dx / len, 0, dz / len)); arrow.setLength(Math.min(len, 60), 4, 2.2); }
+                }
+            }
+        });
+        function endPointer(e) {
+            ptrs.delete(e.pointerId);
+            if (!drag) return;
+            if (drag.kind === 'tool' && drag.tool === 'emit') {
+                const pk = pick(e.clientX, e.clientY);
+                if (pk) {
+                    const dx = pk.wx - drag.wx0, dz = pk.wz - drag.wz0, len = Math.hypot(dx, dz);
+                    if (len > 1.5) {
+                        // drag direction → grid momentum (z axis mirrored: world −z = grid +y)
+                        const g = toGrid(drag.wx0, drag.wz0);
+                        const kMag = Math.min(2.1, len * 0.045), inv = 1 / len;
+                        emitPsi(g.x, g.y, dx * inv * kMag, -dz * inv * kMag, 5);
+                        log('ψ emitted — momentum |k| = ' + kMag.toFixed(2));
+                    } else log('drag farther to give ψ momentum');
+                }
+                arrow.visible = false;
+            }
+            if (drag.kind === 'tool' && (drag.tool === 'wall' || drag.tool === 'erase')) rebuildWalls();
+            if (ptrs.size === 0) drag = null;
+            else if (ptrs.size === 1) drag = { kind: 'orbit', lastX: e.clientX, lastY: e.clientY };
+        }
+        canvas.addEventListener('pointerup', endPointer);
+        canvas.addEventListener('pointercancel', endPointer);
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            orbit.r *= Math.exp(e.deltaY * 0.0011); applyCam();
+        }, { passive: false });
+
+        /* ---------------- panel wiring ---------------- */
+        function runPreset(name) {
+            preset = name;
+            clearWalls(); clearPsi(); applyDetector();
+            presets[name].build(); applyDetector();
+            rebuildWalls(); rebuildDetector(0);
+            presets[name].fire(); lastFire = simT;
+            document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.p === name));
+            document.getElementById('phint').innerHTML = presets[name].hint;
+            const tp = document.getElementById('togPath');
+            tp.style.display = name === 'whichpath' ? 'flex' : 'none';
+            tp.classList.toggle('on', pathDet);
+            syncPathMesh();
+            syncDet();
+        }
+        document.getElementById('presets').addEventListener('click', e => {
+            const b = e.target.closest('.btn'); if (b) runPreset(b.dataset.p);
+        });
+        document.getElementById('tools').addEventListener('click', e => {
+            const b = e.target.closest('.btn'); if (b) setTool(b.dataset.t);
+        });
+        document.getElementById('speed').addEventListener('click', e => {
+            const b = e.target.closest('button'); if (!b) return;
+            speed = +b.dataset.s;
+            document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b));
+        });
+        function syncDet() {
+            document.getElementById('togDet').classList.toggle('on', detOn);
+            if (!detOn) { detMesh.count = 0; detMesh.instanceMatrix.needsUpdate = true; }
+        }
+        document.getElementById('togDet').addEventListener('click', function () {
+            detOn = !detOn; hist.fill(0); applyDetector(); syncDet();
+        });
+        document.getElementById('togAuto').addEventListener('click', function () {
+            autoFire = !autoFire; this.classList.toggle('on', autoFire);
+        });
+        document.getElementById('togPause').addEventListener('click', function () {
+            paused = !paused; this.classList.toggle('on', paused);
+        });
+        document.getElementById('togPath').addEventListener('click', function () {
+            pathDet = !pathDet; this.classList.toggle('on', pathDet);
+            if (!pathDet && slitDet > 0) log('Detector disabled — it had caught ' + (slitDet * 100).toFixed(0) + '% of ψ at slit A');
+            else if (pathDet) log('Path detector ON — which-path is now known. Interference must die.');
+            slitDet = 0; hist.fill(0); clearPsi(); applyDetector();
+            presets[preset].fire(); lastFire = simT;
+            syncPathMesh();
+        });
+        document.getElementById('btnClearPsi').addEventListener('click', () => { clearPsi(); log('ψ field cleared'); });
+        document.getElementById('btnClearWalls').addEventListener('click', () => { clearWalls(); rebuildWalls(); log('landscape cleared'); });
+        addEventListener('keydown', e => {
+            if (e.key === ' ') { e.preventDefault(); document.getElementById('togPause').click(); }
+            else if (e.key === 'Escape') window.location.href = 'arcade.html';
+            else if (e.key >= '1' && e.key <= '6') runPreset(Object.keys(presets)[+e.key - 1]);
+        });
+
+        /* ---------------- custom cursor ---------------- */
+        const cursorEl = document.getElementById('cursor');
+        const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (!fine) cursorEl.style.display = 'none';
+        else {
+            addEventListener('pointermove', e => {
+                cursorEl.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+                cursorEl.classList.toggle('paint', e.target === canvas && tool !== 'orbit');
+            }, { passive: true });
+            document.addEventListener('pointerover', e => { if (e.target.closest && e.target.closest('button, a, .tog')) cursorEl.classList.add('hot'); });
+            document.addEventListener('pointerout', e => { if (e.target.closest && e.target.closest('button, a, .tog')) cursorEl.classList.remove('hot'); });
+        }
+
+        /* ---------------- render loop ---------------- */
+        const tNorm = document.getElementById('tNorm'), tTime = document.getElementById('tTime'), tFps = document.getElementById('tFps');
+        let frameMax = 0, dispMax = 1e-6, last = performance.now(), fps = 60, hudAcc = 0;
+        const P = new Float32Array(N); // per-frame |ψ|² buffer (also used by collapse sampling)
+
+        function render() {
+            requestAnimationFrame(render);
+            const now = performance.now();
+            let dt = (now - last) / 1000; last = now;
+            if (!isFinite(dt) || dt < 0) dt = 0; dt = Math.min(0.05, dt);
+            fps = fps * 0.92 + (1 / (dt || 1 / 60)) * 0.08;
+
+            if (!paused) {
+                for (let s = 0; s < speed; s++) stepSim();
+                if (autoFire && simT - lastFire > 30 && norm() < 0.02) { presets[preset].fire(); lastFire = simT; }
+            }
+
+            // surface update: height = |ψ|², color = phase × intensity
+            frameMax = 0;
+            for (let i = 0; i < N; i++) { const p = R[i] * R[i] + I[i] * I[i]; P[i] = p; if (p > frameMax) frameMax = p; }
+            dispMax = Math.max(frameMax, dispMax * 0.996);
+            const invH = HMAX / dispMax, cA = geo.attributes.color.array;
+            for (let y = 0; y < H; y++) {
+                const row = y * W;
+                for (let x = 0; x < W; x++) {
+                    const i = row + x, vi = i; // vertex index == cell index by construction
+                    pos.setY(vi, P[i] * invH);
+                    const b = Math.min(1, 0.05 + Math.sqrt(P[i] / dispMax) * 1.05);
+                    let ph = ((Math.atan2(I[i], R[i]) / 6.283185307179586) + 1) % 1;
+                    const li = ((ph * 256) | 0) * 3;
+                    cA[vi * 3] = LUT[li] * b; cA[vi * 3 + 1] = LUT[li + 1] * b; cA[vi * 3 + 2] = LUT[li + 2] * b;
+                }
+            }
+            pos.needsUpdate = true; col.needsUpdate = true;
+            geo.computeBoundingSphere();
+
+            if (detOn) { let hm = 0; for (let y = 0; y < H; y++) if (hist[y] > hm) hm = hist[y]; rebuildDetector(hm); }
+
+            for (let k = rings.length - 1; k >= 0; k--) {
+                const rg = rings[k], age = (now - rg.t0) / 650;
+                if (age >= 1) { scene.remove(rg.m); rg.m.geometry.dispose(); rg.m.material.dispose(); rings.splice(k, 1); continue; }
+                const sc = 1 + age * 26; rg.m.scale.set(sc, sc, sc); rg.m.material.opacity = 0.95 * (1 - age);
+            }
+
+            if (pathMesh.visible) pathMesh.material.opacity = 0.42 + 0.22 * Math.sin(now / 280);
+
+            hudAcc += dt;
+            if (hudAcc > 0.25) {
+                hudAcc = 0;
+                tNorm.textContent = (norm() + absorbed).toFixed(3);
+                tTime.textContent = simT.toFixed(0);
+                tFps.textContent = Math.round(fps);
+            }
+            renderer.render(scene, camera);
+        }
+
+        function resize() {
+            renderer.setSize(innerWidth, innerHeight, false);
+            camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+        }
+        addEventListener('resize', resize);
+        resize();
+
+        /* ---------------- boot ---------------- */
+        setTool('observe');
+        runPreset('slit2');
+        // deep-linkable experiments: Psi.html?exp=whichpath&path=off
+        (function () {
+            const q = new URLSearchParams(location.search);
+            const ex = q.get('exp');
+            if (ex && presets[ex]) {
+                runPreset(ex);
+                if (ex === 'whichpath' && q.get('path') === 'off') document.getElementById('togPath').click();
+            }
+        })();
+        render();
+        const boot = document.getElementById('boot'), bootlog = document.getElementById('bootlog'), bootfill = document.getElementById('bootfill');
+        const lines = ['> QUANTUM LAB v1.0  [shaswata.me]', '> init ψ field ............. 200×100 lattice', '> Visscher integrator ...... dt=0.08 STABLE', '> potential landscape ....... MOUNTED', '> observer mode ............. STANDBY', '> READY — fire the electron'];
+        let li = 0, bootDone = false;
+        (function stepBoot() {
+            if (bootDone) return;
+            if (li < lines.length) {
+                bootlog.textContent += lines[li] + '\n'; bootfill.style.width = Math.round((li + 1) / lines.length * 100) + '%'; li++;
+                setTimeout(stepBoot, 120 + Math.random() * 110);
+            } else setTimeout(endBoot, 380);
+        })();
+        function endBoot() {
+            if (bootDone) return; bootDone = true;
+            boot.classList.add('done'); document.body.classList.add('ready');
+            setTimeout(() => boot.remove(), 650);
+        }
+        boot.addEventListener('click', endBoot);
+        addEventListener('keydown', function sk() { endBoot(); removeEventListener('keydown', sk); }, { once: true });
+    })();
+    </script>
+</body>
+
+</html>
