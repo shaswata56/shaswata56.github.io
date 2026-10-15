@@ -1,5 +1,10 @@
+import tailwindcss from '@tailwindcss/vite'
+
 export default defineNuxtConfig({
   ssr: true,
+  vite: {
+    plugins: [tailwindcss()],
+  },
   app: {
     baseURL: '/',
     buildAssetsDir: 'nuxt-assets',
@@ -21,7 +26,6 @@ export default defineNuxtConfig({
   ],
   postcss: {
     plugins: {
-      tailwindcss: {},
       autoprefixer: {},
     },
   },
