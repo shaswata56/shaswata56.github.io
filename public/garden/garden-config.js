@@ -21,8 +21,8 @@
      * exists (Dashboard -> Settings -> API: Project URL + anon public key).
      * Public-by-design values (anon key; the table is RLS-protected).
      * ------------------------------------------------------------------ */
-    var SUPABASE_URL      = 'https://episirdmzjubqrvvkbnv.supabase.co';   // TODO: replace with personal project URL
-    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwaXNpcmRtemp1YnFydnZrYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2MzMxNTcsImV4cCI6MjA5ODIwOTE1N30.lA_qiwonKCONW_RI84y0D_RJQUcSVR3douoqJiBkS2c';   // TODO: replace with personal project anon key
+    var SUPABASE_URL      = 'https://zbdyvftkwapyockzxmwq.supabase.co';   // Personal org -> "Portfolio" project
+    var SUPABASE_ANON_KEY = 'sb_publishable_3dfjDFiomVV4B1lGtz9YHA_8UAz0vy0';   // publishable key (public-by-design; garden_marks is RLS-protected)
 
     /* Quantum randomness API (Cloud Run) — GET {QRNG_URL}/int?n=8
      * -> { source, data: [8 bytes] }. If unreachable the garden falls back
