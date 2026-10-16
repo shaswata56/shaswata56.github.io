@@ -57,7 +57,14 @@
           class="social-link"
           @click="launchArcade"
         >
-        <font-awesome-icon icon="fa-solid fa-dice" title="Arcade — play my games" titleId="game-icon-title"/>
+          <font-awesome-icon icon="fa-solid fa-dice" title="Arcade — play my games" titleId="game-icon-title"/>
+        </a>
+        <a
+          href="garden/"
+          target="_self"
+          class="social-link"
+        >
+          <font-awesome-icon icon="fa-solid fa-seedling" title="Garden — plant a permanent mark" titleId="garden-icon-title"/>
         </a>
       </div>
       <span class="status-pill">⬡ Polyglot Systems Engineer · Orbitax</span>

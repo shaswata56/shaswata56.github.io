@@ -15,6 +15,7 @@ import {
   faPersonBiking,
   faPersonHiking,
   faSailboat,
+  faSeedling,
   faSun,
   faWater,
 } from '@fortawesome/free-solid-svg-icons'
@@ -40,6 +41,7 @@ library.add(
   faPersonBiking,
   faPersonHiking,
   faSailboat,
+  faSeedling,
   faSun,
   faWater,
   faGithub,

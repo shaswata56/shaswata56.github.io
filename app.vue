@@ -502,12 +502,14 @@ section > a > h2 {
   letter-spacing: -0.01em;
 }
 
+/* No text-align here: this unlayered rule outranks Tailwind v4's layered
+   utilities, and an explicit left silently defeated `text-center` on the
+   hero subtitle/tagline inside the mobile centering media query. */
 p {
   color: var(--text-color);
   line-height: 1.8;
   font-size: 1rem;
   margin: 0 0 1rem;
-  text-align: left;
 }
 
 section {
