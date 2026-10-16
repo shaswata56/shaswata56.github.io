@@ -47,6 +47,11 @@
             gap: 12px; padding: 12px 18px;
             opacity: 0; transform: translateY(-8px); transition: opacity .8s ease, transform .8s ease; }
         body.ready .topbar { opacity: 1; transform: none; }
+        /* hidden-but-present chrome must not be clickable either — the fall owns the pre-ready window */
+        body:not(.ready) .topbar, body:not(.ready) #plantCard, body:not(.ready) #countChip { pointer-events: none; }
+        /* …and the card's input/button must not sit in the tab order while invisible —
+           visibility (unlike opacity) removes them, so Enter can never plant an unseen mark */
+        body:not(.ready) #plantCard input, body:not(.ready) #plantCard button { visibility: hidden; }
         .brand { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 13px; letter-spacing: 5px; font-weight: 700;
             color: var(--accent); display: flex; align-items: center; gap: 10px; white-space: nowrap;
             text-shadow: 0 0 16px var(--glow); }
@@ -62,6 +67,9 @@
             background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             transition: color .2s, box-shadow .2s, transform .2s; }
         .exit:hover { color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 20px var(--glow); }
+        /* the RETURNING label shown while leaving: fast fade-in, then a liveness pulse */
+        .exitLabel { opacity: 0; transition: opacity .3s ease .25s; animation: warpblink 1.1s step-end .6s infinite; }
+        @keyframes warpblink { 50% { opacity: .45; } }
 
         /* ---------- corner counter ---------- */
         #countChip { position: fixed; left: 18px; bottom: 18px; z-index: 5; font-size: 11px; letter-spacing: 1.6px; color: var(--muted);
@@ -134,8 +142,12 @@
         /* ---------- intro overlay ---------- */
         #intro { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
             background: radial-gradient(ellipse at 50% 38%, rgba(10, 20, 22, .88), rgba(4, 8, 10, .97) 78%);
-            transition: opacity .9s ease; }
+            transition: opacity .45s ease; }
         #intro.done { opacity: 0; pointer-events: none; }
+        /* the garden opens its eyes out of the same pale green the bloom ends on */
+        #intro::before { content: ''; position: absolute; inset: 0; background: #eafff2;
+            animation: introWash .55s ease forwards; pointer-events: none; }
+        @keyframes introWash { 0% { opacity: 1; } 25% { opacity: .35; } 100% { opacity: 0; } }
         .intro-card { width: min(520px, 88vw); text-align: center; padding: 30px 26px; }
         .kicker { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 11px; letter-spacing: 4px; color: var(--accent);
             text-transform: uppercase; margin-bottom: 16px; text-shadow: 0 0 18px var(--glow); }
@@ -174,6 +186,7 @@
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+            #intro::before { animation: none; opacity: 0; }   /* no wash under reduced motion */
         }
     </style>
 </head>
@@ -599,8 +612,11 @@
         }
 
         var variantMeshes = [];   // InstancedMesh per form
+        var hoverMeshes = [];     // its non-empty subset, rebuilt in buildMarks — updateHover raycasts this every frame
         var glowLayer = null;     // one Points cloud of halos
         var marks = [];           // rendered mark records
+        var marksBuilt = false;   // buildMarks has run at least once
+        var introDone = false;    // enter() has begun — set synchronously, unlike body.ready which lags 1100ms
         var myMark = null;        // this visitor's mark, if any
         var bloomFx = null;       // celebration state
 
@@ -670,12 +686,19 @@
             scene.add(glowLayer);
 
             placeBeacon();
-            if (replay) { // staggered grow-in for the whole field (page load)
+            hoverMeshes = variantMeshes.filter(function (m) { return m.count > 0; });   // updateHover's per-frame raycast list, built once here
+            if (replay && introDone && !reduceMotion) {
+                // staggered grow-in for the whole field — only once the visitor has entered,
+                // never behind the intro overlay, never under reduced motion (full growth instead)
                 uniforms.uGrow.value = 0;
                 growStart = performance.now();
             } else {
-                uniforms.uGrow.value = 1.6; // field already grown; only celebrate() animates the new sprout
+                // field already grown; only celebrate() animates the new sprout.
+                // back-date growStart so the loop's per-frame derivation also stays at full growth.
+                uniforms.uGrow.value = 1.6;
+                growStart = performance.now() - 4000;
             }
+            marksBuilt = true;
         }
 
         /* ---------- my mark's beacon: a breathing ring on the soil ---------- */
@@ -771,6 +794,15 @@
         var ctrl = { theta: 0.9, phi: 1.08, dist: 46, target: new THREE.Vector3(0, 1, 0) };
         var want = { theta: 0.9, phi: 1.08, dist: 46, target: new THREE.Vector3(0, 1, 0) };
         var lastInteract = performance.now();
+        var descentAnim = null;   // entry ceremony tween — while set it drives ctrl on an explicit timeline
+        var ceremonyUntil = 0;    // input echo guard: gestures are swallowed while a ceremony plays
+        var userZoomed = false;   // once the visitor zooms, data loads must not re-frame the camera
+        function cancelDescent() { // a deliberate gesture releases the camera mid-descent
+            if (!descentAnim) return;
+            want.dist = ctrl.dist; want.phi = ctrl.phi; want.theta = ctrl.theta;
+            descentAnim = null;
+            camEase = 9;
+        }
         var camEl = renderer.domElement, pointers = new Map(), moved = 0;
 
         var MIN_DIST = 1.4, MAX_DIST = 320;        // face-to-face with a mark … high above the plain
@@ -786,7 +818,7 @@
             out.x = (ps[0].x + ps[1].x) / 2; out.y = (ps[0].y + ps[1].y) / 2;
         }
         var lastPinch = 0, lastMid = { x: 0, y: 0 }, midTmp = { x: 0, y: 0 };
-        var lastTapT = 0, lastTapX = 0, lastTapY = 0, downX = 0, downY = 0, downCount = 0;
+        var lastTapT = 0, lastTapX = 0, lastTapY = 0, downX = 0, downY = 0, downCount = 0, pressDuringCeremony = false;
         camEl.addEventListener('pointerdown', function (e) {
             camEl.setPointerCapture(e.pointerId);
             // touch never fires hover moves — a tap IS the hover
@@ -794,13 +826,16 @@
             pointerNdc.y = -(e.clientY / innerHeight) * 2 + 1;
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             downCount = pointers.size;
+            downX = e.clientX; downY = e.clientY;   // recorded before the ceremony guard — release-side taps must not use stale coords
             moved = 0; lastInteract = performance.now();
+            pressDuringCeremony = performance.now() < ceremonyUntil;
+            if (pressDuringCeremony) return;   // ceremonies swallow taps; the pointer stays registered for bookkeeping
             if (pointers.size === 1) {
-                downX = e.clientX; downY = e.clientY;
                 var now = performance.now();
                 if (now - lastTapT < 350 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 32) {
                     // double-tap: toggle close-up / overview
                     want.dist = want.dist > 12 ? 3.5 : 34;
+                    userZoomed = true;
                     lastTapT = 0;
                 } else {
                     lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
@@ -812,15 +847,24 @@
             lastInteract = performance.now();
             if (!pointers.has(e.pointerId)) { updateHoverPointer(e); return; }
             var p = pointers.get(e.pointerId);
+            if (performance.now() < ceremonyUntil) {
+                // the ceremony's first beat swallows the gesture — but still track the pointer,
+                // or the first move after the window computes one giant delta from the down position
+                p.x = e.clientX; p.y = e.clientY;
+                return;
+            }
             var dx = e.clientX - p.x, dy = e.clientY - p.y;
             p.x = e.clientX; p.y = e.clientY;
             moved += Math.abs(dx) + Math.abs(dy);
             var touch = e.pointerType === 'touch' ? 1.4 : 1;
             if (pointers.size === 1) {
+                if (descentAnim && moved > 6) cancelDescent();   // a real drag takes the camera from the descent (want syncs to ctrl first)
                 if (e.buttons === 2 || e.buttons === 4) { panBy(dx, dy); return; }   // right/middle-drag grabs the plain
                 want.theta -= dx * 0.0075 * touch;
                 want.phi = Math.max(MIN_PHI, Math.min(MAX_PHI, want.phi - dy * 0.0068 * touch));
             } else if (pointers.size === 2) {
+                userZoomed = true;
+                if (descentAnim) cancelDescent();   // a deliberate pinch ends the entry descent early, then the gesture applies
                 var d = pinchDist();
                 // exponent > 1 so a short pinch travels far — phones demand it
                 if (lastPinch > 0) want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.pow(lastPinch / d, 1.6)));
@@ -834,8 +878,11 @@
             pointers.delete(e.pointerId);
             if (pointers.size < 2) lastPinch = 0;
             lastInteract = performance.now();
+            var stalePress = pressDuringCeremony;   // pressed during the ceremony — never a deliberate tap-to-visit
+            pressDuringCeremony = false;
+            if (performance.now() < ceremonyUntil) return;   // no tap-to-fly while a ceremony plays
             // a clean tap (no drag, no second finger): visit the mark under it
-            if (moved < 10 && downCount === 1 && pointers.size === 0) {
+            if (!stalePress && moved < 10 && downCount === 1 && pointers.size === 0) {
                 pointerNdc.x = (downX / innerWidth) * 2 - 1;
                 pointerNdc.y = -(downY / innerHeight) * 2 + 1;
                 updateHover();
@@ -847,6 +894,9 @@
         camEl.addEventListener('contextmenu', function (e) { e.preventDefault(); });   // right-drag is pan, not a menu
         camEl.addEventListener('wheel', function (e) {
             e.preventDefault();
+            if (performance.now() < ceremonyUntil) return;   // the ceremony's first beat swallows the wheel — a swallowed wheel must not claim camera ownership
+            userZoomed = true;
+            if (descentAnim) cancelDescent();   // past it, a deliberate wheel releases the descent and the zoom applies
             lastInteract = performance.now();
             want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.exp(e.deltaY * 0.0030)));
         }, { passive: false });
@@ -871,7 +921,17 @@
         window.addEventListener('keydown', function (e) {
             if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
             var k = e.key.toLowerCase();
+            if (descentAnim && (k === 'escape' || k === 'enter')) {
+                // skip the rest of the fall: land on the tween's captured end pose right now
+                var d = descentAnim;
+                cancelDescent();
+                want.dist = d.toDist; want.phi = d.toPhi; want.theta = d.toTheta;
+                camEase = 9;
+                return;
+            }
             if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.indexOf('arrow') === 0 || k === 'shift') {
+                if (performance.now() < ceremonyUntil) return;   // the ceremony's first beat swallows keys
+                if (descentAnim) cancelDescent();   // past it, deliberate keys release the descent and the pan applies
                 keys[k] = true; lastInteract = performance.now();
             }
         });
@@ -880,7 +940,7 @@
 
         var camEase = 9;   // camera responsiveness; ceremonies (entry/exit) slow it down
         function applyCamera(dt) {
-            if (!reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift
+            if (!descentAnim && !reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift (paused during the ceremony tween)
             var kx = (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
             var kz = (keys['s'] || keys['arrowdown'] ? 1 : 0) - (keys['w'] || keys['arrowup'] ? 1 : 0);
             if (kx || kz) {
@@ -908,6 +968,29 @@
                 ctrl.target.y + ctrl.dist * cp,
                 ctrl.target.z + ctrl.dist * sp * Math.sin(ctrl.theta));
             camera.lookAt(ctrl.target);
+        }
+
+        /* the entry descent: an explicit timeline that owns ctrl for its whole run.
+           want mirrors ctrl every frame (single source of truth, so nothing diverges);
+           deliberate user gestures can cancel it early — see cancelDescent. */
+        function easeInOutCubic(u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
+        function stepDescent(now) {
+            var a = descentAnim;
+            if (!a) return;
+            var u = Math.min(1, (now - a.t0) / a.dur);
+            var e = easeInOutCubic(u);
+            // dist may run on a rebased clock (mid-descent retarget in loadGarden) so its curve stays
+            // continuous through the current pose; phi/theta always keep the original timeline
+            var ud = a.distT0 == null ? u : Math.min(1, (now - a.distT0) / a.distDur);
+            var ed = easeInOutCubic(ud);
+            ctrl.dist = a.fromDist + (a.toDist - a.fromDist) * ed;
+            ctrl.phi = a.fromPhi + (a.toPhi - a.fromPhi) * e;
+            ctrl.theta = a.fromTheta + (a.toTheta - a.fromTheta) * e;
+            want.dist = ctrl.dist; want.phi = ctrl.phi; want.theta = ctrl.theta;
+            if (u >= 1) {
+                descentAnim = null;
+                camEase = 9;   // landed — release to normal control
+            }
         }
 
         function flyTo(m) {
@@ -941,7 +1024,7 @@
             var found = null;
             if (pointerNdc.x > -1.5) {
                 raycaster.setFromCamera(pointerNdc, camera);
-                var hits = raycaster.intersectObjects(variantMeshes.filter(function (m) { return m.count > 0; }));
+                var hits = raycaster.intersectObjects(hoverMeshes);
                 if (hits.length && hits[0].instanceId != null) {
                     var mesh = hits[0].object, idx = hits[0].instanceId;
                     if (mesh.userData.marks && mesh.userData.marks[idx]) found = mesh.userData.marks[idx];
@@ -1046,9 +1129,22 @@
                 }
                 return page();
             }).then(function (all) {
-                buildMarks(all.slice(0, MAX_MARKS));
-                // frame the actual grove — the field is tiny while young, don't leave the camera in the stratosphere
-                want.dist = Math.max(MIN_DIST, Math.min(46, SPREAD * Math.sqrt(Math.max(all.length, 1)) * 2.6 + 9));
+                buildMarks(all.slice(0, MAX_MARKS), true);
+                // frame the actual grove — the field is tiny while young, don't leave the camera in the stratosphere.
+                // never retarget after the visitor has zoomed on their own; mid-descent, retarget the tween's landing
+                // instead (a want.dist write would be overwritten by the running descent every frame)
+                if (!userZoomed) {
+                    var frameDist = Math.max(MIN_DIST, Math.min(46, SPREAD * Math.sqrt(Math.max(all.length, 1)) * 2.6 + 9));
+                    if (descentAnim) {
+                        // mid-flight retarget: rebase the dist curve from the current pose onto its own clock over
+                        // the time remaining — the fall lands at the new framing with no position pop, and phi/theta
+                        // ride the original timeline untouched
+                        descentAnim.fromDist = ctrl.dist;
+                        descentAnim.toDist = frameDist;
+                        descentAnim.distT0 = performance.now();
+                        descentAnim.distDur = Math.max(1, descentAnim.t0 + descentAnim.dur - performance.now());
+                    } else want.dist = frameDist;
+                }
                 totalMarks = Math.max(totalMarks, all.length);
                 setCount(totalMarks);
                 updateWhisper();
@@ -1072,6 +1168,7 @@
 
         /* ---------- planting ---------- */
         function plant() {
+            if (!introDone) return;   // still behind the intro/descent — nothing may plant an unseen mark
             if (plantBtn.disabled) return;
             noteClear();
             plantBtn.disabled = true;
@@ -1147,8 +1244,9 @@
             var t = now / 1000;
 
             uniforms.uTime.value = t;
-            uniforms.uGrow.value = Math.min(1.6, (now - growStart) / 2400);
+            uniforms.uGrow.value = Math.min(1.6, Math.max(0, (now - growStart) / 2400)); // a future growStart holds at 0
 
+            if (descentAnim) stepDescent(now);   // the entry ceremony drives the camera on its own timeline
             applyCamera(dt);
 
             // motes drift
@@ -1187,16 +1285,32 @@
         function enter() {
             var iv = $('intro');
             if (!iv || iv.classList.contains('done')) return;
+            introDone = true;   // synchronous — data landing from here on replays the grow-in (body.ready lags 1100ms)
             iv.classList.add('done');
-            document.body.classList.add('ready');
+            // the chrome fades in only once the fall is substantially done, not at the cinematic moment
+            setTimeout(function () { document.body.classList.add('ready'); }, reduceMotion ? 0 : 1100);
             setTimeout(function () { if (iv.parentNode) iv.parentNode.removeChild(iv); }, 1000);
-            lastInteract = performance.now() - 7000; // begin with a gentle drift
+            lastInteract = performance.now() - 7000; // begin with a gentle drift after landing
+            ceremonyUntil = performance.now() + (reduceMotion ? 0 : 500);
+            if (marksBuilt && !reduceMotion) { // the grove blooms as you land, not unseen behind the intro —
+                // under reduced motion the field stays fully grown (growStart is back-dated in buildMarks)
+                uniforms.uGrow.value = 0;
+                growStart = performance.now() + 350;
+            }
             if (!reduceMotion) {
-                // the ceremony: arrive from the sky and descend onto the grove
-                ctrl.dist = Math.max(ctrl.dist, Math.min(300, want.dist * 8 + 70));
-                ctrl.phi = 0.32;
-                ctrl.theta = want.theta - 0.6;
-                camEase = 1.5;   // weightless at first, control firms up as you land
+                // the ceremony: an explicit 1.9s timeline from the sky down onto the grove
+                var th = want.theta;
+                descentAnim = {
+                    t0: performance.now(),
+                    dur: 1900,
+                    fromDist: Math.min(300, want.dist * 8 + 70), toDist: want.dist,
+                    fromPhi: 0.32, toPhi: 1.08,
+                    fromTheta: th + 0.6, toTheta: th
+                };
+                ctrl.dist = descentAnim.fromDist;
+                ctrl.phi = descentAnim.fromPhi;
+                ctrl.theta = descentAnim.fromTheta;
+                want.dist = ctrl.dist; want.phi = ctrl.phi; want.theta = ctrl.theta;
             }
         }
         $('enterBtn').addEventListener('click', enter);
@@ -1204,21 +1318,26 @@
 
         /* ---------- leaving: rise through the mist ---------- */
         var leaving = false;
+        var exitOv = null;   // the ascent overlay, kept for bfcache restores to strip
         function exitTo(href) {
             if (leaving) return;
             leaving = true;
+            cancelDescent();   // a still-running entry tween would overwrite the ascent's want.dist every frame
+            ceremonyUntil = performance.now() + 2000;   // no input echoes during the ascent
             var ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;inset:0;z-index:30;opacity:0;pointer-events:all;' +
                 'transition:opacity ' + (reduceMotion ? '.15s' : '1s') + ' ease;' +
                 'background:radial-gradient(ellipse at 50% 46%, rgba(167,232,196,.14), rgba(5,11,9,.96) 74%)';
             var lab = document.createElement('div');
             lab.textContent = 'RETURNING · shaswata.me';
+            lab.className = 'exitLabel';
             lab.style.cssText = 'position:absolute;left:0;right:0;bottom:14%;text-align:center;color:#a7e8c4;' +
                 'font-family:"Fira Mono", ui-monospace, monospace;font-size:12px;letter-spacing:4px;' +
                 'text-shadow:0 0 18px rgba(167,232,196,.5)';
             ov.appendChild(lab);
             document.body.appendChild(ov);
-            requestAnimationFrame(function () { ov.style.opacity = '1'; });
+            exitOv = ov;
+            requestAnimationFrame(function () { ov.style.opacity = '1'; lab.style.opacity = '1'; });
             if (!reduceMotion) {
                 want.dist = MAX_DIST;          // lift away from the grove…
                 want.phi = 0.22;               // …tilting toward the sky
@@ -1227,6 +1346,15 @@
             }
             setTimeout(function () { window.location.href = href; }, reduceMotion ? 350 : 1400);
         }
+        // iOS Safari restores this page from bfcache on Back — the opaque ascent overlay would
+        // still own every pointer, leaving a dead garden. Strip it and re-open input.
+        window.addEventListener('pageshow', function (ev) {
+            if (!ev.persisted) return;
+            if (exitOv && exitOv.parentNode) exitOv.parentNode.removeChild(exitOv);
+            exitOv = null;
+            leaving = false;
+            ceremonyUntil = 0;
+        });
         document.addEventListener('click', function (e) {
             var a = e.target.closest ? e.target.closest('a.exit') : null;
             if (!a && e.target.closest) {
@@ -1236,6 +1364,7 @@
             if (a) { e.preventDefault(); exitTo(a.getAttribute('href') || '/'); }
         });
         window.addEventListener('keydown', function sk(e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;   // typing in the whisper must not dismiss the intro too
             if (e.key === 'Escape') { enter(); window.removeEventListener('keydown', sk); }
             if (e.key === 'Enter') enter();
         });
