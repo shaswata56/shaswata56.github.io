@@ -479,6 +479,36 @@
             ctx.globalAlpha = 1;
         }
 
+        // the permanent garden — glowing marks on a night hill, swaying gently,
+        // spores drifting up from the grove.
+        function gardenThumb(ctx, w, h, t) {
+            const bg = ctx.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#04120a'); bg.addColorStop(1, '#020208');
+            ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#bfe9c9';
+            for (let i = 0; i < 14; i++) { const sx = (i * 53.7) % w, sy = (i * 29.3) % (h * 0.55); ctx.globalAlpha = 0.2 + 0.5 * (0.5 + 0.5 * Math.sin(t * 1.3 + i)); ctx.fillRect(sx, sy, 1.2, 1.2); }
+            ctx.globalAlpha = 1;
+            const gy = h * 0.78;
+            ctx.fillStyle = '#0a1f12'; ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, gy + 8);
+            ctx.quadraticCurveTo(w / 2, gy - 14, w, gy + 8); ctx.lineTo(w, h); ctx.fill();
+            const cols = ['#8affa3', '#a3ff8a', '#8ad9ff', '#ffd28a', '#c4a6ff'];
+            for (let i = 0; i < 6; i++) {
+                const bx = w * (0.14 + i * 0.145), mh = h * (0.18 + 0.13 * Math.abs(Math.sin(i * 2.3 + 1))), sway = Math.sin(t * 1.1 + i * 1.7) * 2.5;
+                const by = gy + 6 - Math.abs(Math.sin(i * 1.3)) * 6;
+                ctx.strokeStyle = 'rgba(138,255,163,.55)'; ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + sway * 0.6, by - mh * 0.6, bx + sway, by - mh); ctx.stroke();
+                const c = cols[i % cols.length], pu = 0.7 + 0.3 * Math.sin(t * 2 + i * 2.2);
+                ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = 10 * pu;
+                ctx.beginPath(); ctx.arc(bx + sway, by - mh, 2.2, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            for (let i = 0; i < 8; i++) {
+                const p = (t * 0.09 + i / 8) % 1, px = w * (0.1 + ((i * 37) % 80) / 100) + Math.sin(t + i) * 4, py = gy - p * h * 0.6;
+                ctx.globalAlpha = (1 - p) * 0.7; ctx.fillStyle = '#8affa3';
+                ctx.beginPath(); ctx.arc(px, py, 0.9, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
         const games = [
             { id: 'neonrun', title: 'Neon Run', href: 'NeonRun.html', badge: '3D · WebGL', accent: '#00e5ff', glow: 'rgba(0,229,255,.5)',
               tags: ['Three.js', 'Synthwave', 'Endless'], render: neonRunThumb, bestKey: 'neonrun_best', bestLabel: 'High score',
@@ -500,7 +530,10 @@
               desc: 'Soar an unbroken sky over procedurally generated biomes. Fly through portal rings to cross into worlds of fire, frost, jungle light and more — an endless journey of altitude and wonder.' },
             { id: 'psi', title: 'Ψ Psi', href: 'Psi.html', badge: 'Sim · Quantum', accent: '#c084fc', glow: 'rgba(192,132,252,.5)',
               tags: ['Schrödinger equation', 'Real physics', '3D'], render: psiThumb, stat: 'Solved live',
-              desc: 'Fire a wavepacket at the double slit and watch probability itself interfere. A real-time Schrödinger equation solver — height is |ψ|², color is quantum phase. Paint walls, tunnel through barriers, collapse ψ with a click.' }
+              desc: 'Fire a wavepacket at the double slit and watch probability itself interfere. A real-time Schrödinger equation solver — height is |ψ|², color is quantum phase. Paint walls, tunnel through barriers, collapse ψ with a click.' },
+            { id: 'garden', title: 'Garden', href: 'garden/', badge: '3D · Living', accent: '#8affa3', glow: 'rgba(138,255,163,.5)',
+              tags: ['Permanent', 'Quantum-seeded', 'One mark per visitor'], render: gardenThumb, stat: 'Grows forever',
+              desc: 'A quiet grove at the edge of the site, grown from live quantum randomness measured at a physics lab. Every visitor plants exactly one glowing form — no edits, no deletions, ever. Plant yours; it will still be there years from now.' }
         ];
 
         /* ---------- background ---------- */
