@@ -68,7 +68,8 @@ onMounted(() => {
   window.addEventListener('portfolio:garden', () => bloomToGarden());
 
   function warpToArcade() {
-    if ((window as any).__arcadeWarp) return;
+    if ((window as any).__ceremony || (window as any).__arcadeWarp) return;
+    (window as any).__ceremony = true;   // one ceremony at a time, site-wide
     (window as any).__arcadeWarp = true;
     const go = () => { window.location.href = 'arcade.html'; };
     const overlay = document.createElement('div');
@@ -117,7 +118,7 @@ onMounted(() => {
       if (t >= 1) {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#dffaff;opacity:0;transition:opacity .16s ease;z-index:3';
-        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '1'; });
+        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0.85'; });
         setTimeout(go, 170);
         return;
       }
@@ -127,7 +128,8 @@ onMounted(() => {
   }
 
   function bloomToGarden() {
-    if ((window as any).__gardenBloom) return;
+    if ((window as any).__ceremony || (window as any).__gardenBloom) return;
+    (window as any).__ceremony = true;   // one ceremony at a time, site-wide
     (window as any).__gardenBloom = true;
     const go = () => { window.location.href = '/garden/'; };
     const overlay = document.createElement('div');
@@ -203,8 +205,8 @@ onMounted(() => {
       if (t >= 1) {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#eafff2;opacity:0;transition:opacity .16s ease;z-index:3';
-        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '1'; });
-        setTimeout(go, 170);
+        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0.85'; });
+        setTimeout(go, 470);   // hold the sprout's final pose a beat before the flash hands off to the garden
         return;
       }
       requestAnimationFrame(frame);
