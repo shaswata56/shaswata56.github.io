@@ -134,6 +134,7 @@
             <span class="tchip">t <b id="tTime">0</b></span>
             <span class="tchip">MODE <b id="tMode">ORBIT</b></span>
             <span class="tchip">FPS <b id="tFps">60</b></span>
+            <span class="tchip">randomness <b id="tRng">local</b></span>
         </div>
         <a class="exit" href="arcade.html"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.14em"><line x1="12" y1="3" x2="12" y2="12"/><path d="M7.6 6.3a7 7 0 1 0 8.8 0"/></svg> Exit</a>
     </div>
@@ -200,6 +201,7 @@
     </div>
 
     <script src="/vendor/three.r128.min.js"></script>
+    <script src="/qrng.js"></script>
     <script>
     (function () {
         'use strict';
@@ -301,11 +303,14 @@
             for (let i = 0; i < N; i++) { R[i] *= s; I[i] *= s; }
             return true;
         }
-        function samplePosition(pMax) { // rejection-sample a cell ∝ |ψ|²
+        let lastRngQuantum = false; // honesty flag: was the last collapse drawn from quantum bytes?
+        function samplePosition(pMax) { // rejection-sample a cell ∝ |ψ|² — quantum bytes when available
+            const st = qrng.state();
             for (let tries = 0; tries < 20000; tries++) {
-                const i = (Math.random() * N) | 0;
-                if (Math.random() * pMax < R[i] * R[i] + I[i] * I[i]) return i;
+                const i = (qrng.draw(st) * N) | 0;
+                if (qrng.draw(st) * pMax < R[i] * R[i] + I[i] * I[i]) { lastRngQuantum = st.quantum; return i; }
             }
+            lastRngQuantum = st.quantum;
             let best = 0, bi = 0;
             for (let i = 0; i < N; i++) { const p = R[i] * R[i] + I[i] * I[i]; if (p > best) { best = p; bi = i; } }
             return bi;
@@ -538,6 +543,8 @@
                 observe(gx, gy);
                 spawnRing(gx - (W - 1) / 2, (H - 1) / 2 - gy);
                 log('MEASUREMENT — ψ collapsed at (' + gx + ', ' + gy + '). One world, picked at random.');
+                tRng.textContent = qrng.sourceLabel({ quantum: lastRngQuantum });
+                qrng.topUpIfLow();
             }
         });
         canvas.addEventListener('pointermove', e => {
@@ -669,7 +676,7 @@
         }
 
         /* ---------------- render loop ---------------- */
-        const tNorm = document.getElementById('tNorm'), tTime = document.getElementById('tTime'), tFps = document.getElementById('tFps');
+        const tNorm = document.getElementById('tNorm'), tTime = document.getElementById('tTime'), tFps = document.getElementById('tFps'), tRng = document.getElementById('tRng');
         let frameMax = 0, dispMax = 1e-6, last = performance.now(), fps = 60, hudAcc = 0;
         const P = new Float32Array(N); // per-frame |ψ|² buffer (also used by collapse sampling)
 
