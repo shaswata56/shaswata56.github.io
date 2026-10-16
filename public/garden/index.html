@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Permanent Garden · Shaswata Das</title>
+    <meta name="description" content="Every visitor plants exactly one permanent glowing mark — its position, color and form decided by quantum randomness. One garden, grown by everyone, forever.">
+    <meta name="theme-color" content="#070c10">
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="62618430-ebcb-4777-a26f-fc295df24b26"></script>
+    <link rel="icon" href="/favicon.ico?v=2">
+    <style>
+        :root {
+            --bg: #070c10;
+            --panel: rgba(10, 18, 20, .55);
+            --panel-strong: rgba(8, 14, 16, .82);
+            --border: rgba(150, 220, 190, .16);
+            --text: #d9e6df;
+            --muted: #7f978d;
+            --accent: #a7e8c4;
+            --accent-dim: rgba(167, 232, 196, .55);
+            --gold: #c9a97a;
+            --glow: rgba(167, 232, 196, .35);
+            --danger: #e8b0a7;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text); overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .mono { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; }
+        .serif { font-family: Georgia, 'Times New Roman', serif; }
+
+        #scene { position: fixed; inset: 0; z-index: 0; background: var(--bg); }
+        #scene canvas { display: block; }
+        .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 42%, transparent 42%, rgba(4, 8, 10, .72) 100%); }
+
+        /* ---------- top bar ---------- */
+        .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; padding: 12px 18px;
+            opacity: 0; transform: translateY(-8px); transition: opacity .8s ease, transform .8s ease; }
+        body.ready .topbar { opacity: 1; transform: none; }
+        .brand { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 13px; letter-spacing: 5px; font-weight: 700;
+            color: var(--accent); display: flex; align-items: center; gap: 10px; white-space: nowrap;
+            text-shadow: 0 0 16px var(--glow); }
+        .brand .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: breathe 4s ease-in-out infinite; }
+        @keyframes breathe { 50% { opacity: .35; } }
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .chip { font-size: 10px; letter-spacing: 1.6px; color: var(--muted); border: 1px solid var(--border); border-radius: 7px;
+            padding: 4px 10px; background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); white-space: nowrap; }
+        .chip b { color: var(--accent); font-weight: 700; }
+        .chip b.local { color: var(--gold); }
+        .exit { text-decoration: none; color: var(--muted); font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-weight: 700; font-size: 10.5px;
+            letter-spacing: 1.6px; text-transform: uppercase; border: 1px solid var(--border); border-radius: 9px; padding: 7px 13px; white-space: nowrap;
+            background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            transition: color .2s, box-shadow .2s, transform .2s; }
+        .exit:hover { color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 20px var(--glow); }
+
+        /* ---------- corner counter ---------- */
+        #countChip { position: fixed; left: 18px; bottom: 18px; z-index: 5; font-size: 11px; letter-spacing: 1.6px; color: var(--muted);
+            border: 1px solid var(--border); border-radius: 9px; padding: 7px 12px; background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            opacity: 0; transition: opacity .8s ease .2s; }
+        body.ready #countChip { opacity: 1; }
+        #countChip b { color: var(--accent); font-size: 14px; text-shadow: 0 0 10px var(--glow); }
+
+        /* ---------- empty garden whisper ---------- */
+        #whisper { position: fixed; left: 50%; top: 44%; transform: translate(-50%, -50%); z-index: 4; text-align: center; pointer-events: none;
+            opacity: 0; transition: opacity 1.2s ease; }
+        #whisper.show { opacity: 1; }
+        #whisper .line { font-family: Georgia, serif; font-style: italic; font-size: clamp(19px, 3.2vw, 30px); color: var(--text);
+            text-shadow: 0 0 30px rgba(167, 232, 196, .25); }
+        #whisper .sub { margin-top: 10px; font-size: 11px; letter-spacing: 1.5px; color: var(--muted); display: none; }
+        #whisper.db-error .sub { display: block; }
+
+        /* ---------- hover label ---------- */
+        #labelLayer { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+        .marklabel { position: absolute; transform: translate(-50%, -100%); padding: 8px 12px 9px; border-radius: 10px;
+            background: var(--panel-strong); border: 1px solid var(--border); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 24px -6px var(--glow); white-space: nowrap; display: none; }
+        .marklabel .head { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 10.5px; letter-spacing: 1px; color: var(--accent); }
+        .marklabel .msg { font-family: Georgia, serif; font-style: italic; font-size: 13.5px; color: var(--text); margin-top: 3px; }
+        .marklabel .foot { font-size: 9px; letter-spacing: 1.6px; color: var(--muted); margin-top: 5px; text-transform: uppercase; }
+        .marklabel .foot .src-local { color: var(--gold); }
+        .marklabel .stem { position: absolute; left: 50%; top: 100%; width: 1px; height: 14px;
+            background: linear-gradient(var(--accent-dim), transparent); }
+
+        /* ---------- plant card ---------- */
+        #plantCard { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(16px); z-index: 6; width: min(480px, calc(100vw - 28px));
+            border: 1px solid var(--border); border-radius: 16px; background: var(--panel-strong); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            padding: 14px 16px 12px; opacity: 0; transition: opacity .8s ease .35s, transform .8s ease .35s;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .5), 0 0 40px -12px var(--glow); }
+        body.ready #plantCard { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #plantCard .row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+        #plantCard .label { font-size: 10px; letter-spacing: 2.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+        #plantCard .label::before { content: '✦ '; color: var(--accent); }
+        #charCount { font-size: 10px; color: var(--muted); font-family: 'Fira Mono', ui-monospace, monospace; }
+        #msgInput { width: 100%; background: rgba(4, 9, 10, .6); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+            font-family: Georgia, serif; font-style: italic; font-size: 14.5px; padding: 10px 12px; outline: none; transition: border-color .2s, box-shadow .2s; }
+        #msgInput::placeholder { color: var(--muted); opacity: .7; }
+        #msgInput:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(167, 232, 196, .08); }
+        #plantCard .row2 { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+        #plantBtn { flex: 1; border: none; border-radius: 11px; padding: 12px 18px; cursor: pointer; font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace;
+            font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #06110b;
+            background: linear-gradient(180deg, #b9f0d2, #8fdcae); box-shadow: 0 8px 26px var(--glow);
+            transition: transform .18s, filter .18s, opacity .2s; }
+        #plantBtn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.07); }
+        #plantBtn:disabled { opacity: .55; cursor: wait; }
+        #plantBtn.done { background: transparent; border: 1px solid var(--accent-dim); color: var(--accent); box-shadow: none; cursor: default; }
+        #revealBtn { display: none; border: 1px solid var(--border); background: transparent; border-radius: 11px; padding: 12px 16px; cursor: pointer;
+            font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+            color: var(--gold); transition: box-shadow .2s, transform .2s; }
+        #revealBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201, 169, 122, .2); }
+        #plantCard .foot { margin-top: 9px; text-align: center; font-size: 9.5px; letter-spacing: 1.4px; color: var(--muted); }
+        #plantCard .note { display: none; margin-top: 8px; text-align: center; font-size: 11.5px; letter-spacing: .4px; }
+        #plantCard .note.err { display: block; color: var(--danger); font-family: Georgia, serif; font-style: italic; }
+        #plantCard .note.ok { display: block; color: var(--accent); font-family: Georgia, serif; font-style: italic; }
+
+        /* ---------- toast ---------- */
+        #toast { position: fixed; bottom: 132px; left: 50%; transform: translateX(-50%) translateY(8px); z-index: 8; pointer-events: none;
+            background: var(--panel-strong); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 10px 16px;
+            font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 11.5px; letter-spacing: .8px;
+            opacity: 0; transition: opacity .35s ease, transform .35s ease; max-width: min(480px, calc(100vw - 40px)); text-align: center;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 14px 40px rgba(0, 0, 0, .5); }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ---------- intro overlay ---------- */
+        #intro { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at 50% 38%, rgba(10, 20, 22, .88), rgba(4, 8, 10, .97) 78%);
+            transition: opacity .9s ease; }
+        #intro.done { opacity: 0; pointer-events: none; }
+        .intro-card { width: min(520px, 88vw); text-align: center; padding: 30px 26px; }
+        .kicker { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 11px; letter-spacing: 4px; color: var(--accent);
+            text-transform: uppercase; margin-bottom: 16px; text-shadow: 0 0 18px var(--glow); }
+        .kicker::before { content: '✦ '; }
+        .intro-card h1 { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: clamp(26px, 5vw, 42px); font-weight: 800;
+            letter-spacing: 3px; color: var(--text); line-height: 1.15; margin-bottom: 18px; text-shadow: 0 0 40px var(--glow); }
+        .intro-card p.poem { font-family: Georgia, serif; font-style: italic; font-size: 15.5px; line-height: 1.75; color: var(--text); margin-bottom: 10px; }
+        .intro-card p.quantum-note { font-size: 10.5px; line-height: 1.7; letter-spacing: .6px; color: var(--muted); margin-bottom: 20px; }
+        .divider { width: 64px; height: 1px; margin: 0 auto 20px; background: linear-gradient(90deg, transparent, var(--accent-dim), transparent); }
+        .hints { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; margin-bottom: 24px; }
+        .hint { font-size: 10.5px; letter-spacing: 1.2px; color: var(--muted); }
+        .hint b { color: var(--text); font-weight: 600; }
+        .go { border: none; cursor: pointer; font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-weight: 800; letter-spacing: 2.5px;
+            text-transform: uppercase; font-size: 14px; color: #06110b; background: linear-gradient(180deg, #b9f0d2, #8fdcae);
+            padding: 14px 40px; border-radius: 12px; box-shadow: 0 10px 30px var(--glow); transition: transform .18s, filter .18s; }
+        .go:hover { transform: translateY(-2px); filter: brightness(1.07); }
+
+        @media (max-width: 640px) {
+            .chips { display: none; }
+            #countChip { left: 12px; bottom: 12px; }
+            #plantCard { bottom: 12px; }
+            #toast { bottom: 190px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="scene"></div>
+    <div class="vignette"></div>
+    <div id="labelLayer"></div>
+
+    <div class="topbar mono">
+        <div class="brand"><span class="dot"></span> GARDEN</div>
+        <div class="chips">
+            <span class="chip">CHANCE <b id="srcChip">—</b></span>
+            <span class="chip">RULES <b>ONE MARK · FOREVER</b></span>
+        </div>
+        <a class="exit" href="/"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.14em"><line x1="12" y1="3" x2="12" y2="12"/><path d="M7.6 6.3a7 7 0 1 0 8.8 0"/></svg> Exit</a>
+    </div>
+
+    <div id="countChip" class="mono">✦ <b id="countNum">0</b> MARKS GROWN</div>
+
+    <div id="whisper">
+        <div class="line serif">The soil is ready. Be the first mark.</div>
+        <div class="sub mono">the garden's table isn't created yet — run supabase/garden-migration.sql</div>
+    </div>
+
+    <div id="plantCard">
+        <div class="row1">
+            <div class="label">leave your one mark</div>
+            <div id="charCount">0 / 24</div>
+        </div>
+        <input id="msgInput" type="text" maxlength="24" placeholder="a 24-character whisper (optional)" autocomplete="off" spellcheck="false">
+        <div class="row2">
+            <button id="plantBtn">Plant your mark</button>
+            <button id="revealBtn">Reveal mine</button>
+        </div>
+        <div class="foot mono">ONE PER VISITOR · PLANTED FOREVER · PLACED BY QUANTUM CHANCE</div>
+        <div class="note" id="plantNote"></div>
+    </div>
+
+    <div id="toast" class="mono"></div>
+
+    <div id="intro">
+        <div class="intro-card">
+            <div class="kicker">a field that remembers</div>
+            <h1>THE&nbsp;PERMANENT<br>GARDEN</h1>
+            <p class="poem">Every visitor leaves exactly one glowing mark, planted forever.
+                Its place on the spiral, its hue, its form — all chosen by quantum randomness,
+                measured from a beam of light. No two gardens ever grow the same.</p>
+            <p class="quantum-note">Position, color and form of every mark are decided by quantum randomness (or honestly labeled local fallback).</p>
+            <div class="divider"></div>
+            <div class="hints">
+                <span class="hint"><b>Drag</b> to look around</span>
+                <span class="hint"><b>Scroll</b> to drift closer</span>
+                <span class="hint"><b>Hover</b> a mark to read it</span>
+            </div>
+            <button class="go" id="enterBtn">▸ Enter the garden</button>
+        </div>
+    </div>
+
+    <script src="/garden/garden-config.js"></script>
+    <script src="/visitor-id.js"></script>
+    <script src="/vendor/three.r128.min.js"></script>
+    <script src="/vendor/supabase-js.umd.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var $ = function (id) { return document.getElementById(id); };
+        var PI = Math.PI, TAU = PI * 2;
+
+        /* ================================================================
+           config + guards — the page must never hard-crash
+           ================================================================ */
+        var cfg = (typeof window.GARDEN_CONFIG === 'object' && window.GARDEN_CONFIG) || {};
+        var QRNG_URL = cfg.QRNG_URL || 'https://qrng-<placeholder>.run.app';
+        var MAX_MARKS = cfg.MAX_RENDERED_MARKS || 5000;
+        var GOLDEN_ANGLE = 2.399963229728653; // radians — the phyllotaxis angle
+        var SPREAD = 0.55;                    // world units between spiral rings
+        var FORMS = ['crystal', 'spore', 'star', 'bloom', 'shard', 'ring', 'seed', 'flame'];
+
+        function fail(msg) {
+            // last-resort graceful degradation: replace the scene with a calm message
+            var intro = $('intro');
+            if (intro) intro.innerHTML = '<div class="intro-card"><div class="kicker">the garden sleeps</div>' +
+                '<h1>THE&nbsp;PERMANENT<br>GARDEN</h1><p class="poem">' + msg + '</p>' +
+                '<a class="go" style="display:inline-block;text-decoration:none" href="/">← shaswata.me</a></div>';
+        }
+
+        if (typeof THREE === 'undefined') { fail('Its renderer failed to load — refresh, or wander back later.'); return; }
+
+        /* ================================================================
+           supabase client (anon key, public by design)
+           ================================================================ */
+        var sb = null;
+        try {
+            if (window.supabase && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY) {
+                sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+                });
+            }
+        } catch (e) { sb = null; }
+
+        /* ================================================================
+           quantum randomness — real bytes, honest fallback
+           ================================================================ */
+        function extractIntArray(j) {
+            var keys = ['data', 'ints', 'numbers', 'values', 'result', 'bytes'], k, a;
+            for (k = 0; k < keys.length; k++) {
+                a = j && j[keys[k]];
+                if (Object.prototype.toString.call(a) === '[object Array]' && a.length >= 8 && a.every(function (x) { return isFinite(Number(x)); })) return a;
+            }
+            if (Object.prototype.toString.call(j) === '[object Array]' && j.length >= 8 && j.every(function (x) { return isFinite(Number(x)); })) return j;
+            return null;
+        }
+
+        function fetchQuantumBytes() {
+            var url = QRNG_URL.replace(/\/+$/, '') + '/int?n=8';
+            var ctl = ('AbortController' in window) ? new AbortController() : null;
+            var to = ctl ? setTimeout(function () { ctl.abort(); }, 2000) : null;
+            var p = fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (res) {
+                if (!res.ok) throw new Error('qrng http ' + res.status);
+                return res.json();
+            }).then(function (j) {
+                var arr = extractIntArray(j);
+                if (!arr) throw new Error('qrng payload shape unexpected');
+                var bytes = [], i, v;
+                for (i = 0; i < 8; i++) { v = Math.floor(Number(arr[i])) >> 0; bytes.push(((v % 256) + 256) % 256); }
+                return { bytes: bytes, source: 'quantum' };
+            });
+            if (ctl) p = p.finally ? p.finally(function () { clearTimeout(to); }) : p.then(function (r) { clearTimeout(to); return r; }, function (e) { clearTimeout(to); throw e; });
+            return p;
+        }
+
+        function localRandomBytes() {
+            var b = new Uint8Array(8);
+            try { (window.crypto || window.msCrypto).getRandomValues(b); }
+            catch (e) { for (var i = 0; i < 8; i++) b[i] = Math.floor(Math.random() * 256); }
+            return { bytes: Array.prototype.slice.call(b), source: 'local' };
+        }
+
+        function getRandomness() {
+            return fetchQuantumBytes().catch(function (err) {
+                console.warn('[garden] quantum source unreachable, using honest local fallback:', err && err.message || err);
+                return localRandomBytes();
+            });
+        }
+
+        /* quantum bytes -> where and what a mark becomes.
+           The spiral slot is the garden's current size (from the DB), so the
+           field grows outward like a real one; everything inside the slot —
+           radial fraction, angle, hue, form, size, glow phase — is quantum. */
+        function bytesToMark(b, slot) {
+            var u = (((b[0] << 16) | (b[1] << 8) | b[2]) + 0.5) / 16777216;
+            var angJit = ((u * 1.61803398875) % 1) * TAU;
+            var theta = (slot + u) * GOLDEN_ANGLE + angJit;
+            var r = SPREAD * Math.sqrt(slot + u);
+            return {
+                x: Math.cos(theta) * r,
+                z: Math.sin(theta) * r,
+                hue: (((b[3] << 8) | b[4]) % 360 + 360) % 360,
+                form: ((b[5] % 8) + 8) % 8,
+                size: 0.7 + ((b[6] % 101) / 100) * 0.7,
+                glow: (b[7] / 256) * TAU
+            };
+        }
+
+        /* ================================================================
+           message sanitization — letters/digits/space/basic punctuation, no URLs
+           ================================================================ */
+        var msgRe;
+        try { msgRe = new RegExp('^[\\p{L}\\p{N} .,!?\'"\\-:;()&+*%$#=]$', 'u'); }
+        catch (e) { msgRe = /^[A-Za-z0-9 .,!?'"\-:;()&+*%$#=]$/; }
+        function sanitizeMessage(raw) {
+            var s = String(raw == null ? '' : raw);
+            s = s.replace(/(https?:\/\/|www\.)\S+/gi, ' ');
+            s = s.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/[\u2013\u2014]/g, '-');
+            var out = '', i, ch;
+            for (i = 0; i < s.length; i++) { ch = s[i]; if (msgRe.test(ch)) out += ch; }
+            out = out.replace(/\s+/g, ' ').trim();
+            return out.slice(0, 24);
+        }
+
+        function relTime(iso) {
+            var t = Date.now() - (iso ? Date.parse(iso) : NaN);
+            if (!isFinite(t)) return 'long ago';
+            if (t < 45e3) return 'just now';
+            var m = t / 6e4; if (m < 60) return Math.max(1, Math.round(m)) + ' min ago';
+            var h = m / 60; if (h < 24) return Math.round(h) + 'h ago';
+            var d = h / 24; if (d < 14) return Math.round(d) + (Math.round(d) === 1 ? ' day ago' : ' days ago');
+            var w = d / 7; if (w < 9) return Math.round(w) + 'wk ago';
+            var mo = d / 30.44; if (mo < 24) return Math.round(mo) + 'mo ago';
+            return Math.round(d / 365.25) + 'y ago';
+        }
+
+        /* ================================================================
+           scene — three.js r128, calm and dark
+           ================================================================ */
+        var BG = 0x070c10;
+        var scene = new THREE.Scene();
+        scene.background = new THREE.Color(BG);
+        scene.fog = new THREE.FogExp2(BG, 0.008);
+        var camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 1200);
+        var renderer;
+        try {
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        } catch (e) { fail('This browser could not open a WebGL window — the garden needs it to grow.'); return; }
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+        $('scene').appendChild(renderer.domElement);
+
+        var reduceMotion = false;
+        try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+        /* ---------- shared shader bits (manual fog: custom materials bypass scene.fog) ---------- */
+        var uniforms = {
+            uTime: { value: 0 },
+            uGrow: { value: 0 },                       // staggered grow-in after load
+            uBob: { value: reduceMotion ? 0.15 : 1 },  // idle bob amplitude
+            uFogColor: { value: new THREE.Color(BG) },
+            uFogDensity: { value: 0.008 },
+            uPx: { value: 320 * Math.min(devicePixelRatio || 1, 2) }
+        };
+
+        var MARK_VERT = [
+            'uniform float uTime;',
+            'uniform float uGrow;',
+            'uniform float uBob;',
+            'attribute vec3 aColor;',
+            'attribute float aPhase;',
+            'varying vec3 vColor;',
+            'varying float vFogDepth;',
+            'void main() {',
+            '  float ph = aPhase * 6.2831853;',
+            '  vec4 wp = instanceMatrix * vec4(position, 1.0);',
+            '  vec3 origin = instanceMatrix[3].xyz;',
+            '  vec3 d = wp.xyz - origin;',
+            '  float ang = uTime * (0.25 + 0.3 * fract(aPhase * 7.31)) + ph;',
+            '  float ca = cos(ang), sa = sin(ang);',
+            '  vec3 dr = vec3(d.x * ca - d.z * sa, d.y, d.x * sa + d.z * ca);',
+            '  float grow = smoothstep(0.0, 1.0, clamp(uGrow * 1.8 - aPhase * 0.8, 0.0, 1.0));',
+            '  float s = (1.0 + 0.07 * sin(uTime * 1.3 + ph)) * grow;',
+            '  wp.xyz = origin + dr * s;',
+            '  wp.y += 0.12 * uBob * sin(uTime * 0.7 + ph * 2.0);',
+            '  vColor = aColor * (0.78 + 0.28 * sin(uTime * 1.7 + ph * 3.0)) * (0.25 + 0.75 * grow);',
+            '  vec4 mv = modelViewMatrix * wp;',
+            '  vFogDepth = -mv.z;',
+            '  gl_Position = projectionMatrix * mv;',
+            '}'
+        ].join('\n');
+
+        var MARK_FRAG = [
+            'uniform vec3 uFogColor;',
+            'uniform float uFogDensity;',
+            'varying vec3 vColor;',
+            'varying float vFogDepth;',
+            'void main() {',
+            '  float f = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);',
+            '  gl_FragColor = vec4(mix(vColor, uFogColor, clamp(f, 0.0, 1.0)), 1.0);',
+            '}'
+        ].join('\n');
+
+        function markMaterial() {
+            return new THREE.ShaderMaterial({
+                uniforms: uniforms, vertexShader: MARK_VERT, fragmentShader: MARK_FRAG
+            });
+        }
+
+        /* ---------- ground: soft soil disc, concentric ripples, ember heart ---------- */
+        var groundMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: uniforms.uTime,
+                uCore: { value: new THREE.Color(0x0d1a1c) },
+                uDeep: { value: new THREE.Color(BG) }
+            },
+            vertexShader: [
+                'varying vec2 vP;',
+                'void main() { vP = position.xy;',
+                '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }'
+            ].join('\n'),
+            fragmentShader: [
+                'uniform vec3 uCore; uniform vec3 uDeep; uniform float uTime;',
+                'varying vec2 vP;',
+                'void main() {',
+                '  float r = length(vP);',
+                '  float t = clamp(1.0 - r / 420.0, 0.0, 1.0);',
+                '  vec3 col = mix(uDeep, uCore, pow(t, 1.7));',
+                '  float ring = sin(r * 1.25 - uTime * 0.12);',
+                '  col += vec3(0.010, 0.020, 0.014) * smoothstep(0.8, 1.0, ring) * pow(t, 2.2);',
+                '  col += uCore * 0.55 * smoothstep(26.0, 0.0, r);',
+                '  gl_FragColor = vec4(col, 1.0);',
+                '}'
+            ].join('\n')
+        });
+        var ground = new THREE.Mesh(new THREE.CircleGeometry(420, 72), groundMat);
+        ground.rotation.x = -PI / 2;
+        scene.add(ground);
+
+        /* ---------- star dome + drifting motes ---------- */
+        function radialTexture(inner, mid) {
+            var c = document.createElement('canvas'); c.width = c.height = 64;
+            var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+            g.addColorStop(0, inner); g.addColorStop(0.35, mid); g.addColorStop(1, 'rgba(0,0,0,0)');
+            x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        }
+        var DOT = radialTexture('rgba(255,255,255,1)', 'rgba(255,255,255,.6)');
+
+        var starDome = (function () {
+            var N = 1300, g = new THREE.BufferGeometry(), pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+            var tints = [[1, 1, 1], [0.72, 0.84, 1], [0.85, 1, 0.92], [1, 0.9, 0.76]];
+            for (var i = 0; i < N; i++) {
+                var r = 330 + Math.random() * 260, th = Math.random() * TAU, ph = Math.acos(Math.random() * 0.92); // keep above horizon-ish
+                pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = Math.abs(r * Math.cos(ph)) * 0.9 + 14; pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+                var c = tints[(Math.random() * tints.length) | 0], b = 0.35 + Math.random() * 0.65;
+                col[i * 3] = c[0] * b; col[i * 3 + 1] = c[1] * b; col[i * 3 + 2] = c[2] * b;
+            }
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            var m = new THREE.PointsMaterial({ size: 1.7 * Math.min(devicePixelRatio || 1, 2), sizeAttenuation: false, map: DOT, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false });
+            m.fog = false;
+            var p = new THREE.Points(g, m); p.frustumCulled = false; return p;
+        })();
+        scene.add(starDome);
+
+        var motes = (function () {
+            var N = reduceMotion ? 60 : 220, g = new THREE.BufferGeometry(), pos = new Float32Array(N * 3);
+            var seeds = [];
+            for (var i = 0; i < N; i++) {
+                var r = Math.sqrt(Math.random()) * 46, th = Math.random() * TAU;
+                seeds.push({ x: Math.cos(th) * r, z: Math.sin(th) * r, y: 0.6 + Math.random() * 7, sp: 0.2 + Math.random() * 0.5, ph: Math.random() * TAU, amp: 0.5 + Math.random() * 1.2 });
+                pos[i * 3] = seeds[i].x; pos[i * 3 + 1] = seeds[i].y; pos[i * 3 + 2] = seeds[i].z;
+            }
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            var m = new THREE.PointsMaterial({ size: 0.16, sizeAttenuation: true, map: DOT, color: 0x9fe8c8, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+            m.fog = false;
+            var p = new THREE.Points(g, m); p.frustumCulled = false;
+            p.userData.seeds = seeds;
+            return p;
+        })();
+        scene.add(motes);
+
+        /* ================================================================
+           marks — 8 procedural form-variants, one InstancedMesh each
+           ================================================================ */
+        function formGeometry(form) {
+            var g;
+            switch (form) {
+                case 0: g = new THREE.OctahedronGeometry(1, 0); g.scale(0.62, 1.12, 0.62); break;             // crystal — tall twin-pyramid
+                case 1: g = new THREE.IcosahedronGeometry(0.82, 0); break;                                     // spore — faceted blob
+                case 2: g = new THREE.OctahedronGeometry(1, 0); g.scale(1.28, 0.38, 1.28); break;              // star — flat four-point
+                case 3: g = new THREE.LatheGeometry([                                                            // bloom — round bud, pointed crown
+                    new THREE.Vector2(0.001, -0.9), new THREE.Vector2(0.26, -0.52), new THREE.Vector2(0.36, -0.02),
+                    new THREE.Vector2(0.22, 0.44), new THREE.Vector2(0.05, 0.78), new THREE.Vector2(0.001, 0.95)
+                ], 20); break;
+                case 4: g = new THREE.ConeGeometry(0.52, 1.35, 4); g.rotateZ(0.28); break;                      // shard — tilted pyramid
+                case 5: g = new THREE.TorusGeometry(0.62, 0.17, 10, 22); g.rotateX(PI / 2 - 0.5); break;        // ring — tilted halo
+                case 6: g = new THREE.SphereGeometry(0.78, 12, 9); g.scale(0.55, 1.0, 0.55); break;             // seed — grain of light
+                default: g = new THREE.LatheGeometry([                                                           // flame — slim tongue
+                    new THREE.Vector2(0.001, -0.95), new THREE.Vector2(0.13, -0.55), new THREE.Vector2(0.22, -0.1),
+                    new THREE.Vector2(0.3, 0.28), new THREE.Vector2(0.18, 0.62), new THREE.Vector2(0.04, 0.85), new THREE.Vector2(0.001, 0.92)
+                ], 18); break;
+            }
+            return g;
+        }
+
+        var GLOW_VERT = [
+            'uniform float uTime;',
+            'uniform float uBob;',
+            'uniform float uPx;',
+            'attribute vec3 aColor;',
+            'attribute float aPhase;',
+            'attribute float aSize;',
+            'varying vec3 vColor;',
+            'varying float vFogDepth;',
+            'void main() {',
+            '  float ph = aPhase * 6.2831853;',
+            '  vColor = aColor * (0.6 + 0.4 * sin(uTime * 1.7 + ph * 3.0));',
+            '  vec3 p = position;',
+            '  p.y += 0.12 * uBob * sin(uTime * 0.7 + ph * 2.0);',
+            '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+            '  vFogDepth = -mv.z;',
+            '  gl_PointSize = min(72.0, aSize * uPx / max(0.001, -mv.z));',
+            '  gl_Position = projectionMatrix * mv;',
+            '}'
+        ].join('\n');
+        var GLOW_FRAG = [
+            'uniform float uFogDensity;',
+            'varying vec3 vColor;',
+            'varying float vFogDepth;',
+            'void main() {',
+            '  vec2 q = gl_PointCoord - 0.5;',
+            '  float d = length(q) * 2.0;',
+            '  float a = smoothstep(1.0, 0.0, d); a *= a;',
+            '  float f = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);',
+            '  gl_FragColor = vec4(vColor, 1.0) * a * (1.0 - clamp(f, 0.0, 1.0));',
+            '}'
+        ].join('\n');
+        function glowMaterial() {
+            return new THREE.ShaderMaterial({
+                uniforms: uniforms, vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG,
+                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+            });
+        }
+
+        var variantMeshes = [];   // InstancedMesh per form
+        var glowLayer = null;     // one Points cloud of halos
+        var marks = [];           // rendered mark records
+        var myMark = null;        // this visitor's mark, if any
+        var bloomFx = null;       // celebration state
+
+        function hueColor(hue, l) {
+            var c = new THREE.Color();
+            c.setHSL((((hue % 360) + 360) % 360) / 360, 0.72, l == null ? 0.62 : l);
+            return c;
+        }
+
+        function buildMarks(list, replay) {
+            marks = list;
+            variantMeshes.forEach(function (m) { scene.remove(m); m.geometry.dispose(); });
+            variantMeshes = [];
+            if (glowLayer) { scene.remove(glowLayer); glowLayer.geometry.dispose(); glowLayer = null; }
+
+            var byForm = [[], [], [], [], [], [], [], []], i, m;
+            for (i = 0; i < list.length; i++) byForm[((list[i].form % 8) + 8) % 8].push(list[i]);
+
+            var tmpObj = new THREE.Object3D(), col = new THREE.Color();
+            for (var f = 0; f < 8; f++) {
+                var grp = byForm[f];
+                var geo = formGeometry(f);
+                var cols = new Float32Array(grp.length * 3), phs = new Float32Array(grp.length);
+                var mesh = new THREE.InstancedMesh(geo, markMaterial(), Math.max(grp.length, 1));
+                mesh.count = grp.length;
+                mesh.frustumCulled = false; // instances live far from the unit geometry's bounds
+                mesh.userData.marks = grp;
+                for (i = 0; i < grp.length; i++) {
+                    m = grp[i];
+                    var phase = m.glow != null ? (m.glow / TAU) : Math.random();
+                    tmpObj.position.set(m.x, 0.42 + m.size * 0.28, m.z);
+                    tmpObj.rotation.set(0, phase * TAU + m.x * 0.37, 0);
+                    tmpObj.scale.setScalar(m.size * 0.42);
+                    tmpObj.updateMatrix();
+                    mesh.setMatrixAt(i, tmpObj.matrix);
+                    col = hueColor(m.hue, 0.6);
+                    cols[i * 3] = col.r; cols[i * 3 + 1] = col.g; cols[i * 3 + 2] = col.b;
+                    phs[i] = phase;
+                }
+                if (grp.length) {
+                    geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(cols, 3));
+                    geo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phs, 1));
+                    mesh.instanceMatrix.needsUpdate = true;
+                }
+                scene.add(mesh);
+                variantMeshes.push(mesh);
+            }
+
+            // halo cloud — one soft additive point per mark
+            var g = new THREE.BufferGeometry();
+            var pos = new Float32Array(list.length * 3), gc = new Float32Array(list.length * 3),
+                gp = new Float32Array(list.length), gs = new Float32Array(list.length);
+            for (i = 0; i < list.length; i++) {
+                m = list[i];
+                pos[i * 3] = m.x; pos[i * 3 + 1] = 0.42 + m.size * 0.28; pos[i * 3 + 2] = m.z;
+                col = hueColor(m.hue, 0.55);
+                gc[i * 3] = col.r; gc[i * 3 + 1] = col.g; gc[i * 3 + 2] = col.b;
+                gp[i] = m.glow != null ? m.glow / TAU : 0;
+                gs[i] = 1.5 + m.size * 1.7;
+            }
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            g.setAttribute('aColor', new THREE.BufferAttribute(gc, 3));
+            g.setAttribute('aPhase', new THREE.BufferAttribute(gp, 1));
+            g.setAttribute('aSize', new THREE.BufferAttribute(gs, 1));
+            glowLayer = new THREE.Points(g, glowMaterial());
+            glowLayer.frustumCulled = false;
+            scene.add(glowLayer);
+
+            placeBeacon();
+            if (replay) { // staggered grow-in for the whole field (page load)
+                uniforms.uGrow.value = 0;
+                growStart = performance.now();
+            } else {
+                uniforms.uGrow.value = 1.6; // field already grown; only celebrate() animates the new sprout
+            }
+        }
+
+        /* ---------- my mark's beacon: a breathing ring on the soil ---------- */
+        var beacon = (function () {
+            var grp = new THREE.Group();
+            var ring = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.18, 48),
+                new THREE.MeshBasicMaterial({ color: 0xc9a97a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+            ring.rotation.x = -PI / 2; ring.position.y = 0.04;
+            var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: DOT, color: 0xc9a97a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+            glow.scale.set(3.4, 3.4, 1);
+            grp.add(ring); grp.add(glow);
+            grp.visible = false;
+            grp.userData.ring = ring; grp.userData.glow = glow;
+            scene.add(grp);
+            return grp;
+        })();
+        function placeBeacon() {
+            if (!myMark) { beacon.visible = false; return; }
+            beacon.visible = true;
+            beacon.position.set(myMark.x, 0, myMark.z);
+        }
+
+        /* ---------- celebration: expanding rings + a burst of spores ---------- */
+        function celebrate(x, z, hue) {
+            var col = hueColor(hue, 0.66);
+            var rings = [];
+            var r, k;
+            for (k = 0; k < 3; k++) {
+                r = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.02, 64),
+                    new THREE.MeshBasicMaterial({ color: col.getHex(), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                r.rotation.x = -PI / 2; r.position.set(x, 0.05, z);
+                r.userData.t0 = performance.now() + k * 260;
+                r.userData.dur = 1500 + k * 220;
+                scene.add(r); rings.push(r);
+            }
+            var N = reduceMotion ? 0 : 110;
+            var burst = null, bseed = null;
+            if (N) {
+                var g = new THREE.BufferGeometry(), p = new Float32Array(N * 3), c = new Float32Array(N * 3);
+                bseed = [];
+                for (k = 0; k < N; k++) {
+                    var th = Math.random() * TAU, el = Math.random() * PI * 0.5;
+                    var sp = 2.2 + Math.random() * 3.4;
+                    bseed.push({ vx: Math.cos(th) * Math.cos(el) * sp, vy: Math.sin(el) * sp * 1.25, vz: Math.sin(th) * Math.cos(el) * sp, life: 0 });
+                    p[k * 3] = x; p[k * 3 + 1] = 0.5; p[k * 3 + 2] = z;
+                    c[k * 3] = col.r; c[k * 3 + 1] = col.g; c[k * 3 + 2] = col.b;
+                }
+                g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+                g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+                burst = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.16, sizeAttenuation: true, map: DOT, vertexColors: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+                burst.frustumCulled = false;
+                scene.add(burst);
+            }
+            bloomFx = { rings: rings, burst: burst, bseed: bseed, t0: performance.now() };
+        }
+
+        function stepCelebrate(now, dt) {
+            if (!bloomFx) return;
+            var alive = false, i;
+            for (i = 0; i < bloomFx.rings.length; i++) {
+                var r = bloomFx.rings[i], t = (now - r.userData.t0) / r.userData.dur;
+                if (t < 0) { r.visible = false; alive = true; continue; }
+                if (t >= 1) { r.visible = false; continue; }
+                r.visible = true; alive = true;
+                var s = 0.6 + t * 9;
+                r.scale.set(s, s, 1);
+                r.material.opacity = 0.85 * (1 - t) * (1 - t);
+            }
+            if (bloomFx.burst) {
+                var arr = bloomFx.burst.geometry.attributes.position.array;
+                var any = false;
+                for (i = 0; i < bloomFx.bseed.length; i++) {
+                    var b = bloomFx.bseed[i];
+                    b.life += dt;
+                    b.vy -= 3.2 * dt;
+                    arr[i * 3] += b.vx * dt; arr[i * 3 + 1] += b.vy * dt; arr[i * 3 + 2] += b.vz * dt;
+                    if (b.life < 1.7) any = true;
+                }
+                bloomFx.burst.geometry.attributes.position.needsUpdate = true;
+                bloomFx.burst.material.opacity = Math.max(0, 0.95 - (now - bloomFx.t0) / 1700);
+                if (any) alive = true;
+            }
+            if (!alive) {
+                bloomFx.rings.forEach(function (r) { scene.remove(r); r.geometry.dispose(); r.material.dispose(); });
+                if (bloomFx.burst) { scene.remove(bloomFx.burst); bloomFx.burst.geometry.dispose(); bloomFx.burst.material.dispose(); }
+                bloomFx = null;
+            }
+        }
+
+        /* ================================================================
+           camera — slow ambient drift, drag orbit, scroll/pinch zoom
+           ================================================================ */
+        var ctrl = { theta: 0.9, phi: 1.08, dist: 46, target: new THREE.Vector3(0, 1, 0) };
+        var want = { theta: 0.9, phi: 1.08, dist: 46, target: new THREE.Vector3(0, 1, 0) };
+        var lastInteract = performance.now();
+        var camEl = renderer.domElement, pointers = new Map(), moved = 0;
+
+        function pinchDist() {
+            var ps = Array.from(pointers.values());
+            return Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+        }
+        var lastPinch = 0;
+        camEl.addEventListener('pointerdown', function (e) {
+            camEl.setPointerCapture(e.pointerId);
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            moved = 0; lastInteract = performance.now();
+            if (pointers.size === 2) lastPinch = pinchDist();
+        });
+        camEl.addEventListener('pointermove', function (e) {
+            lastInteract = performance.now();
+            if (!pointers.has(e.pointerId)) { updateHoverPointer(e); return; }
+            var p = pointers.get(e.pointerId);
+            var dx = e.clientX - p.x, dy = e.clientY - p.y;
+            p.x = e.clientX; p.y = e.clientY;
+            moved += Math.abs(dx) + Math.abs(dy);
+            if (pointers.size === 1) {
+                want.theta -= dx * 0.0042;
+                want.phi = Math.max(0.22, Math.min(1.5, want.phi - dy * 0.0038));
+            } else if (pointers.size === 2) {
+                var d = pinchDist();
+                if (lastPinch > 0) want.dist = Math.max(4, Math.min(170, want.dist * lastPinch / d));
+                lastPinch = d;
+            }
+        });
+        function endP(e) {
+            pointers.delete(e.pointerId);
+            if (pointers.size < 2) lastPinch = 0;
+            lastInteract = performance.now();
+        }
+        camEl.addEventListener('pointerup', endP);
+        camEl.addEventListener('pointercancel', endP);
+        camEl.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            lastInteract = performance.now();
+            want.dist = Math.max(4, Math.min(170, want.dist * Math.exp(e.deltaY * 0.0011)));
+        }, { passive: false });
+
+        function applyCamera(dt) {
+            if (!reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift
+            var k = 1 - Math.exp(-dt * 5.2);
+            ctrl.theta += (want.theta - ctrl.theta) * k;
+            ctrl.phi += (want.phi - ctrl.phi) * k;
+            ctrl.dist += (want.dist - ctrl.dist) * k;
+            ctrl.target.lerp(want.target, k);
+            var sp = Math.sin(ctrl.phi), cp = Math.cos(ctrl.phi);
+            camera.position.set(
+                ctrl.target.x + ctrl.dist * sp * Math.cos(ctrl.theta),
+                ctrl.target.y + ctrl.dist * cp,
+                ctrl.target.z + ctrl.dist * sp * Math.sin(ctrl.theta));
+            camera.lookAt(ctrl.target);
+        }
+
+        function flyTo(m) {
+            want.target.set(m.x, 0.9 + m.size * 0.3, m.z);
+            want.dist = 5.5;
+            want.phi = 1.12;
+            lastInteract = performance.now() - 7000; // resume drift after arriving
+        }
+
+        /* ================================================================
+           hover — raycast the instanced field, show a small label
+           ================================================================ */
+        var raycaster = new THREE.Raycaster();
+        raycaster.params.Points = { threshold: 0.4 };
+        var pointerNdc = new THREE.Vector2(-2, -2);
+        var hoverMark = null;
+        var labelEl = (function () {
+            var d = document.createElement('div');
+            d.className = 'marklabel';
+            d.innerHTML = '<div class="head"></div><div class="msg" style="display:none"></div><div class="foot"></div><div class="stem"></div>';
+            $('labelLayer').appendChild(d);
+            return d;
+        })();
+        var labelHead = labelEl.querySelector('.head'), labelMsg = labelEl.querySelector('.msg'), labelFoot = labelEl.querySelector('.foot');
+        var pointerPix = { x: 0, y: 0 };
+
+        function updateHoverPointer(e) { pointerPix.x = e.clientX; pointerPix.y = e.clientY; }
+
+        var vTmp = new THREE.Vector3();
+        function updateHover() {
+            var found = null;
+            if (pointerNdc.x > -1.5) {
+                raycaster.setFromCamera(pointerNdc, camera);
+                var hits = raycaster.intersectObjects(variantMeshes.filter(function (m) { return m.count > 0; }));
+                if (hits.length && hits[0].instanceId != null) {
+                    var mesh = hits[0].object, idx = hits[0].instanceId;
+                    if (mesh.userData.marks && mesh.userData.marks[idx]) found = mesh.userData.marks[idx];
+                }
+            }
+            hoverMark = found;
+            if (found) {
+                labelHead.textContent = 'mark #' + String(found.id || '').replace(/-/g, '').slice(0, 6) + ' · ' + relTime(found.planted_at);
+                if (found.message) { labelMsg.style.display = 'block'; labelMsg.textContent = '"' + found.message + '"'; }
+                else labelMsg.style.display = 'none';
+                var srcClass = found.source === 'local' ? 'src-local' : '';
+                labelFoot.innerHTML = '<span class="' + srcClass + '">' + (found.source === 'local' ? 'local chance' : 'quantum') + '</span> · ' +
+                    (FORMS[((found.form % 8) + 8) % 8] || 'mark');
+                labelEl.style.display = 'block';
+                vTmp.set(found.x, 0.42 + found.size * 0.28 + 0.75, found.z).project(camera);
+                var sx = (vTmp.x * 0.5 + 0.5) * innerWidth, sy = (-vTmp.y * 0.5 + 0.5) * innerHeight;
+                labelEl.style.left = Math.max(90, Math.min(innerWidth - 90, sx)) + 'px';
+                labelEl.style.top = Math.max(70, sy) + 'px';
+                camEl.style.cursor = 'pointer';
+            } else {
+                labelEl.style.display = 'none';
+                camEl.style.cursor = 'grab';
+            }
+        }
+        window.addEventListener('pointermove', function (e) {
+            pointerNdc.x = (e.clientX / innerWidth) * 2 - 1;
+            pointerNdc.y = -(e.clientY / innerHeight) * 2 + 1;
+            updateHoverPointer(e);
+        }, { passive: true });
+
+        /* ================================================================
+           UI plumbing
+           ================================================================ */
+        var toastTimer = null;
+        function toast(msg, ms) {
+            var t = $('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () { t.classList.remove('show'); }, ms || 3400);
+        }
+
+        var totalMarks = 0, loadFailed = false;
+        function setCount(n) { $('countNum').textContent = String(n); }
+        function updateWhisper() {
+            var w = $('whisper');
+            if (loadFailed || totalMarks === 0) { w.classList.add('show'); w.classList.toggle('db-error', loadFailed); }
+            else w.classList.remove('show');
+        }
+        function setSrcChip(src) {
+            var b = $('srcChip');
+            b.textContent = src === 'local' ? 'LOCAL (HONEST)' : 'QUANTUM';
+            b.className = src === 'local' ? 'local' : '';
+        }
+
+        var msgInput = $('msgInput'), plantBtn = $('plantBtn'), revealBtn = $('revealBtn'), note = $('plantNote');
+        msgInput.addEventListener('input', function () {
+            var clean = sanitizeMessage(msgInput.value);
+            $('charCount').textContent = clean.length + ' / 24';
+        });
+        msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') plant(); });
+
+        function setPlantedUI() {
+            plantBtn.textContent = 'Your mark is here ✦';
+            plantBtn.classList.add('done');
+            plantBtn.disabled = true;
+            revealBtn.style.display = 'inline-block';
+        }
+
+        function noteErr(msg) { note.className = 'note err'; note.textContent = msg; }
+        function noteOk(msg) { note.className = 'note ok'; note.textContent = msg; }
+        function noteClear() { note.className = 'note'; note.textContent = ''; }
+
+        /* ================================================================
+           data
+           ================================================================ */
+        function dbErrorKind(err) {
+            var code = err && (err.code || (err.body && err.body.code)) || '';
+            var msg = (err && (err.message || err.details || JSON.stringify(err))) || '';
+            if (code === '23505' || /duplicate key|unique constraint/i.test(msg)) return 'duplicate';
+            if (code === '42P01' || code === 'PGRST205' || /relation .* does not exist|schema cache/i.test(msg)) return 'no-table';
+            if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return 'network';
+            return 'other';
+        }
+
+        function loadGarden() {
+            if (!sb) { loadFailed = true; updateWhisper(); return Promise.resolve(); }
+            return Promise.resolve().then(function () {
+                return sb.from('garden_marks').select('id', { count: 'exact', head: true }).then(function (res) {
+                    if (!res.error && res.count != null) { totalMarks = res.count; setCount(totalMarks); }
+                });
+            }).then(function () {
+                var all = [], off = 0;
+                function page() {
+                    return sb.from('garden_marks').select('*').order('planted_at', { ascending: true }).range(off, off + 999).then(function (res) {
+                        if (res.error) throw res.error;
+                        all = all.concat(res.data || []);
+                        off += 1000;
+                        if (res.data && res.data.length === 1000 && all.length < MAX_MARKS) return page();
+                        return all;
+                    });
+                }
+                return page();
+            }).then(function (all) {
+                buildMarks(all.slice(0, MAX_MARKS));
+                totalMarks = Math.max(totalMarks, all.length);
+                setCount(totalMarks);
+                updateWhisper();
+            }).catch(function (err) {
+                console.warn('[garden] could not load marks:', err && (err.message || err.code) || err);
+                loadFailed = dbErrorKind(err) !== 'network';
+                buildMarks([]);
+                updateWhisper();
+            });
+        }
+
+        function findMyMark() {
+            if (!sb || !window.shaswataVisitorId) return Promise.resolve(null);
+            var vid = window.shaswataVisitorId();
+            return sb.from('garden_marks').select('*').eq('visitor_id', vid).maybeSingle().then(function (res) {
+                if (res.error) return null;
+                if (res.data) { myMark = res.data; setPlantedUI(); placeBeacon(); }
+                return res.data || null;
+            }).catch(function () { return null; });
+        }
+
+        /* ---------- planting ---------- */
+        function plant() {
+            if (plantBtn.disabled) return;
+            noteClear();
+            plantBtn.disabled = true;
+            plantBtn.textContent = 'Measuring quantum noise…';
+            var slot = Math.max(totalMarks, marks.length);
+
+            getRandomness().then(function (rnd) {
+                setSrcChip(rnd.source);
+                var props = bytesToMark(rnd.bytes, slot);
+                var message = sanitizeMessage(msgInput.value);
+                var row = {
+                    visitor_id: window.shaswataVisitorId ? window.shaswataVisitorId() : 'anonymous',
+                    x: props.x, z: props.z, hue: props.hue, form: props.form,
+                    size: props.size, glow: props.glow,
+                    message: message || null,
+                    source: rnd.source
+                };
+                if (!sb) throw { code: 'NO-DB', message: 'database not configured' };
+                return sb.from('garden_marks').insert(row).select().single().then(function (res) {
+                    if (res.error) throw res.error;
+                    return res.data;
+                });
+            }).then(function (inserted) {
+                myMark = inserted;
+                totalMarks += 1;
+                setCount(totalMarks);
+                updateWhisper();
+                marks.push(inserted);
+                buildMarks(marks, false);    // rebuild with the new sprout, field stays grown
+                setPlantedUI();
+                placeBeacon();
+                flyTo(inserted);
+                celebrate(inserted.x, inserted.z, inserted.hue);
+                noteOk('Planted ' + (inserted.source === 'local' ? 'with local chance — honestly labeled.' : 'from quantum randomness.') + ' It stays. Forever.');
+                toast('✦ your mark is growing. it will be here, always.');
+                msgInput.value = ''; $('charCount').textContent = '0 / 24';
+            }).catch(function (err) {
+                var kind = dbErrorKind(err);
+                if (kind === 'duplicate') {
+                    setPlantedUI();
+                    noteErr('Your mark is already growing 🌱');
+                    toast('one visitor, one mark — yours is already here.');
+                    findMyMark().then(function (mine) { if (mine) { flyTo(mine); placeBeacon(); } });
+                    return;
+                }
+                if (kind === 'no-table' || (err && err.code === 'NO-DB')) {
+                    noteErr('The soil isn\'t turned yet — the garden\'s table hasn\'t been created. Try again after the migration runs.');
+                } else if (kind === 'network') {
+                    noteErr('The garden is beyond the mist right now — try again in a moment.');
+                } else {
+                    noteErr('Something resisted the planting — try once more.');
+                    console.warn('[garden] insert failed:', err);
+                }
+                plantBtn.disabled = false;
+                plantBtn.textContent = 'Plant your mark';
+            });
+        }
+        plantBtn.addEventListener('click', plant);
+        revealBtn.addEventListener('click', function () {
+            if (myMark) { flyTo(myMark); toast('✦ this one is yours.'); }
+            else findMyMark().then(function (mine) { if (mine) flyTo(mine); else toast('no mark found for this browser yet.'); });
+        });
+
+        /* ================================================================
+           boot, loop, resize
+           ================================================================ */
+        var growStart = performance.now();
+        var last = performance.now();
+        function loop(now) {
+            var dt = (now - last) / 1000; last = now;
+            if (!isFinite(dt) || dt < 0) dt = 0;
+            dt = Math.min(dt, 0.05);
+            var t = now / 1000;
+
+            uniforms.uTime.value = t;
+            uniforms.uGrow.value = Math.min(1.6, (now - growStart) / 2400);
+
+            applyCamera(dt);
+
+            // motes drift
+            var mp = motes.geometry.attributes.position.array, seeds = motes.userData.seeds;
+            for (var i = 0; i < seeds.length; i++) {
+                var s = seeds[i];
+                mp[i * 3 + 1] = s.y + Math.sin(t * s.sp + s.ph) * s.amp;
+                mp[i * 3] = s.x + Math.cos(t * s.sp * 0.6 + s.ph) * s.amp * 0.4;
+            }
+            motes.geometry.attributes.position.needsUpdate = true;
+
+            starDome.rotation.y += dt * 0.004;
+
+            // beacon breathes
+            if (beacon.visible) {
+                var br = 1 + Math.sin(t * 2.1) * 0.12;
+                beacon.userData.ring.scale.set(br, br, 1);
+                beacon.userData.ring.material.opacity = 0.34 + 0.22 * (0.5 + 0.5 * Math.sin(t * 2.1));
+                beacon.userData.glow.material.opacity = 0.22 + 0.14 * (0.5 + 0.5 * Math.sin(t * 1.4));
+            }
+
+            stepCelebrate(now, dt);
+            updateHover();
+            renderer.render(scene, camera);
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', function () {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+            uniforms.uPx.value = 320 * Math.min(devicePixelRatio || 1, 2);
+        });
+
+        /* intro → garden */
+        function enter() {
+            var iv = $('intro');
+            if (!iv || iv.classList.contains('done')) return;
+            iv.classList.add('done');
+            document.body.classList.add('ready');
+            setTimeout(function () { if (iv.parentNode) iv.parentNode.removeChild(iv); }, 1000);
+            lastInteract = performance.now() - 7000; // begin with a gentle drift
+        }
+        $('enterBtn').addEventListener('click', enter);
+        $('intro').addEventListener('click', function (e) { if (e.target === $('intro')) enter(); });
+        window.addEventListener('keydown', function sk(e) {
+            if (e.key === 'Escape') { enter(); window.removeEventListener('keydown', sk); }
+            if (e.key === 'Enter') enter();
+        });
+
+        /* go */
+        try {
+            requestAnimationFrame(loop);
+            loadGarden();
+            findMyMark();
+            // one quiet probe so the CHANCE chip is honest before anyone plants
+            setTimeout(function () {
+                fetchQuantumBytes().then(function () { setSrcChip('quantum'); }).catch(function () { setSrcChip('local'); });
+            }, 2500);
+        } catch (e) {
+            console.error('[garden] init error:', e);
+            fail('Something snagged while planting the scene — refresh to try again.');
+        }
+    })();
+    </script>
+</body>
+
+</html>
