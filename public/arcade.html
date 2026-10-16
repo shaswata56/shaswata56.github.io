@@ -53,6 +53,12 @@
         .telemetry { display: flex; gap: 8px; flex: 1; justify-content: center; flex-wrap: wrap; }
         .tchip { font-size: 10.5px; letter-spacing: 1.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; white-space: nowrap; }
         .tchip b { color: var(--accent); }
+        .orbtoggle { font-family: inherit; font-size: 10.5px; letter-spacing: 1.5px; color: var(--muted); background: transparent;
+            border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; white-space: nowrap; cursor: pointer;
+            transition: color .2s, border-color .2s; }
+        .orbtoggle:hover { color: #fff; border-color: var(--accent); }
+        .orbtoggle.off { opacity: .45; }
+        .orbtoggle.off::after { content: ' off'; font-size: 9px; }
         .exit { text-decoration: none; color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
             border: 1px solid var(--border); border-radius: 9px; padding: 7px 13px; white-space: nowrap; transition: color .2s, box-shadow .2s, transform .2s; }
         .exit:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 6px 20px var(--glow); }
@@ -185,7 +191,9 @@
                 <span class="tchip">SECTOR <b id="tSector">01/07</b></span>
                 <span class="tchip">FPS <b id="tFps">60</b></span>
                 <span class="tchip" id="tClock">--:--:--</span>
+                <span class="tchip" id="tHere" hidden>HERE NOW <b>1</b></span>
             </div>
+            <button class="orbtoggle" id="orbsToggle" hidden title="Show/hide other visitors' orbs" aria-pressed="false">◍ ORBS</button>
             <a class="exit" href="/"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.14em"><line x1="12" y1="3" x2="12" y2="12"/><path d="M7.6 6.3a7 7 0 1 0 8.8 0"/></svg> Exit</a>
         </div>
 
@@ -568,6 +576,8 @@
             info.classList.remove('swap'); void info.offsetWidth; info.classList.add('swap');
             elTitle.classList.remove('decode'); void elTitle.offsetWidth; elTitle.classList.add('decode');
             centerTile(i);
+            // multiplayer room: my orb slides to the selected game's sector plane
+            window.dispatchEvent(new CustomEvent('arcade:select', { detail: { i: i } }));
         }
         // keep the selected cartridge centered in the horizontal rail (mobile) / scrolled into view
         function centerTile(i) {
@@ -655,6 +665,10 @@
         step();
     })();
     </script>
+
+    <!-- multiplayer room: presence orbs (fails silent; see arcade-room.js) -->
+    <script defer src="/vendor/supabase-js.umd.js"></script>
+    <script defer src="/arcade-room.js"></script>
 </body>
 
 </html>
