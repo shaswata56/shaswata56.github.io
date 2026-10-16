@@ -64,6 +64,9 @@ onMounted(() => {
   // Game button → hyperspace warp into the arcade
   window.addEventListener('portfolio:arcade', () => warpToArcade());
 
+  // Seedling button → a seed falls and sprouts; it grows you into the garden
+  window.addEventListener('portfolio:garden', () => bloomToGarden());
+
   function warpToArcade() {
     if ((window as any).__arcadeWarp) return;
     (window as any).__arcadeWarp = true;
@@ -114,6 +117,92 @@ onMounted(() => {
       if (t >= 1) {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#dffaff;opacity:0;transition:opacity .16s ease;z-index:3';
+        overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '1'; });
+        setTimeout(go, 170);
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function bloomToGarden() {
+    if ((window as any).__gardenBloom) return;
+    (window as any).__gardenBloom = true;
+    const go = () => { window.location.href = '/garden/'; };
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#04100a;opacity:0;transition:opacity .25s ease;overflow:hidden';
+    const label = document.createElement('div');
+    label.innerHTML = '<div class="warp-line">ENTERING&nbsp;THE&nbsp;GARDEN</div><div class="warp-sub">germinating //GARDEN</div>';
+    label.style.cssText = 'position:absolute;left:0;right:0;bottom:16%;text-align:center;color:#a7e8c4;font-family:"Fira Mono","Courier New",monospace;letter-spacing:4px;text-shadow:0 0 18px rgba(167,232,196,.6);z-index:2';
+    overlay.appendChild(label);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTimeout(go, 320); return; }
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement('canvas');
+    c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    const ctx = c.getContext('2d')!; ctx.scale(dpr, dpr);
+    overlay.insertBefore(c, label);
+
+    // motes converge on the landing point; a glowing seed falls; then it sprouts
+    const N = 90, motes: any[] = [];
+    for (let i = 0; i < N; i++) motes.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: .6 + Math.random() * 1.6, ph: Math.random() * 6.28 });
+    const stems = 5;
+    const t0 = performance.now(), dur = 1500;
+    const W = () => innerWidth, H = () => innerHeight, cx = () => innerWidth / 2, cy = () => innerHeight * .52;
+    const easeOut = (u: number) => 1 - Math.pow(1 - u, 3);
+
+    function frame(now: number) {
+      const t = Math.min(1, (now - t0) / dur);
+      ctx.fillStyle = 'rgba(4,16,10,.28)'; ctx.fillRect(0, 0, W(), H());
+      ctx.fillStyle = '#b9f0d2';
+      for (const m of motes) {
+        const pull = t * .4;
+        const x = m.x + (cx() - m.x) * pull + Math.sin(now / 700 + m.ph) * 6 * (1 - t);
+        const y = m.y + (cy() - m.y) * pull + Math.cos(now / 900 + m.ph) * 6 * (1 - t);
+        ctx.globalAlpha = Math.max(0, .18 + .5 * (1 - Math.hypot(x - cx(), y - cy()) / W()));
+        ctx.beginPath(); ctx.arc(x, y, m.r * (1 + t * .4), 0, 6.283); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      const fall = Math.min(1, t / .45);
+      const gy = fall >= 1 ? cy() : (-H() * .08 + (cy() + H() * .08) * fall * fall);
+      const sx = cx() + Math.sin(fall * 3.1) * 14 * (1 - fall);
+      if (fall < 1) {
+        const trail = ctx.createLinearGradient(sx, gy - 90, sx, gy);
+        trail.addColorStop(0, 'rgba(167,232,196,0)'); trail.addColorStop(1, 'rgba(167,232,196,.55)');
+        ctx.strokeStyle = trail; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(sx, gy - 90); ctx.lineTo(sx, gy); ctx.stroke();
+      }
+      const gr = Math.max(0, (t - .42) / .58);
+      if (gr > 0) {
+        const e = easeOut(gr);
+        for (let i = 0; i < stems; i++) {
+          const a = -Math.PI / 2 + (i - (stems - 1) / 2) * .55 + Math.sin(now / 560 + i * 1.7) * .07;
+          const len = (H() * .22 + i * H() * .02) * e;
+          const ex = cx() + Math.cos(a) * len, ey = cy() + Math.sin(a) * len;
+          const mx = cx() + Math.cos(a) * len * .5 - Math.sin(a) * len * .22;
+          const my = cy() + Math.sin(a) * len * .5 + Math.cos(a) * len * .22;
+          ctx.strokeStyle = 'rgba(185,240,210,.9)'; ctx.lineWidth = 2.1; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
+          const bud = ctx.createRadialGradient(ex, ey, 0, ex, ey, 9);
+          bud.addColorStop(0, 'rgba(234,255,242,.95)'); bud.addColorStop(1, 'rgba(167,232,196,0)');
+          ctx.fillStyle = bud; ctx.beginPath(); ctx.arc(ex, ey, 9, 0, 6.283); ctx.fill();
+        }
+      }
+      const glowR = 18 + (gr > 0 ? easeOut(gr) * 30 : 0);
+      const g = ctx.createRadialGradient(sx, gy, 0, sx, gy, glowR);
+      g.addColorStop(0, 'rgba(234,255,242,' + (.8 + .2 * t) + ')'); g.addColorStop(1, 'rgba(167,232,196,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, gy, glowR, 0, 6.283); ctx.fill();
+      const amb = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), 140 + t * 340);
+      amb.addColorStop(0, 'rgba(167,232,196,' + (.06 + .4 * t) + ')'); amb.addColorStop(1, 'rgba(167,232,196,0)');
+      ctx.fillStyle = amb; ctx.fillRect(0, 0, W(), H());
+      if (t >= 1) {
+        const fl = document.createElement('div');
+        fl.style.cssText = 'position:absolute;inset:0;background:#eafff2;opacity:0;transition:opacity .16s ease;z-index:3';
         overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '1'; });
         setTimeout(go, 170);
         return;

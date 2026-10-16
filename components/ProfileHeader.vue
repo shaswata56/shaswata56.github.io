@@ -63,6 +63,7 @@
           href="/garden/"
           target="_self"
           class="social-link"
+          @click="launchGarden"
         >
           <font-awesome-icon icon="fa-solid fa-seedling" title="Garden — plant a permanent mark" titleId="garden-icon-title"/>
         </a>
@@ -162,6 +163,12 @@ export default {
       // then it redirects to arcade.html. href stays as a no-JS fallback.
       event.preventDefault();
       window.dispatchEvent(new CustomEvent('portfolio:arcade'));
+    },
+    launchGarden(event) {
+      // Same ceremony as the arcade warp, garden-flavored: a seed falls and
+      // sprouts (app.vue), then it redirects to /garden/.
+      event.preventDefault();
+      window.dispatchEvent(new CustomEvent('portfolio:garden'));
     },
   },
 };

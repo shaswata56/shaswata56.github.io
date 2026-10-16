@@ -878,6 +878,7 @@
         window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
         window.addEventListener('blur', function () { keys = {}; });
 
+        var camEase = 9;   // camera responsiveness; ceremonies (entry/exit) slow it down
         function applyCamera(dt) {
             if (!reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift
             var kx = (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
@@ -891,7 +892,8 @@
                 want.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.x));
                 want.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.z));
             }
-            var k = 1 - Math.exp(-dt * 9);
+            camEase += (9 - camEase) * (1 - Math.exp(-dt * 0.75));   // ceremonies wear off, control returns
+            var k = 1 - Math.exp(-dt * camEase);
             ctrl.theta += (want.theta - ctrl.theta) * k;
             ctrl.phi += (want.phi - ctrl.phi) * k;
             ctrl.dist += (want.dist - ctrl.dist) * k;
@@ -1189,9 +1191,50 @@
             document.body.classList.add('ready');
             setTimeout(function () { if (iv.parentNode) iv.parentNode.removeChild(iv); }, 1000);
             lastInteract = performance.now() - 7000; // begin with a gentle drift
+            if (!reduceMotion) {
+                // the ceremony: arrive from the sky and descend onto the grove
+                ctrl.dist = Math.max(ctrl.dist, Math.min(300, want.dist * 8 + 70));
+                ctrl.phi = 0.32;
+                ctrl.theta = want.theta - 0.6;
+                camEase = 1.5;   // weightless at first, control firms up as you land
+            }
         }
         $('enterBtn').addEventListener('click', enter);
         $('intro').addEventListener('click', function (e) { if (e.target === $('intro')) enter(); });
+
+        /* ---------- leaving: rise through the mist ---------- */
+        var leaving = false;
+        function exitTo(href) {
+            if (leaving) return;
+            leaving = true;
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:30;opacity:0;pointer-events:all;' +
+                'transition:opacity ' + (reduceMotion ? '.15s' : '1s') + ' ease;' +
+                'background:radial-gradient(ellipse at 50% 46%, rgba(167,232,196,.14), rgba(5,11,9,.96) 74%)';
+            var lab = document.createElement('div');
+            lab.textContent = 'RETURNING · shaswata.me';
+            lab.style.cssText = 'position:absolute;left:0;right:0;bottom:14%;text-align:center;color:#a7e8c4;' +
+                'font-family:"Fira Mono", ui-monospace, monospace;font-size:12px;letter-spacing:4px;' +
+                'text-shadow:0 0 18px rgba(167,232,196,.5)';
+            ov.appendChild(lab);
+            document.body.appendChild(ov);
+            requestAnimationFrame(function () { ov.style.opacity = '1'; });
+            if (!reduceMotion) {
+                want.dist = MAX_DIST;          // lift away from the grove…
+                want.phi = 0.22;               // …tilting toward the sky
+                want.target.set(0, 0, 0);
+                camEase = 2.2;                 // a weighty, slow ascent
+            }
+            setTimeout(function () { window.location.href = href; }, reduceMotion ? 350 : 1400);
+        }
+        document.addEventListener('click', function (e) {
+            var a = e.target.closest ? e.target.closest('a.exit') : null;
+            if (!a && e.target.closest) {
+                var g = e.target.closest('a.go');
+                if (g && g.getAttribute('href') === '/') a = g;
+            }
+            if (a) { e.preventDefault(); exitTo(a.getAttribute('href') || '/'); }
+        });
         window.addEventListener('keydown', function sk(e) {
             if (e.key === 'Escape') { enter(); window.removeEventListener('keydown', sk); }
             if (e.key === 'Enter') enter();
