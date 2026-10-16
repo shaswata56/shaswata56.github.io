@@ -60,7 +60,7 @@
           <font-awesome-icon icon="fa-solid fa-dice" title="Arcade — play my games" titleId="game-icon-title"/>
         </a>
         <a
-          href="garden/"
+          href="/garden/"
           target="_self"
           class="social-link"
         >

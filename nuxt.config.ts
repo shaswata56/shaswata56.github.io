@@ -15,6 +15,11 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       routes: ['/'],
+      // The only Nuxt route is '/'. Link discovery adds nothing here — and it
+      // follows hrefs like "garden/" into prerendering app.vue for them,
+      // which overwrites public/garden/index.html with a homepage render.
+      crawlLinks: false,
+      ignore: ['/garden/'],
     },
   },
   compatibilityDate: '2024-11-01',
