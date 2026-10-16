@@ -29,13 +29,16 @@
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--bg); color: var(--text); overflow: hidden;
+            overscroll-behavior: none;   /* two-finger pans must not rubber-band the page */
             -webkit-font-smoothing: antialiased;
         }
         .mono { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; }
         .serif { font-family: Georgia, 'Times New Roman', serif; }
 
         #scene { position: fixed; inset: 0; z-index: 0; background: var(--bg); }
-        #scene canvas { display: block; }
+        /* the canvas owns every touch gesture — the browser must not pinch-zoom
+           the page or scroll on top of the garden's own orbit/zoom/pan */
+        #scene canvas { display: block; touch-action: none; -webkit-tap-highlight-color: transparent; }
         .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
             background: radial-gradient(ellipse at 50% 42%, transparent 42%, rgba(4, 8, 10, .72) 100%); }
 
@@ -156,6 +159,19 @@
             #plantCard { bottom: 12px; }
             #toast { bottom: 190px; }
         }
+        /* ---------- phones: compact chrome, safe areas, no iOS focus-zoom ---------- */
+        @media (max-width: 560px) {
+            .topbar { padding: 10px 12px; gap: 8px; }
+            .brand { font-size: 11px; letter-spacing: 3.5px; gap: 7px; }
+            .chip { font-size: 8.5px; letter-spacing: 1px; padding: 3px 7px; }
+            .exit { font-size: 9.5px; padding: 6px 10px; letter-spacing: 1.2px; }
+            #countChip { left: 12px; bottom: 12px; font-size: 9.5px; padding: 5px 9px; }
+            #msgInput { font-size: 16px; }   /* iOS Safari page-zooms on focus below 16px */
+            #plantCard { bottom: max(14px, env(safe-area-inset-bottom)); }
+            #toast { bottom: max(130px, calc(122px + env(safe-area-inset-bottom))); }
+            .hints { gap: 6px 14px; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
         }
@@ -227,6 +243,26 @@
         'use strict';
         var $ = function (id) { return document.getElementById(id); };
         var PI = Math.PI, TAU = PI * 2;
+
+        /* ---------- touch devices: gestures belong to the garden, not the page ---------- */
+        var TOUCH = (function () {
+            try { return matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window; }
+            catch (e) { return false; }
+        })();
+        if (TOUCH) {
+            // iOS Safari fires page-level gesture* events during pinches — swallow them
+            ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) {
+                document.addEventListener(ev, function (e) { e.preventDefault(); });
+            });
+            var hintBox = document.querySelector('.hints');
+            if (hintBox) hintBox.innerHTML =
+                '<span class="hint"><b>Drag</b> to orbit</span>' +
+                '<span class="hint"><b>Pinch</b> to zoom</span>' +
+                '<span class="hint"><b>Two fingers</b> to wander</span>' +
+                '<span class="hint"><b>Tap</b> a mark to visit it</span>';
+            var msgBox = $('msgInput');
+            if (msgBox) msgBox.setAttribute('placeholder', 'a whisper, forever (128 max)');
+        }
 
         /* ================================================================
            config + guards — the page must never hard-crash
@@ -750,10 +786,26 @@
             out.x = (ps[0].x + ps[1].x) / 2; out.y = (ps[0].y + ps[1].y) / 2;
         }
         var lastPinch = 0, lastMid = { x: 0, y: 0 }, midTmp = { x: 0, y: 0 };
+        var lastTapT = 0, lastTapX = 0, lastTapY = 0, downX = 0, downY = 0, downCount = 0;
         camEl.addEventListener('pointerdown', function (e) {
             camEl.setPointerCapture(e.pointerId);
+            // touch never fires hover moves — a tap IS the hover
+            pointerNdc.x = (e.clientX / innerWidth) * 2 - 1;
+            pointerNdc.y = -(e.clientY / innerHeight) * 2 + 1;
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            downCount = pointers.size;
             moved = 0; lastInteract = performance.now();
+            if (pointers.size === 1) {
+                downX = e.clientX; downY = e.clientY;
+                var now = performance.now();
+                if (now - lastTapT < 350 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 32) {
+                    // double-tap: toggle close-up / overview
+                    want.dist = want.dist > 12 ? 3.5 : 34;
+                    lastTapT = 0;
+                } else {
+                    lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+                }
+            }
             if (pointers.size === 2) { lastPinch = pinchDist(); pinchMid(lastMid); }
         });
         camEl.addEventListener('pointermove', function (e) {
@@ -770,7 +822,8 @@
                 want.phi = Math.max(MIN_PHI, Math.min(MAX_PHI, want.phi - dy * 0.0068 * touch));
             } else if (pointers.size === 2) {
                 var d = pinchDist();
-                if (lastPinch > 0) want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * lastPinch / d));
+                // exponent > 1 so a short pinch travels far — phones demand it
+                if (lastPinch > 0) want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.pow(lastPinch / d, 1.6)));
                 pinchMid(midTmp);
                 panBy(midTmp.x - lastMid.x, midTmp.y - lastMid.y);   // two-finger drag wanders, pinch zooms
                 lastMid.x = midTmp.x; lastMid.y = midTmp.y;
@@ -781,6 +834,13 @@
             pointers.delete(e.pointerId);
             if (pointers.size < 2) lastPinch = 0;
             lastInteract = performance.now();
+            // a clean tap (no drag, no second finger): visit the mark under it
+            if (moved < 10 && downCount === 1 && pointers.size === 0) {
+                pointerNdc.x = (downX / innerWidth) * 2 - 1;
+                pointerNdc.y = -(downY / innerHeight) * 2 + 1;
+                updateHover();
+                if (hoverMark) flyTo(hoverMark);
+            }
         }
         camEl.addEventListener('pointerup', endP);
         camEl.addEventListener('pointercancel', endP);
@@ -788,7 +848,7 @@
         camEl.addEventListener('wheel', function (e) {
             e.preventDefault();
             lastInteract = performance.now();
-            want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.exp(e.deltaY * 0.0018)));
+            want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.exp(e.deltaY * 0.0030)));
         }, { passive: false });
 
         /* pan: slide along the ground opposite the drag, like grabbing the plain.
@@ -818,6 +878,7 @@
         window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
         window.addEventListener('blur', function () { keys = {}; });
 
+        var camEase = 9;   // camera responsiveness; ceremonies (entry/exit) slow it down
         function applyCamera(dt) {
             if (!reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift
             var kx = (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
@@ -831,7 +892,8 @@
                 want.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.x));
                 want.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.z));
             }
-            var k = 1 - Math.exp(-dt * 6);
+            camEase += (9 - camEase) * (1 - Math.exp(-dt * 0.75));   // ceremonies wear off, control returns
+            var k = 1 - Math.exp(-dt * camEase);
             ctrl.theta += (want.theta - ctrl.theta) * k;
             ctrl.phi += (want.phi - ctrl.phi) * k;
             ctrl.dist += (want.dist - ctrl.dist) * k;
@@ -1129,9 +1191,50 @@
             document.body.classList.add('ready');
             setTimeout(function () { if (iv.parentNode) iv.parentNode.removeChild(iv); }, 1000);
             lastInteract = performance.now() - 7000; // begin with a gentle drift
+            if (!reduceMotion) {
+                // the ceremony: arrive from the sky and descend onto the grove
+                ctrl.dist = Math.max(ctrl.dist, Math.min(300, want.dist * 8 + 70));
+                ctrl.phi = 0.32;
+                ctrl.theta = want.theta - 0.6;
+                camEase = 1.5;   // weightless at first, control firms up as you land
+            }
         }
         $('enterBtn').addEventListener('click', enter);
         $('intro').addEventListener('click', function (e) { if (e.target === $('intro')) enter(); });
+
+        /* ---------- leaving: rise through the mist ---------- */
+        var leaving = false;
+        function exitTo(href) {
+            if (leaving) return;
+            leaving = true;
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:30;opacity:0;pointer-events:all;' +
+                'transition:opacity ' + (reduceMotion ? '.15s' : '1s') + ' ease;' +
+                'background:radial-gradient(ellipse at 50% 46%, rgba(167,232,196,.14), rgba(5,11,9,.96) 74%)';
+            var lab = document.createElement('div');
+            lab.textContent = 'RETURNING · shaswata.me';
+            lab.style.cssText = 'position:absolute;left:0;right:0;bottom:14%;text-align:center;color:#a7e8c4;' +
+                'font-family:"Fira Mono", ui-monospace, monospace;font-size:12px;letter-spacing:4px;' +
+                'text-shadow:0 0 18px rgba(167,232,196,.5)';
+            ov.appendChild(lab);
+            document.body.appendChild(ov);
+            requestAnimationFrame(function () { ov.style.opacity = '1'; });
+            if (!reduceMotion) {
+                want.dist = MAX_DIST;          // lift away from the grove…
+                want.phi = 0.22;               // …tilting toward the sky
+                want.target.set(0, 0, 0);
+                camEase = 2.2;                 // a weighty, slow ascent
+            }
+            setTimeout(function () { window.location.href = href; }, reduceMotion ? 350 : 1400);
+        }
+        document.addEventListener('click', function (e) {
+            var a = e.target.closest ? e.target.closest('a.exit') : null;
+            if (!a && e.target.closest) {
+                var g = e.target.closest('a.go');
+                if (g && g.getAttribute('href') === '/') a = g;
+            }
+            if (a) { e.preventDefault(); exitTo(a.getAttribute('href') || '/'); }
+        });
         window.addEventListener('keydown', function sk(e) {
             if (e.key === 'Escape') { enter(); window.removeEventListener('keydown', sk); }
             if (e.key === 'Enter') enter();
