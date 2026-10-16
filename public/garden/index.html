@@ -80,9 +80,10 @@
         #labelLayer { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
         .marklabel { position: absolute; transform: translate(-50%, -100%); padding: 8px 12px 9px; border-radius: 10px;
             background: var(--panel-strong); border: 1px solid var(--border); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 24px -6px var(--glow); white-space: nowrap; display: none; }
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 24px -6px var(--glow); white-space: normal; max-width: min(360px, 84vw);
+            text-align: center; display: none; }
         .marklabel .head { font-family: 'Fira Mono', ui-monospace, 'Courier New', monospace; font-size: 10.5px; letter-spacing: 1px; color: var(--accent); }
-        .marklabel .msg { font-family: Georgia, serif; font-style: italic; font-size: 13.5px; color: var(--text); margin-top: 3px; }
+        .marklabel .msg { font-family: Georgia, serif; font-style: italic; font-size: 13.5px; color: var(--text); margin-top: 3px; overflow-wrap: break-word; }
         .marklabel .foot { font-size: 9px; letter-spacing: 1.6px; color: var(--muted); margin-top: 5px; text-transform: uppercase; }
         .marklabel .foot .src-local { color: var(--gold); }
         .marklabel .stem { position: absolute; left: 50%; top: 100%; width: 1px; height: 14px;
@@ -185,9 +186,9 @@
     <div id="plantCard">
         <div class="row1">
             <div class="label">leave your one mark</div>
-            <div id="charCount">0 / 24</div>
+            <div id="charCount">0 / 128</div>
         </div>
-        <input id="msgInput" type="text" maxlength="24" placeholder="a 24-character whisper (optional)" autocomplete="off" spellcheck="false">
+        <input id="msgInput" type="text" maxlength="128" placeholder="a whisper — up to 128 characters, forever (optional)" autocomplete="off" spellcheck="false">
         <div class="row2">
             <button id="plantBtn">Plant your mark</button>
             <button id="revealBtn">Reveal mine</button>
@@ -208,8 +209,9 @@
             <p class="quantum-note">Position, color and form of every mark are decided by quantum randomness (or honestly labeled local fallback).</p>
             <div class="divider"></div>
             <div class="hints">
-                <span class="hint"><b>Drag</b> to look around</span>
-                <span class="hint"><b>Scroll</b> to drift closer</span>
+                <span class="hint"><b>Drag</b> to orbit</span>
+                <span class="hint"><b>Scroll / pinch</b> to zoom</span>
+                <span class="hint"><b>Right-drag · two fingers · WASD</b> to wander</span>
                 <span class="hint"><b>Hover</b> a mark to read it</span>
             </div>
             <button class="go" id="enterBtn">▸ Enter the garden</button>
@@ -335,7 +337,7 @@
             var out = '', i, ch;
             for (i = 0; i < s.length; i++) { ch = s[i]; if (msgRe.test(ch)) out += ch; }
             out = out.replace(/\s+/g, ' ').trim();
-            return out.slice(0, 24);
+            return out.slice(0, 128);
         }
 
         function relTime(iso) {
@@ -735,16 +737,24 @@
         var lastInteract = performance.now();
         var camEl = renderer.domElement, pointers = new Map(), moved = 0;
 
+        var MIN_DIST = 1.4, MAX_DIST = 320;        // face-to-face with a mark … high above the plain
+        var MIN_PHI = 0.06, MAX_PHI = 1.53;        // near top-down … just above the horizon
+        var PAN_LIMIT = 140;                       // the plain reaches past the grove; stay on the world
+
         function pinchDist() {
             var ps = Array.from(pointers.values());
             return Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
         }
-        var lastPinch = 0;
+        function pinchMid(out) {
+            var ps = Array.from(pointers.values());
+            out.x = (ps[0].x + ps[1].x) / 2; out.y = (ps[0].y + ps[1].y) / 2;
+        }
+        var lastPinch = 0, lastMid = { x: 0, y: 0 }, midTmp = { x: 0, y: 0 };
         camEl.addEventListener('pointerdown', function (e) {
             camEl.setPointerCapture(e.pointerId);
             pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             moved = 0; lastInteract = performance.now();
-            if (pointers.size === 2) lastPinch = pinchDist();
+            if (pointers.size === 2) { lastPinch = pinchDist(); pinchMid(lastMid); }
         });
         camEl.addEventListener('pointermove', function (e) {
             lastInteract = performance.now();
@@ -753,12 +763,17 @@
             var dx = e.clientX - p.x, dy = e.clientY - p.y;
             p.x = e.clientX; p.y = e.clientY;
             moved += Math.abs(dx) + Math.abs(dy);
+            var touch = e.pointerType === 'touch' ? 1.4 : 1;
             if (pointers.size === 1) {
-                want.theta -= dx * 0.0042;
-                want.phi = Math.max(0.22, Math.min(1.5, want.phi - dy * 0.0038));
+                if (e.buttons === 2 || e.buttons === 4) { panBy(dx, dy); return; }   // right/middle-drag grabs the plain
+                want.theta -= dx * 0.0075 * touch;
+                want.phi = Math.max(MIN_PHI, Math.min(MAX_PHI, want.phi - dy * 0.0068 * touch));
             } else if (pointers.size === 2) {
                 var d = pinchDist();
-                if (lastPinch > 0) want.dist = Math.max(4, Math.min(170, want.dist * lastPinch / d));
+                if (lastPinch > 0) want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * lastPinch / d));
+                pinchMid(midTmp);
+                panBy(midTmp.x - lastMid.x, midTmp.y - lastMid.y);   // two-finger drag wanders, pinch zooms
+                lastMid.x = midTmp.x; lastMid.y = midTmp.y;
                 lastPinch = d;
             }
         });
@@ -769,19 +784,62 @@
         }
         camEl.addEventListener('pointerup', endP);
         camEl.addEventListener('pointercancel', endP);
+        camEl.addEventListener('contextmenu', function (e) { e.preventDefault(); });   // right-drag is pan, not a menu
         camEl.addEventListener('wheel', function (e) {
             e.preventDefault();
             lastInteract = performance.now();
-            want.dist = Math.max(4, Math.min(170, want.dist * Math.exp(e.deltaY * 0.0011)));
+            want.dist = Math.max(MIN_DIST, Math.min(MAX_DIST, want.dist * Math.exp(e.deltaY * 0.0018)));
         }, { passive: false });
+
+        /* pan: slide along the ground opposite the drag, like grabbing the plain.
+           world-units-per-pixel derives from the fov, so it feels 1:1 at any height. */
+        var panFwd = new THREE.Vector3(), panRight = new THREE.Vector3();
+        function panAxes() {
+            panFwd.set(ctrl.target.x - camera.position.x, 0, ctrl.target.z - camera.position.z).normalize();
+            panRight.set(-panFwd.z, 0, panFwd.x);
+        }
+        function panBy(dx, dy) {
+            panAxes();
+            var wpp = 2 * ctrl.dist * Math.tan(camera.fov * Math.PI / 360) / innerHeight;
+            want.target.x += (-panRight.x * dx + panFwd.x * dy) * wpp;
+            want.target.z += (-panRight.z * dx + panFwd.z * dy) * wpp;
+            want.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.x));
+            want.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.z));
+        }
+
+        var keys = {};
+        window.addEventListener('keydown', function (e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+            var k = e.key.toLowerCase();
+            if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.indexOf('arrow') === 0 || k === 'shift') {
+                keys[k] = true; lastInteract = performance.now();
+            }
+        });
+        window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+        window.addEventListener('blur', function () { keys = {}; });
 
         function applyCamera(dt) {
             if (!reduceMotion && performance.now() - lastInteract > 6000) want.theta += dt * 0.028; // ambient drift
-            var k = 1 - Math.exp(-dt * 5.2);
+            var kx = (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
+            var kz = (keys['s'] || keys['arrowdown'] ? 1 : 0) - (keys['w'] || keys['arrowup'] ? 1 : 0);
+            if (kx || kz) {
+                lastInteract = performance.now();
+                panAxes();
+                var ksp = dt * (0.6 + ctrl.dist * 0.08) * (keys['shift'] ? 2.4 : 1);
+                want.target.x += (panRight.x * kx - panFwd.x * kz) * ksp;
+                want.target.z += (panRight.z * kx - panFwd.z * kz) * ksp;
+                want.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.x));
+                want.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, want.target.z));
+            }
+            var k = 1 - Math.exp(-dt * 6);
             ctrl.theta += (want.theta - ctrl.theta) * k;
             ctrl.phi += (want.phi - ctrl.phi) * k;
             ctrl.dist += (want.dist - ctrl.dist) * k;
             ctrl.target.lerp(want.target, k);
+            // haze thins as you rise, so zooming out resolves the plain instead of whiting out
+            var fogD = 0.008 - 0.0058 * Math.max(0, Math.min(1, (ctrl.dist - 46) / (MAX_DIST - 46)));
+            uniforms.uFogDensity.value = fogD;
+            scene.fog.density = fogD;
             var sp = Math.sin(ctrl.phi), cp = Math.cos(ctrl.phi);
             camera.position.set(
                 ctrl.target.x + ctrl.dist * sp * Math.cos(ctrl.theta),
@@ -792,7 +850,7 @@
 
         function flyTo(m) {
             want.target.set(m.x, 0.9 + m.size * 0.3, m.z);
-            want.dist = 5.5;
+            want.dist = 3.4;
             want.phi = 1.12;
             lastInteract = performance.now() - 7000; // resume drift after arriving
         }
@@ -880,7 +938,7 @@
         var msgInput = $('msgInput'), plantBtn = $('plantBtn'), revealBtn = $('revealBtn'), note = $('plantNote');
         msgInput.addEventListener('input', function () {
             var clean = sanitizeMessage(msgInput.value);
-            $('charCount').textContent = clean.length + ' / 24';
+            $('charCount').textContent = clean.length + ' / 128';
         });
         msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') plant(); });
 
@@ -927,6 +985,8 @@
                 return page();
             }).then(function (all) {
                 buildMarks(all.slice(0, MAX_MARKS));
+                // frame the actual grove — the field is tiny while young, don't leave the camera in the stratosphere
+                want.dist = Math.max(MIN_DIST, Math.min(46, SPREAD * Math.sqrt(Math.max(all.length, 1)) * 2.6 + 9));
                 totalMarks = Math.max(totalMarks, all.length);
                 setCount(totalMarks);
                 updateWhisper();
@@ -985,7 +1045,7 @@
                 celebrate(inserted.x, inserted.z, inserted.hue);
                 noteOk('Planted ' + (inserted.source === 'local' ? 'with local chance — honestly labeled.' : 'from quantum randomness.') + ' It stays. Forever.');
                 toast('✦ your mark is growing. it will be here, always.');
-                msgInput.value = ''; $('charCount').textContent = '0 / 24';
+                msgInput.value = ''; $('charCount').textContent = '0 / 128';
             }).catch(function (err) {
                 var kind = dbErrorKind(err);
                 if (kind === 'duplicate') {
