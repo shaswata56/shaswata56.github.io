@@ -25,8 +25,8 @@
 (function () {
     'use strict';
 
-    var SUPABASE_URL = 'https://episirdmzjubqrvvkbnv.supabase.co';
-    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwaXNpcmRtemp1YnFydnZrYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2MzMxNTcsImV4cCI6MjA5ODIwOTE1N30.lA_qiwonKCONW_RI84y0D_RJQUcSVR3douoqJiBkS2c'; // public-by-design anon key
+    var SUPABASE_URL = 'https://zbdyvftkwapyockzxmwq.supabase.co'; // Personal org -> Portfolio project
+    var SUPABASE_ANON_KEY = 'sb_publishable_3dfjDFiomVV4B1lGtz9YHA_8UAz0vy0'; // public-by-design publishable key
     var CHANNEL_NAME = 'shaswata-arcade';
     var MAX_ORBS = 50;            // concurrent remote orbs; newest beyond the cap are dropped
     var SEND_INTERVAL_MS = 250;   // position broadcast throttle ("at most every 250ms")
