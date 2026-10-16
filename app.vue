@@ -71,7 +71,8 @@ onMounted(() => {
     if ((window as any).__ceremony || (window as any).__arcadeWarp) return;
     (window as any).__ceremony = true;   // one ceremony at a time, site-wide
     (window as any).__arcadeWarp = true;
-    const go = () => { window.location.href = 'arcade.html'; };
+    let cancelled = false;   // a bfcache restore (Back during the warp) cancels the ceremony instead of finishing it
+    const go = () => { if (!cancelled) window.location.href = 'arcade.html'; };
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#04030e;opacity:0;transition:opacity .25s ease;overflow:hidden';
     const label = document.createElement('div');
@@ -80,6 +81,18 @@ onMounted(() => {
     overlay.appendChild(label);
     document.body.appendChild(overlay);
     requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    // bfcache: Back during the warp restores this page with the overlay up and the rAF
+    // frozen — tear the overlay down, release the ceremony flags, and let the loop die
+    // so the dice button works again without a reload.
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) {
+        cancelled = true;
+        overlay.remove();
+        (window as any).__ceremony = false;
+        delete (window as any).__arcadeWarp;
+      }
+    }, { once: true });
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTimeout(go, 320); return; }
 
@@ -97,6 +110,7 @@ onMounted(() => {
     const W = () => innerWidth, H = () => innerHeight, cx = () => innerWidth / 2, cy = () => innerHeight / 2;
 
     function frame(now: number) {
+      if (cancelled) return;
       const t = Math.min(1, (now - t0) / dur);
       const speed = 6 + t * t * 130;
       ctx.fillStyle = 'rgba(4,3,14,' + (0.22 + 0.22 * t) + ')'; ctx.fillRect(0, 0, W(), H());
@@ -119,7 +133,7 @@ onMounted(() => {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#dffaff;opacity:0;transition:opacity .16s ease;z-index:3';
         overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0.85'; });
-        setTimeout(go, 170);
+        if (!cancelled) setTimeout(go, 170);
         return;
       }
       requestAnimationFrame(frame);
@@ -131,7 +145,8 @@ onMounted(() => {
     if ((window as any).__ceremony || (window as any).__gardenBloom) return;
     (window as any).__ceremony = true;   // one ceremony at a time, site-wide
     (window as any).__gardenBloom = true;
-    const go = () => { window.location.href = '/garden/'; };
+    let cancelled = false;   // a bfcache restore (Back during the bloom) cancels the ceremony instead of finishing it
+    const go = () => { if (!cancelled) window.location.href = '/garden/'; };
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#04100a;opacity:0;transition:opacity .25s ease;overflow:hidden';
     const label = document.createElement('div');
@@ -140,6 +155,18 @@ onMounted(() => {
     overlay.appendChild(label);
     document.body.appendChild(overlay);
     requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    // bfcache: Back during the bloom restores this page with the overlay up and the rAF
+    // frozen — tear the overlay down, release the ceremony flags, and let the loop die
+    // so the seedling button works again without a reload.
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) {
+        cancelled = true;
+        overlay.remove();
+        (window as any).__ceremony = false;
+        delete (window as any).__gardenBloom;
+      }
+    }, { once: true });
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTimeout(go, 320); return; }
 
@@ -159,6 +186,7 @@ onMounted(() => {
     const easeOut = (u: number) => 1 - Math.pow(1 - u, 3);
 
     function frame(now: number) {
+      if (cancelled) return;
       const t = Math.min(1, (now - t0) / dur);
       ctx.fillStyle = 'rgba(4,16,10,.28)'; ctx.fillRect(0, 0, W(), H());
       ctx.fillStyle = '#b9f0d2';
@@ -206,7 +234,7 @@ onMounted(() => {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#eafff2;opacity:0;transition:opacity .16s ease;z-index:3';
         overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0.85'; });
-        setTimeout(go, 470);   // hold the sprout's final pose a beat before the flash hands off to the garden
+        if (!cancelled) setTimeout(go, 470);   // hold the sprout's final pose a beat before the flash hands off to the garden
         return;
       }
       requestAnimationFrame(frame);
