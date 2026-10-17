@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reality Models — arcade · shaswata.me</title>
+<meta name="description" content="One room. Four readings. The same eight entities seen as a bedroom, a cell, an energy field, and something earlier than all of it — shift the model and watch reality re-render.">
+<script defer src="https://cloud.umami.is/script.js" data-website-id="62618430-ebcb-4777-a26f-fc295df24b26"></script>
+<style>
+    :root { --accent: #7af5ff; --glow: rgba(122,245,255,.5); --ink: #eaf6ff; --dim: #9fb6c8; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #04070c; color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #stage { position: fixed; inset: 0; touch-action: none; cursor: grab; }
+    #stage:active { cursor: grabbing; }
+    .hud { position: fixed; z-index: 5; pointer-events: none; user-select: none; }
+    #title { top: max(14px, env(safe-area-inset-top)); left: 18px; letter-spacing: .34em;
+        font-size: 12px; color: var(--dim); }
+    #title b { color: var(--ink); font-weight: 600; }
+    .exit { position: fixed; top: max(14px, env(safe-area-inset-top)); right: 16px; z-index: 6;
+        color: var(--dim); text-decoration: none; font-size: 12px; letter-spacing: .12em;
+        border: 1px solid rgba(159,182,200,.25); border-radius: 999px; padding: 6px 14px;
+        background: rgba(4,7,12,.55); backdrop-filter: blur(6px); transition: color .2s, border-color .2s; }
+    .exit:hover { color: var(--ink); border-color: var(--glow); }
+    #bottom { left: 0; right: 0; bottom: max(16px, env(safe-area-inset-bottom)); text-align: center; padding: 0 16px; }
+    #model-name { font-size: clamp(15px, 2.6vw, 21px); letter-spacing: .42em; text-indent: .42em;
+        color: var(--ink); text-shadow: 0 0 18px var(--glow); transition: opacity .5s; }
+    #caption { margin-top: 8px; font-size: clamp(11px, 1.7vw, 13px); line-height: 1.6; color: var(--dim);
+        max-width: 560px; margin-left: auto; margin-right: auto; transition: opacity .5s; }
+    #dots { margin-top: 10px; display: flex; gap: 8px; justify-content: center; }
+    #dots i { width: 26px; height: 3px; border-radius: 2px; background: rgba(159,182,200,.22); transition: background .4s, box-shadow .4s; }
+    #dots i.on { background: var(--accent); box-shadow: 0 0 10px var(--glow); }
+    #hint { position: fixed; z-index: 5; pointer-events: none; user-select: none;
+        top: 54px; left: 18px; font-size: 10.5px; letter-spacing: .08em; color: rgba(159,182,200,.65); line-height: 1.9; }
+    #hint kbd { border: 1px solid rgba(159,182,200,.3); border-radius: 4px; padding: 0 5px; font-size: 10px; }
+    #shift-btns { position: fixed; z-index: 6; right: 14px; top: 50%; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 10px; }
+    #shift-btns button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(159,182,200,.3);
+        background: rgba(4,7,12,.55); color: var(--ink); font-size: 17px; cursor: pointer; backdrop-filter: blur(6px);
+        transition: border-color .2s, box-shadow .2s; }
+    #shift-btns button:hover { border-color: var(--glow); box-shadow: 0 0 14px var(--glow); }
+    #veil { position: fixed; inset: 0; z-index: 4; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(2,4,8,.75) 100%); }
+    #flash { position: fixed; inset: 0; z-index: 7; pointer-events: none; background: var(--accent); opacity: 0; }
+    @media (max-width: 640px) { #hint { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="veil"></div>
+<div id="flash"></div>
+<div class="hud" id="title"><b>REALITY&nbsp;MODELS</b>&nbsp;· one room, four readings</div>
+<div class="hud" id="hint"><kbd>M</kbd> / click &nbsp;shift the model<br><kbd>drag</kbd> orbit &nbsp;<kbd>&larr;</kbd><kbd>&rarr;</kbd> step</div>
+<a class="exit" href="arcade.html">&larr; Exit</a>
+<div class="hud" id="bottom">
+    <div id="model-name"></div>
+    <div id="caption"></div>
+    <div id="dots"><i></i><i></i><i></i><i></i></div>
+</div>
+<div id="shift-btns">
+    <button id="prev" aria-label="previous model">&#8249;</button>
+    <button id="next" aria-label="next model">&#8250;</button>
+</div>
+
+<script src="/vendor/three.r128.min.js"></script>
+<script>
+'use strict';
+/*
+   Reality Models - cartridge 08.
+   One room; the same eight entities exist in every model of reality.
+   Press M (or click / tap) to shift the model; drag to orbit.
+   Inspired by "The Oracle" - the world as a persistent hallucination,
+   a bedroom that is also a centrosome, energy flowing through awareness,
+   and what was there before all models.
+*/
+
+/* ---------------- models ---------------- */
+
+var MODELS = [
+    { name: 'DOMESTIC',
+      caption: 'The persistent hallucination - a world the biological body constructed through evolution and adaptation.',
+      fog: 0x04070c, amb: .55 },
+    { name: 'ORGANELLE',
+      caption: 'From another model of reality, the bedroom is a centrosome and the kitchen is mitochondria. A glimpse of weirdness.',
+      fog: 0x03090b, amb: .62 },
+    { name: 'CONTINUUM',
+      caption: 'In the physical realm, the energy-space continuum flows through pure awareness.',
+      fog: 0x02060d, amb: .38 },
+    { name: 'AWARENESS',
+      caption: 'First, there was just awareness, in its most primordial form. The models come later. They always do.',
+      fog: 0x010308, amb: .22 }
+];
+MODELS.forEach(function (m) { m.fogColor = new THREE.Color(m.fog); });
+
+/* ---------------- three.js scene ---------------- */
+
+var canvas = document.getElementById('stage');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(MODELS[0].fog, .028);
+
+var camera = new THREE.PerspectiveCamera(52, 1, .1, 200);
+var camTheta = .65, camPhi = 1.18, camR = 15.5;
+var camThetaT = camTheta, camPhiT = camPhi, camRT = camR;
+
+var ambient = new THREE.AmbientLight(0xffffff, MODELS[0].amb);
+scene.add(ambient);
+var key = new THREE.DirectionalLight(0xbfe8ff, .7); key.position.set(6, 10, 4); scene.add(key);
+var warm = new THREE.PointLight(0xffc98a, .8, 30); warm.position.set(-4, 3.4, -3); scene.add(warm);
+
+/* starfield dust - present under every model, closest thing to a stage floor */
+(function dust() {
+    var n = 900, pos = new Float32Array(n * 3);
+    for (var i = 0; i < n; i++) {
+        pos[i*3]   = (Math.random() - .5) * 46;
+        pos[i*3+1] = (Math.random() - .5) * 22;
+        pos[i*3+2] = (Math.random() - .5) * 46;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    var m = new THREE.PointsMaterial({ color: 0x6d87a0, size: .05, transparent: true, opacity: .5, depthWrite: false });
+    scene.add(new THREE.Points(g, m));
+})();
+
+/* ---------------- entity construction ---------------- */
+/* Each entity = { group, layers: [Group x4], base: Vector3, radius }
+   layers[i] is the entity's form under MODELS[i]. All built up-front;
+   a shift cross-fades scale+opacity between layers, staggered by entity. */
+
+var PALETTES = [
+    { main: 0xc9a06a, sub: 0x7a5b3a, glow: 0xffd9a0 },   /* domestic  */
+    { main: 0x59d4c4, sub: 0x2c7a72, glow: 0x9df5e8 },   /* organelle */
+    { main: 0x7af5ff, sub: 0x2d7d8a, glow: 0xbdfaff },   /* continuum */
+    { main: 0xe8f2ff, sub: 0x67788c, glow: 0xffffff }    /* awareness */
+];
+
+function mat(color, opacity, opts) {
+    opts = opts || {};
+    return new THREE.MeshStandardMaterial(Object.assign({
+        color: color, roughness: .55, metalness: .12,
+        transparent: true, opacity: opacity === undefined ? 1 : opacity
+    }, opts));
+}
+function glowMat(color, opacity) {
+    return new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity === undefined ? .85 : opacity });
+}
+function pointsFrom(geo, color, size, opacity) {
+    /* sample a geometry's vertices into a Points cloud */
+    var pos = geo.attributes.position;
+    var arr = new Float32Array(pos.count * 3);
+    for (var i = 0; i < pos.count; i++) {
+        arr[i*3] = pos.getX(i); arr[i*3+1] = pos.getY(i); arr[i*3+2] = pos.getZ(i);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({
+        color: color, size: size || .07, transparent: true,
+        opacity: opacity === undefined ? .95 : opacity, depthWrite: false }));
+}
+
+var entities = [];
+
+function addEntity(name, x, z, buildFns, radius) {
+    var group = new THREE.Group();
+    group.position.set(x, 0, z);
+    var layers = buildFns.map(function (build) {
+        var layer = new THREE.Group();
+        build(layer);
+        layer.userData.scaleTarget = 0;
+        group.add(layer);
+        return layer;
+    });
+    scene.add(group);
+    entities.push({ name: name, group: group, layers: layers, radius: radius || 1, phase: Math.random() * 6.28 });
+}
+
+/* -- entity 1: the bed -> nucleus -> field core -> point swarm -- */
+addEntity('bed', 0, -1.2, [
+    function domestic(L) {                                    /* bed */
+        var frame = new THREE.Mesh(new THREE.BoxGeometry(3.4, .34, 2.1), mat(PALETTES[0].sub));
+        frame.position.y = .48; L.add(frame);
+        var mattress = new THREE.Mesh(new THREE.BoxGeometry(3.2, .3, 1.9), mat(0xe6d9c2));
+        mattress.position.y = .78; L.add(mattress);
+        var pillow = new THREE.Mesh(new THREE.BoxGeometry(.8, .22, 1.3), mat(0xf2ecdf));
+        pillow.position.set(-1.05, 1.0, 0); L.add(pillow);
+        for (var i = 0; i < 4; i++) {
+            var leg = new THREE.Mesh(new THREE.CylinderGeometry(.07, .05, .5, 8), mat(PALETTES[0].sub));
+            leg.position.set(i < 2 ? -1.55 : 1.55, .22, i % 2 ? .85 : -.85); L.add(leg);
+        }
+    },
+    function organelle(L) {                                   /* nucleus */
+        var shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.55, 1), mat(PALETTES[1].main, .92, { flatShading: true }));
+        shell.position.y = 1.15; L.add(shell);
+        for (var i = 0; i < 9; i++) {                          /* nuclear pores */
+            var a = i / 9 * Math.PI * 2;
+            var pore = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 10), glowMat(PALETTES[1].glow));
+            pore.position.set(Math.cos(a) * 1.55, 1.15 + Math.sin(a * 1.7) * .7, Math.sin(a) * 1.55);
+            L.add(pore);
+        }
+        var core = new THREE.Mesh(new THREE.SphereGeometry(.55, 14, 12), glowMat(PALETTES[1].glow, .7));
+        core.position.y = 1.15; L.add(core);
+    },
+    function continuum(L) {                                   /* field core */
+        var orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 1),
+            new THREE.MeshBasicMaterial({ color: PALETTES[2].main, wireframe: true, transparent: true, opacity: .55 }));
+        orb.position.y = 1.2; L.add(orb); L.userData.spin = orb;
+        var heart = new THREE.Mesh(new THREE.SphereGeometry(.5, 16, 14), glowMat(PALETTES[2].glow, .9));
+        heart.position.y = 1.2; L.add(heart); L.userData.pulse = heart;
+    },
+    function awareness(L) {                                   /* sparse swarm */
+        var g = new THREE.IcosahedronGeometry(1.8, 2);
+        var pts = pointsFrom(g, PALETTES[3].glow, .09, .85);
+        pts.position.y = 1.2; L.add(pts); L.userData.drift = pts;
+    }
+], 1.9);
+
+/* -- entity 2: the lamp -> mitochondrion -> energy ring -> points -- */
+addEntity('lamp', -4.4, -3.6, [
+    function domestic(L) {
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .09, 3.1, 8), mat(PALETTES[0].sub));
+        pole.position.y = 1.55; L.add(pole);
+        var base = new THREE.Mesh(new THREE.CylinderGeometry(.42, .5, .12, 12), mat(PALETTES[0].sub));
+        base.position.y = .07; L.add(base);
+        var shade = new THREE.Mesh(new THREE.ConeGeometry(.72, .78, 14, 1, true), mat(PALETTES[0].glow, .96, { side: THREE.DoubleSide }));
+        shade.position.y = 3.15; L.add(shade);
+        var bulb = new THREE.Mesh(new THREE.SphereGeometry(.16, 10, 10), glowMat(0xffe9c0, .95));
+        bulb.position.y = 2.95; L.add(bulb);
+    },
+    function organelle(L) {                                   /* mitochondrion: capsule + cristae */
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(.62, .62, 1.7, 16), mat(PALETTES[1].main, .88, { flatShading: true }));
+        body.rotation.z = .35; body.position.y = 1.5; L.add(body);
+        var cap1 = new THREE.Mesh(new THREE.SphereGeometry(.62, 14, 12), mat(PALETTES[1].main, .88));
+        cap1.position.set(-.53, 2.15, 0); cap1.rotation.z = .35; L.add(cap1);
+        var cap2 = cap1.clone(); cap2.position.set(.53, .85, 0); L.add(cap2);
+        for (var i = 0; i < 4; i++) {                          /* cristae rings */
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(.34 - i * .05, .035, 8, 22), glowMat(PALETTES[1].glow, .8));
+            ring.rotation.y = Math.PI / 2; ring.rotation.x = .35;
+            ring.position.set(-.45 + i * .32, 1.98 - i * .32, 0); L.add(ring);
+        }
+    },
+    function continuum(L) {
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, .045, 10, 40), glowMat(PALETTES[2].main, .85));
+        ring.position.y = 1.6; ring.rotation.x = 1.15; L.add(ring); L.userData.spin = ring;
+        var ring2 = ring.clone(); ring2.scale.setScalar(.62); ring2.rotation.x = -.4; L.add(ring2);
+    },
+    function awareness(L) {
+        var g = new THREE.TorusGeometry(1.1, .28, 10, 22);
+        var pts = pointsFrom(g, PALETTES[3].glow, .08, .8);
+        pts.position.y = 1.6; L.add(pts); L.userData.drift = pts;
+    }
+], 1.1);
+
+/* -- entity 3: the window -> vacuole -> lattice aperture -> points -- */
+addEntity('window', 0.2, -6.4, [
+    function domestic(L) {
+        var frame = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, .18), mat(PALETTES[0].sub));
+        frame.position.y = 2.7; L.add(frame);
+        var pane = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 1.75), glowMat(0x9fc8e8, .35));
+        pane.position.set(0, 2.7, .11); L.add(pane);
+        var bar = new THREE.Mesh(new THREE.BoxGeometry(.09, 1.75, .06), mat(PALETTES[0].sub));
+        bar.position.set(0, 2.7, .13); L.add(bar);
+        var sill = new THREE.Mesh(new THREE.BoxGeometry(2.9, .12, .4), mat(PALETTES[0].sub));
+        sill.position.set(0, 1.56, .12); L.add(sill);
+    },
+    function organelle(L) {                                   /* vacuole */
+        var vac = new THREE.Mesh(new THREE.SphereGeometry(1.45, 18, 14), mat(PALETTES[1].main, .34, { roughness: .1 }));
+        vac.position.y = 2.6; L.add(vac);
+        var skin = new THREE.Mesh(new THREE.SphereGeometry(1.45, 18, 14),
+            new THREE.MeshBasicMaterial({ color: PALETTES[1].glow, wireframe: true, transparent: true, opacity: .25 }));
+        skin.position.y = 2.6; L.add(skin);
+    },
+    function continuum(L) {
+        var lat = new THREE.Mesh(new THREE.TorusGeometry(1.35, .03, 8, 6), glowMat(PALETTES[2].main, .8));
+        lat.position.y = 2.6; L.add(lat); L.userData.spin = lat;
+        var inner = new THREE.Mesh(new THREE.IcosahedronGeometry(.8, 0),
+            new THREE.MeshBasicMaterial({ color: PALETTES[2].glow, wireframe: true, transparent: true, opacity: .6 }));
+        inner.position.y = 2.6; L.add(inner);
+    },
+    function awareness(L) {
+        var g = new THREE.SphereGeometry(1.4, 12, 10);
+        var pts = pointsFrom(g, PALETTES[3].glow, .08, .75);
+        pts.position.y = 2.6; L.add(pts); L.userData.drift = pts;
+    }
+], 1.6);
+
+/* -- entity 4: the desk -> golgi stack -> grid stack -> points -- */
+addEntity('desk', 4.3, -3.9, [
+    function domestic(L) {
+        var top = new THREE.Mesh(new THREE.BoxGeometry(2.4, .12, 1.3), mat(PALETTES[0].main));
+        top.position.y = 1.06; L.add(top);
+        [[-1.05, .5], [1.05, .5], [-1.05, -.5], [1.05, -.5]].forEach(function (p) {
+            var leg = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.0, 8), mat(PALETTES[0].sub));
+            leg.position.set(p[0], .5, p[1]); L.add(leg);
+        });
+        var book = new THREE.Mesh(new THREE.BoxGeometry(.55, .1, .4), mat(0x8a4f4f));
+        book.position.set(-.6, 1.18, .1); book.rotation.y = .3; L.add(book);
+        var cup = new THREE.Mesh(new THREE.CylinderGeometry(.11, .09, .24, 10), mat(0x9fc8e8, .95));
+        cup.position.set(.55, 1.25, -.2); L.add(cup);
+    },
+    function organelle(L) {                                   /* golgi stack */
+        for (var i = 0; i < 5; i++) {
+            var pancake = new THREE.Mesh(new THREE.CylinderGeometry(.95 - i * .13, .95 - i * .13, .09, 20),
+                mat(i % 2 ? PALETTES[1].main : PALETTES[1].sub, .95, { roughness: .35 }));
+            pancake.position.y = .5 + i * .34; L.add(pancake);
+        }
+        var vesicle = new THREE.Mesh(new THREE.SphereGeometry(.17, 10, 8), glowMat(PALETTES[1].glow, .85));
+        vesicle.position.set(1.0, 1.7, 0); L.add(vesicle);
+    },
+    function continuum(L) {
+        for (var i = 0; i < 5; i++) {
+            var grid = new THREE.Mesh(new THREE.PlaneGeometry(1.9 - i * .22, 1.9 - i * .22, 5, 5),
+                new THREE.MeshBasicMaterial({ color: PALETTES[2].main, wireframe: true, transparent: true, opacity: .5 - i * .06 }));
+            grid.rotation.x = -Math.PI / 2; grid.position.y = .5 + i * .36; L.add(grid);
+        }
+    },
+    function awareness(L) {
+        for (var i = 0; i < 5; i++) {
+            var g = new THREE.PlaneGeometry(1.8 - i * .2, 1.8 - i * .2, 4, 4);
+            var pts = pointsFrom(g, PALETTES[3].glow, .07, .7);
+            pts.rotation.x = -Math.PI / 2; pts.position.y = .5 + i * .36; L.add(pts);
+        }
+        L.userData.drift = L.children[0];
+    }
+], 1.3);
+
+/* -- entity 5: the plant -> chloroplast -> helix -> points -- */
+addEntity('plant', 4.6, 2.9, [
+    function domestic(L) {
+        var pot = new THREE.Mesh(new THREE.CylinderGeometry(.34, .26, .55, 12), mat(0x8a5a3f));
+        pot.position.y = .3; L.add(pot);
+        var stem = new THREE.Mesh(new THREE.CylinderGeometry(.035, .05, 1.15, 6), mat(0x4f7a3a));
+        stem.position.y = 1.1; L.add(stem);
+        [[0, 1.9, 0, .42], [-.4, 1.55, .1, .3], [.38, 1.7, -.12, .27], [.05, 1.45, .32, .24]].forEach(function (p) {
+            var leaf = new THREE.Mesh(new THREE.SphereGeometry(p[3], 10, 8), mat(0x5f9a44));
+            leaf.scale.set(1.25, .62, 1.25); leaf.position.set(p[0], p[1], p[2]); L.add(leaf);
+        });
+    },
+    function organelle(L) {                                   /* chloroplast */
+        var body = new THREE.Mesh(new THREE.SphereGeometry(.95, 14, 10), mat(0x4fae5f, .92));
+        body.scale.set(1.35, .78, .78); body.position.y = 1.35; body.rotation.z = -.2; L.add(body);
+        for (var i = 0; i < 5; i++) {                          /* grana stacks */
+            var granum = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .1, 10), glowMat(0x9df5a8, .85));
+            granum.position.set(-.5 + i * .25, 1.42 + (i % 2) * .16, .18 - (i % 3) * .18);
+            granum.rotation.z = -.2; L.add(granum);
+        }
+    },
+    function continuum(L) {
+        var pts = [];
+        for (var i = 0; i < 60; i++) {
+            var t = i / 60 * Math.PI * 4;
+            pts.push(new THREE.Vector3(Math.cos(t) * .55, i / 60 * 2.4 - .2, Math.sin(t) * .55));
+        }
+        var curve = new THREE.CatmullRomCurve3(pts);
+        var helix = new THREE.Mesh(new THREE.TubeGeometry(curve, 90, .028, 6), glowMat(PALETTES[2].main, .85));
+        helix.position.y = .3; L.add(helix); L.userData.spin = helix;
+    },
+    function awareness(L) {
+        var g = new THREE.SphereGeometry(1.0, 12, 9);
+        var p = pointsFrom(g, PALETTES[3].glow, .08, .8);
+        p.scale.set(1.4, .9, .9); p.position.y = 1.3; L.add(p); L.userData.drift = p;
+    }
+], 1.0);
+
+/* -- entity 6: the door -> vesicle pore -> vortex ring -> points -- */
+addEntity('door', -5.6, 1.6, [
+    function domestic(L) {
+        var slab = new THREE.Mesh(new THREE.BoxGeometry(1.15, 3.3, .14), mat(0x7d5c40));
+        slab.position.y = 1.66; L.add(slab);
+        var knob = new THREE.Mesh(new THREE.SphereGeometry(.08, 10, 8), glowMat(0xd9b56a, .95));
+        knob.position.set(.42, 1.6, .12); L.add(knob);
+        var jamb = new THREE.Mesh(new THREE.BoxGeometry(1.45, .16, .2), mat(PALETTES[0].sub));
+        jamb.position.y = 3.36; L.add(jamb);
+    },
+    function organelle(L) {                                   /* nuclear pore / vesicle mouth */
+        var mouth = new THREE.Mesh(new THREE.TorusGeometry(.8, .2, 12, 26), mat(PALETTES[1].main, .95));
+        mouth.position.set(0, 1.9, 0); mouth.rotation.y = Math.PI / 2; L.add(mouth);
+        var inner = new THREE.Mesh(new THREE.SphereGeometry(.58, 12, 10), glowMat(PALETTES[1].glow, .4));
+        inner.position.set(0, 1.9, 0); L.add(inner);
+    },
+    function continuum(L) {
+        var vortex = new THREE.Mesh(new THREE.TorusGeometry(.95, .05, 10, 46), glowMat(PALETTES[2].main, .85));
+        vortex.position.set(0, 1.9, 0); L.add(vortex); L.userData.spin = vortex;
+        var v2 = vortex.clone(); v2.scale.setScalar(.65); v2.rotation.x = 1.2; L.add(v2);
+    },
+    function awareness(L) {
+        var g = new THREE.TorusGeometry(.9, .2, 10, 20);
+        var p = pointsFrom(g, PALETTES[3].glow, .075, .8);
+        p.position.set(0, 1.9, 0); L.add(p); L.userData.drift = p;
+    }
+], 1.0);
+
+/* -- entity 7: the rug -> cytoskeleton lattice -> wave grid -> points -- */
+addEntity('rug', 0, 1.4, [
+    function domestic(L) {
+        var rug = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, .05, 34), mat(0x6a4a63, .98));
+        rug.position.y = .045; L.add(rug);
+        var rim = new THREE.Mesh(new THREE.TorusGeometry(2.5, .035, 8, 44), mat(0xb08aa8));
+        rim.rotation.x = Math.PI / 2; rim.position.y = .07; L.add(rim);
+    },
+    function organelle(L) {                                   /* cytoskeleton */
+        for (var i = 0; i < 14; i++) {
+            var a = i / 14 * Math.PI * 2;
+            var filament = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, 2.4 + (i % 3) * .5, 6),
+                mat(i % 2 ? PALETTES[1].main : PALETTES[1].sub, .9));
+            filament.rotation.z = Math.PI / 2; filament.rotation.y = a;
+            filament.position.y = .06; L.add(filament);
+        }
+    },
+    function continuum(L) {
+        var wave = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6, 15, 15),
+            new THREE.MeshBasicMaterial({ color: PALETTES[2].main, wireframe: true, transparent: true, opacity: .42 }));
+        wave.rotation.x = -Math.PI / 2; wave.position.y = .1; L.add(wave); L.userData.wave = wave;
+    },
+    function awareness(L) {
+        var g = new THREE.PlaneGeometry(5.2, 5.2, 11, 11);
+        var p = pointsFrom(g, PALETTES[3].glow, .07, .6);
+        p.rotation.x = -Math.PI / 2; p.position.y = .08; L.add(p); L.userData.drift = p;
+    }
+], 2.5);
+
+/* -- entity 8: the observer -> ribosome -> node with links -> last bright point -- */
+addEntity('observer', 1.9, 2.3, [
+    function domestic(L) {                                    /* a small figure, seated */
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(.24, .3, .8, 10), mat(0x44526a));
+        body.position.y = .42; L.add(body);
+        var head = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 10), mat(0xd9c4a8));
+        head.position.y = 1.0; L.add(head);
+        var gaze = new THREE.Mesh(new THREE.SphereGeometry(.045, 8, 6), glowMat(0x9fd8ff, .95));
+        gaze.position.set(-.07, 1.03, .16); L.add(gaze);
+    },
+    function organelle(L) {                                   /* ribosome on a strand */
+        var strand = new THREE.Mesh(new THREE.TorusGeometry(.55, .025, 8, 40, Math.PI * 1.5), mat(PALETTES[1].sub, .95));
+        strand.position.y = .7; strand.rotation.x = .9; L.add(strand);
+        var big = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 10), mat(PALETTES[1].main));
+        big.position.set(-.28, .82, .1); L.add(big);
+        var small = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat(PALETTES[1].glow, .95));
+        small.position.set(-.13, .68, .22); L.add(small);
+    },
+    function continuum(L) {                                   /* a node, wired into the others */
+        var node = new THREE.Mesh(new THREE.OctahedronGeometry(.24), glowMat(PALETTES[2].glow, .95));
+        node.position.y = .75; L.add(node); L.userData.spin = node;
+        [-1, 1].forEach(function (s) {
+            var link = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, 1.1, 5), glowMat(PALETTES[2].main, .5));
+            link.rotation.z = s * 1.15; link.position.set(s * .48, .78, 0); L.add(link);
+        });
+    },
+    function awareness(L) {                                   /* the last bright point */
+        var one = new THREE.Mesh(new THREE.SphereGeometry(.11, 12, 10), glowMat(0xffffff, 1));
+        one.position.y = .78; L.add(one);
+        var halo = new THREE.Mesh(new THREE.SphereGeometry(.3, 12, 10), glowMat(0xffffff, .18));
+        halo.position.y = .78; L.add(halo);
+        L.userData.pulse = halo;
+    }
+], .55);
+
+/* ---------------- model shifting ---------------- */
+
+var current = 0;
+var SHIFT_MS = 1100;
+var shifting = false;
+
+function setLayerScale(layer, s) {
+    layer.scale.setScalar(Math.max(s, .0001));
+    layer.visible = s > .004;
+}
+/* initial state: model 0 fully in, others out */
+entities.forEach(function (e) {
+    e.layers.forEach(function (l, i) { setLayerScale(l, i === 0 ? 1 : 0); });
+});
+
+function opacityWalk(layer, k) {
+    layer.traverse(function (o) {
+        if (o.material && o.material.transparent) {
+            if (o.userData.baseOpacity === undefined) o.userData.baseOpacity = o.material.opacity;
+            o.material.opacity = o.userData.baseOpacity * k;
+        }
+    });
+}
+
+var shiftStart = 0, shiftFrom = 0, shiftTo = 0;
+var flashEl = document.getElementById('flash');
+var nameEl = document.getElementById('model-name');
+var capEl = document.getElementById('caption');
+var dots = document.querySelectorAll('#dots i');
+
+function applyHud(idx) {
+    nameEl.textContent = MODELS[idx].name;
+    capEl.textContent = MODELS[idx].caption;
+    dots.forEach(function (d, i) { d.classList.toggle('on', i === idx); });
+}
+
+function shift(dir) {
+    if (shifting) return;
+    shifting = true;
+    shiftFrom = current;
+    shiftTo = (current + dir + MODELS.length) % MODELS.length;
+    current = shiftTo;
+    shiftStart = performance.now();
+    camRT = 19.5;                                  /* pull back during the shift */
+    nameEl.style.opacity = 0; capEl.style.opacity = 0;
+    flashEl.style.transition = 'none'; flashEl.style.opacity = .12;
+    if (window.umami && umami.track) umami.track('rm-shift', { model: MODELS[shiftTo].name });
+    setTimeout(function () {
+        applyHud(shiftTo);
+        nameEl.style.opacity = 1; capEl.style.opacity = 1;
+    }, SHIFT_MS * .55);
+    setTimeout(function () {
+        flashEl.style.transition = 'opacity .8s'; flashEl.style.opacity = 0;
+    }, 60);
+}
+
+function easeInOut(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+function updateShift(now) {
+    if (!shifting) return;
+    var raw = Math.min(1, (now - shiftStart) / SHIFT_MS);
+    var k = easeInOut(raw);
+    entities.forEach(function (e, idx) {
+        /* stagger: a wave crossing the room */
+        var stag = Math.min(1, Math.max(0, (raw * 1.5 - (idx / entities.length) * .5) / 1));
+        var kk = easeInOut(stag);
+        var fromL = e.layers[shiftFrom], toL = e.layers[shiftTo];
+        setLayerScale(fromL, 1 - kk);
+        setLayerScale(toL, kk);
+        opacityWalk(fromL, 1 - kk);
+        opacityWalk(toL, kk);
+    });
+    if (raw >= 1) {
+        shifting = false;
+        entities.forEach(function (e) {
+            setLayerScale(e.layers[shiftFrom], 0);
+            setLayerScale(e.layers[shiftTo], 1);
+        });
+    }
+}
+
+/* ---------------- input ---------------- */
+
+window.addEventListener('keydown', function (ev) {
+    if (ev.key === 'm' || ev.key === 'M' || ev.key === ' ') { ev.preventDefault(); shift(1); }
+    else if (ev.key === 'ArrowRight') shift(1);
+    else if (ev.key === 'ArrowLeft') shift(-1);
+});
+document.getElementById('next').addEventListener('click', function (ev) { ev.stopPropagation(); shift(1); });
+document.getElementById('prev').addEventListener('click', function (ev) { ev.stopPropagation(); shift(-1); });
+
+/* click to shift (but not while orbit-dragging) */
+var downX = 0, downY = 0, moved = 0;
+canvas.addEventListener('pointerdown', function (ev) {
+    downX = ev.clientX; downY = ev.clientY; moved = 0;
+    canvas.setPointerCapture(ev.pointerId);
+});
+canvas.addEventListener('pointermove', function (ev) {
+    if (!(ev.buttons & 1)) return;
+    var dx = ev.movementX || 0, dy = ev.movementY || 0;
+    moved += Math.abs(dx) + Math.abs(dy);
+    camThetaT -= dx * .005;
+    camPhiT = Math.min(1.45, Math.max(.35, camPhiT - dy * .004));
+});
+canvas.addEventListener('pointerup', function (ev) {
+    if (moved < 6) shift(ev.clientX > window.innerWidth * .5 ? 1 : -1);
+});
+canvas.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    camRT = Math.min(26, Math.max(7, camRT + ev.deltaY * .012));
+}, { passive: false });
+
+/* ---------------- resize ---------------- */
+
+function resize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------------- loop ---------------- */
+
+applyHud(0);
+
+var prev = performance.now();
+function frame(now) {
+    requestAnimationFrame(frame);
+    var t = now * .001, dt = Math.min(.05, (now - prev) / 1000); prev = now;
+
+    updateShift(now);
+    if (!shifting && Math.abs(camRT - 15.5) > .01) camRT += (15.5 - camRT) * .04;   /* drift home */
+
+    camTheta += (camThetaT - camTheta) * .08;
+    camPhi += (camPhiT - camPhi) * .08;
+    camR += (camRT - camR) * .06;
+    camera.position.set(
+        Math.sin(camPhi) * Math.cos(camTheta) * camR,
+        Math.cos(camPhi) * camR,
+        Math.sin(camPhi) * Math.sin(camTheta) * camR);
+    camera.lookAt(0, 1.3, 0);
+
+    /* per-model ambience + gentle idle life */
+    var M = MODELS[current];
+    ambient.intensity += (M.amb - ambient.intensity) * .04;
+    scene.fog.color.lerp(M.fogColor, .05);
+    key.intensity = .7 - current * .16;
+    warm.intensity = current === 0 ? .8 : .25 - current * .05;
+
+    entities.forEach(function (e) {
+        var layer = e.layers[current];
+        var ud = layer.userData;
+        if (ud.spin) { ud.spin.rotation.y += dt * .5; ud.spin.rotation.x += dt * .18; }
+        if (ud.pulse) { var s = 1 + Math.sin(t * 2.2 + e.phase) * .16; ud.pulse.scale.setScalar(s); }
+        if (ud.drift) { ud.drift.rotation.y += dt * .12; ud.drift.position.y += Math.sin(t * .8 + e.phase) * .0015; }
+        if (ud.wave) {
+            var pos = ud.wave.geometry.attributes.position;
+            for (var i = 0; i < pos.count; i++) {
+                var x = pos.getX(i), y = pos.getY(i);
+                pos.setZ(i, Math.sin(x * 1.4 + t * 1.8) * Math.cos(y * 1.4 + t * 1.3) * .16);
+            }
+            pos.needsUpdate = true;
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
