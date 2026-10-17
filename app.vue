@@ -177,64 +177,200 @@ onMounted(() => {
     const ctx = c.getContext('2d')!; ctx.scale(dpr, dpr);
     overlay.insertBefore(c, label);
 
-    // motes converge on the landing point; a glowing seed falls; then it sprouts
-    const N = 90, motes: any[] = [];
-    for (let i = 0; i < N; i++) motes.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: .6 + Math.random() * 1.6, ph: Math.random() * 6.28 });
-    const stems = 5;
-    const t0 = performance.now(), dur = 1500;
-    const W = () => innerWidth, H = () => innerHeight, cx = () => innerWidth / 2, cy = () => innerHeight * .52;
+    // ---- the seed ceremony: a comet seed falls, strikes the soil, and a tree
+    // of light grows from the impact — you arrive inside its canopy ----
+    const W = () => innerWidth, H = () => innerHeight;
+    const gY = () => innerHeight * .78;                       // the soil line
+    const T_FALL = 700, T_TREE = 1750, T_END = 1980;          // ms timeline
+
+    // seeded rng — the tree must be identical every frame
+    let seedN = 987654321;
+    const rnd = () => (seedN = (seedN * 16807) % 2147483647) / 2147483647;
+
+    // glow sprites — one gradient each, then cheap drawImages (phone-safe)
+    const mkGlow = (r: number, g: number, b: number) => {
+      const s = document.createElement('canvas'); s.width = s.height = 64;
+      const g2 = s.getContext('2d')!;
+      const rg = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+      rg.addColorStop(0, `rgba(${r},${g},${b},1)`);
+      rg.addColorStop(.3, `rgba(${r},${g},${b},.5)`);
+      rg.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      g2.fillStyle = rg; g2.fillRect(0, 0, 64, 64);
+      return s;
+    };
+    const glowMint = mkGlow(167, 232, 196), glowGold = mkGlow(238, 217, 150), glowWhite = mkGlow(240, 255, 248);
+    const sprite = (img: any, x: number, y: number, r: number, a: number) => {
+      ctx.globalAlpha = a; ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+    };
+
+    // parallax dust — streams upward while the seed falls (sells the drop)
+    const dust: any[] = [];
+    for (let i = 0; i < 110; i++) {
+      const z = rnd();
+      dust.push({ x: rnd(), y: rnd(), z, r: .5 + z * 1.7, ph: rnd() * 6.283 });
+    }
+
+    // the tree skeleton, grown once: quadratic segments, each born on its own
+    // clock (deeper = later), drawn only as far as it has grown
+    const branches: any[] = [];
+    const MAXD = 7;
+    const growTree = (x: number, y: number, ang: number, len: number, d: number, bt: number) => {
+      const dur = 200 + rnd() * 160;
+      const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
+      const bend = (rnd() - .5) * len * .55;
+      const mx = (x + ex) / 2 + Math.cos(ang + Math.PI / 2) * bend;
+      const my = (y + ey) / 2 + Math.sin(ang + Math.PI / 2) * bend;
+      branches.push({ x, y, mx, my, ex, ey, bt, dur, d });
+      if (d < MAXD) {
+        const n = d < 2 ? 2 : (rnd() < .85 ? 2 : 1);
+        for (let i = 0; i < n; i++) {
+          const na = ang + (i === 0 ? -1 : 1) * (.16 + rnd() * .4) + (rnd() - .5) * .12;
+          growTree(ex, ey, na, len * (.66 + rnd() * .18), d + 1, bt + dur * .6);
+        }
+      }
+    };
+    growTree(W() / 2, gY(), -Math.PI / 2 + (rnd() - .5) * .12, H() * .16, 0, 60);
+
+    // golden buds on the outer twigs (thinned), fireflies waking in the canopy
+    const buds: any[] = [];
+    for (const b of branches) if (b.d >= MAXD - 2 && rnd() < .55) buds.push({ x: b.ex, y: b.ey, bt: b.bt + b.dur * .8, ph: rnd() * 6.283 });
+    const flies: any[] = [];
+    for (let i = 0; i < 22; i++) flies.push({ x: W() * (.2 + rnd() * .6), y: gY() - H() * (.05 + rnd() * .4), ph: rnd() * 6.283, sp: .4 + rnd() * .8, bt: T_TREE - 350 + rnd() * 300 });
+
+    const parts: any[] = [];          // ember pool (trail sparks + impact burst)
+    const trail: any[] = [];          // seed comet trail, ring buffer
+    let burst = false, shake = 0;
+
+    const t0 = performance.now();
     const easeOut = (u: number) => 1 - Math.pow(1 - u, 3);
+    const easeIn = (u: number) => u * u;
 
     function frame(now: number) {
       if (cancelled) return;
-      const t = Math.min(1, (now - t0) / dur);
-      ctx.fillStyle = 'rgba(4,16,10,.28)'; ctx.fillRect(0, 0, W(), H());
-      ctx.fillStyle = '#b9f0d2';
-      for (const m of motes) {
-        const pull = t * .4;
-        const x = m.x + (cx() - m.x) * pull + Math.sin(now / 700 + m.ph) * 6 * (1 - t);
-        const y = m.y + (cy() - m.y) * pull + Math.cos(now / 900 + m.ph) * 6 * (1 - t);
-        ctx.globalAlpha = Math.max(0, .18 + .5 * (1 - Math.hypot(x - cx(), y - cy()) / W()));
-        ctx.beginPath(); ctx.arc(x, y, m.r * (1 + t * .4), 0, 6.283); ctx.fill();
-      }
+      const t = now - t0;
+      const w = W(), h = H(), gy = gY();
+      ctx.save();
+      if (shake > .2) { ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake * .8); shake *= .82; }   // impact jitter — felt, not seen
+
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
-      const fall = Math.min(1, t / .45);
-      const gy = fall >= 1 ? cy() : (-H() * .08 + (cy() + H() * .08) * fall * fall);
-      const sx = cx() + Math.sin(fall * 3.1) * 14 * (1 - fall);
-      if (fall < 1) {
-        const trail = ctx.createLinearGradient(sx, gy - 90, sx, gy);
-        trail.addColorStop(0, 'rgba(167,232,196,0)'); trail.addColorStop(1, 'rgba(167,232,196,.55)');
-        ctx.strokeStyle = trail; ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.moveTo(sx, gy - 90); ctx.lineTo(sx, gy); ctx.stroke();
+      ctx.fillStyle = 'rgba(3,12,8,.34)'; ctx.fillRect(-12, -12, w + 24, h + 24);
+
+      // the soil line — a faint perspective horizon rising out of the dark
+      const soilA = Math.min(1, t / 300);
+      const soil = ctx.createLinearGradient(0, gy - 30, 0, gy + 6);
+      soil.addColorStop(0, 'rgba(167,232,196,0)');
+      soil.addColorStop(1, 'rgba(167,232,196,' + (.22 * soilA).toFixed(3) + ')');
+      ctx.fillStyle = soil; ctx.fillRect(-12, gy - 30, w + 24, 38);
+
+      // parallax dust
+      const falling = t < T_FALL;
+      const fe = falling ? easeIn(t / T_FALL) : 0;
+      ctx.fillStyle = '#b9f0d2';
+      for (const d of dust) {
+        if (falling) d.y -= (.002 + .012 * (1 - d.z)) * (.3 + fe);
+        else d.y += .0005;
+        if (d.y < 0) d.y += 1; if (d.y > 1) d.y -= 1;
+        ctx.globalAlpha = .1 + .3 * d.z * (.6 + .4 * Math.sin(now / 500 + d.ph));
+        ctx.beginPath(); ctx.arc(d.x * w + Math.sin(now / 900 + d.ph) * 8, d.y * h, d.r, 0, 6.283); ctx.fill();
       }
-      const gr = Math.max(0, (t - .42) / .58);
-      if (gr > 0) {
-        const e = easeOut(gr);
-        for (let i = 0; i < stems; i++) {
-          const a = -Math.PI / 2 + (i - (stems - 1) / 2) * .55 + Math.sin(now / 560 + i * 1.7) * .07;
-          const len = (H() * .22 + i * H() * .02) * e;
-          const ex = cx() + Math.cos(a) * len, ey = cy() + Math.sin(a) * len;
-          const mx = cx() + Math.cos(a) * len * .5 - Math.sin(a) * len * .22;
-          const my = cy() + Math.sin(a) * len * .5 + Math.cos(a) * len * .22;
-          ctx.strokeStyle = 'rgba(185,240,210,.9)'; ctx.lineWidth = 2.1; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
-          const bud = ctx.createRadialGradient(ex, ey, 0, ex, ey, 9);
-          bud.addColorStop(0, 'rgba(234,255,242,.95)'); bud.addColorStop(1, 'rgba(167,232,196,0)');
-          ctx.fillStyle = bud; ctx.beginPath(); ctx.arc(ex, ey, 9, 0, 6.283); ctx.fill();
+
+      ctx.globalCompositeOperation = 'lighter';
+
+      // the seed — a comet with a fading trail and shed embers
+      let sx = w / 2, sy = gy;
+      if (falling) {
+        sx = w / 2 + Math.sin(fe * 4.2) * w * .03 * (1 - fe);
+        sy = -h * .06 + (gy + h * .06) * fe;
+        trail.push({ x: sx, y: sy });
+        if (trail.length > 26) trail.shift();
+        if (rnd() < .6) parts.push({ x: sx + (rnd() - .5) * 4, y: sy, vx: (rnd() - .5) * .7, vy: -.3 - rnd() * .7, r: .5 + rnd(), life: .8, gold: rnd() < .25 });
+      }
+      for (let i = 0; i < trail.length; i++) {
+        const k = (i + 1) / trail.length;
+        ctx.globalAlpha = k * .45;
+        ctx.fillStyle = '#9fe8c0';
+        ctx.beginPath(); ctx.arc(trail[i].x, trail[i].y, .8 + k * 3.2, 0, 6.283); ctx.fill();
+      }
+      if (!falling && trail.length) trail.shift();   // the comet's tail dissolves after impact
+      if (falling || t < T_FALL + 120) sprite(glowWhite, sx, sy, 24 + fe * 12, falling ? .95 : .6 - (t - T_FALL) / 200);
+
+      // impact — shockwave, ember burst, one shake (once)
+      if (!burst && t >= T_FALL) {
+        burst = true; shake = 9;
+        for (let i = 0; i < 64; i++) {
+          const a = -Math.PI / 2 + (rnd() - .5) * 2.4;
+          const v = 2.2 + rnd() * 5.2;
+          parts.push({ x: w / 2, y: gy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: .7 + rnd() * 1.9, life: 1, gold: rnd() < .3 });
         }
       }
-      const glowR = 18 + (gr > 0 ? easeOut(gr) * 30 : 0);
-      const g = ctx.createRadialGradient(sx, gy, 0, sx, gy, glowR);
-      g.addColorStop(0, 'rgba(234,255,242,' + (.8 + .2 * t) + ')'); g.addColorStop(1, 'rgba(167,232,196,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, gy, glowR, 0, 6.283); ctx.fill();
-      const amb = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), 140 + t * 340);
-      amb.addColorStop(0, 'rgba(167,232,196,' + (.06 + .4 * t) + ')'); amb.addColorStop(1, 'rgba(167,232,196,0)');
-      ctx.fillStyle = amb; ctx.fillRect(0, 0, W(), H());
-      if (t >= 1) {
+      if (burst) {
+        const it = t - T_FALL;
+        const we = easeOut(Math.min(1, it / 700));
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(167,232,196,' + (.55 * (1 - we)).toFixed(3) + ')';   // ground shockwave
+        ctx.lineWidth = 2.2 * (1 - we) + .6;
+        ctx.beginPath(); ctx.ellipse(w / 2, gy + 4, we * w * .42 + 1, we * w * .07 + 1, 0, 0, 6.283); ctx.stroke();
+        sprite(glowMint, w / 2, gy, 110 * (1 - we) + 30, .5 * (1 - we) + .08);       // impact pulse
+      }
+      // embers — gravity arcs, bouncing off the soil line once
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        p.x += p.vx; p.y += p.vy; p.vy += .13; p.vx *= .992;
+        if (p.y > gy + 2 && p.vy > 0) { p.vy *= -.38; p.vx *= .7; }
+        p.life -= .011;
+        if (p.life <= 0) { parts.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.min(1, p.life * 1.4);
+        ctx.fillStyle = p.gold ? '#e8d9a0' : '#9fe8c0';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+      }
+
+      // the tree — halo + core stroke per branch, glow without shadowBlur
+      if (t > T_FALL + 40) {
+        ctx.lineCap = 'round';
+        for (const b of branches) {
+          const p = Math.max(0, Math.min(1, (t - T_FALL - b.bt) / b.dur));
+          if (p <= 0) continue;
+          const e = easeOut(p);
+          const hue = 158 - b.d * 6 + (b.d >= MAXD - 1 ? 16 : 0);
+          const lw = 5 * Math.pow(1 - b.d / (MAXD + 1), 1.6) + .7;
+          const mx = b.x + (b.mx - b.x) * e, my = b.y + (b.my - b.y) * e;
+          const ex = b.x + (b.ex - b.x) * e, ey = b.y + (b.ey - b.y) * e;
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = 'hsla(' + hue + ',70%,60%,' + (.10 + .10 * p).toFixed(3) + ')';
+          ctx.lineWidth = lw * 2.6;
+          ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
+          ctx.strokeStyle = 'hsla(' + hue + ',85%,72%,' + (.55 + .4 * p).toFixed(3) + ')';
+          ctx.lineWidth = lw;
+          ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
+        }
+        for (const bd of buds) {
+          const bt = (t - T_FALL - bd.bt) / 260;
+          if (bt <= 0) continue;
+          const be = Math.min(1, bt);
+          const tw = .6 + .4 * Math.sin(now / 260 + bd.ph);
+          sprite(glowGold, bd.x, bd.y, 3.2 * easeOut(be) * 2.6, .85 * be * tw);
+        }
+        for (const f of flies) {
+          if (t < f.bt) continue;
+          const fx = f.x + Math.sin(now / 1300 * f.sp + f.ph) * 26;
+          const fy = f.y + Math.cos(now / 1700 * f.sp + f.ph * 2) * 18;
+          sprite(glowGold, fx, fy, 5 + 2 * Math.sin(f.ph), .3 + .45 * (.5 + .5 * Math.sin(now / 300 + f.ph * 3)));
+        }
+        if (t > T_TREE - 400) {
+          const ce = Math.min(1, (t - (T_TREE - 400)) / (T_END - T_TREE + 400));
+          sprite(glowMint, w / 2, gy - h * .22, h * (.16 + .22 * ce), .10 + .22 * ce);   // canopy breathes in
+        }
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      if (t >= T_END) {
         const fl = document.createElement('div');
         fl.style.cssText = 'position:absolute;inset:0;background:#eafff2;opacity:0;transition:opacity .16s ease;z-index:3';
         overlay.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = '0.85'; });
-        if (!cancelled) setTimeout(go, 470);   // hold the sprout's final pose a beat before the flash hands off to the garden
+        if (!cancelled) setTimeout(go, 430);   // hold the lit canopy a beat before the flash hands off
         return;
       }
       requestAnimationFrame(frame);
