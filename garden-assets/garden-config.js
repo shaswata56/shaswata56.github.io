@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  * The Permanent Garden — configuration (/garden)
- * Loaded by public/garden/index.html BEFORE the page script.
+ * Loaded by public/garden.html BEFORE the page script.
  * ============================================================================
  *
  * >>> SWAP POINT <<<
