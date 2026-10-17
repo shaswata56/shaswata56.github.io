@@ -146,7 +146,7 @@ onMounted(() => {
     (window as any).__ceremony = true;   // one ceremony at a time, site-wide
     (window as any).__gardenBloom = true;
     let cancelled = false;   // a bfcache restore (Back during the bloom) cancels the ceremony instead of finishing it
-    const go = () => { if (!cancelled) window.location.href = '/garden/'; };
+    const go = () => { if (!cancelled) window.location.href = '/garden'; };
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#04100a;opacity:0;transition:opacity .25s ease;overflow:hidden';
     const label = document.createElement('div');

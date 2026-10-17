@@ -60,7 +60,7 @@
           <font-awesome-icon icon="fa-solid fa-dice" title="Arcade — play my games" titleId="game-icon-title"/>
         </a>
         <a
-          href="/garden/"
+          href="/garden"
           target="_self"
           class="social-link"
           @click="launchGarden"
@@ -166,7 +166,7 @@ export default {
     },
     launchGarden(event) {
       // Same ceremony as the arcade warp, garden-flavored: a seed falls and
-      // sprouts (app.vue), then it redirects to /garden/.
+      // sprouts (app.vue), then it redirects to /garden.
       event.preventDefault();
       window.dispatchEvent(new CustomEvent('portfolio:garden'));
     },
