@@ -112,12 +112,53 @@
 
         @media (max-width: 900px) {
             .telemetry { display: none; }
-            .panel { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 42vh; padding: 12px; gap: 10px; }
-            .about { display: none; }
             .hint { display: none; }
-            .logline { bottom: auto; top: 78px; }
+            .statusbar { margin: 8px; padding: 8px 10px; margin-top: max(8px, env(safe-area-inset-top)); }
+            .exit { padding: 9px 12px; }
+            .aboutbtn { display: inline-flex; }
+
+            /* panel becomes a slide-up sheet, hidden until asked for */
+            .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: min(64vh, 520px); z-index: 14;
+                border-radius: 18px 18px 0 0; padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); gap: 12px;
+                transform: translateY(102%); transition: transform .32s cubic-bezier(.2,.9,.25,1), opacity .32s ease; }
+            body.ready .panel { transform: translateY(102%); opacity: 1; }
+            body.ready .panel.open { transform: none; }
+            .panel .btn { padding: 12px 12px; font-size: 12.5px; }
+            .panel .tog { padding: 12px 12px; }
+
+            /* about becomes a sheet too */
+            .about { left: 0; right: 0; bottom: 0; width: auto; max-height: 64vh; overflow-y: auto; z-index: 14;
+                border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+                transform: translateY(102%); transition: transform .32s cubic-bezier(.2,.9,.25,1); }
+            body.ready .about { transform: translateY(102%); }
+            body.ready .about.open { transform: none; }
+
+            /* dock: one-thumb tool switching */
+            .dock { display: flex; }
+            .logline { bottom: auto; top: 78px; white-space: normal; max-width: 86vw; text-align: center; }
+
+            #scrim { display: block; }
+            #scrim.on { opacity: 1; pointer-events: auto; }
         }
         @media (max-width: 520px) { .brand { letter-spacing: 2px; font-size: 13px; } .btns { grid-template-columns: 1fr 1fr 1fr; } }
+
+        /* ----- mobile-first chrome (hidden on desktop) ----- */
+        .aboutbtn { display: none; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px;
+            border: 1px solid var(--border); color: var(--muted); font-weight: 800; font-size: 14px; text-decoration: none;
+            background: rgba(0,0,0,.28); -webkit-tap-highlight-color: transparent; }
+        .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; display: none; gap: 6px;
+            padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right));
+            border-top: 1px solid var(--border); background: rgba(8, 6, 24, .82);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); user-select: none; -webkit-user-select: none; }
+        .dock button { flex: 1; min-height: 52px; font-family: inherit; font-size: 10.5px; font-weight: 800; letter-spacing: 1px;
+            color: var(--muted); background: rgba(0,0,0,.3); border: 1px solid var(--border); border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: border-color .15s, color .15s, box-shadow .15s; }
+        .dock button svg { width: 17px; height: 17px; }
+        .dock button.on { color: #fff; border-color: var(--accent); background: rgba(192,132,252,.16); box-shadow: 0 0 16px -4px var(--glow); }
+        .dock button:active { transform: scale(.97); }
+        #scrim { position: fixed; inset: 0; z-index: 12; display: none; background: rgba(2,1,10,.5); opacity: 0;
+            pointer-events: none; transition: opacity .3s; }
     </style>
 </head>
 
@@ -136,6 +177,7 @@
             <span class="tchip">FPS <b id="tFps">60</b></span>
             <span class="tchip">randomness <b id="tRng">local</b></span>
         </div>
+        <a class="aboutbtn" id="aboutBtn" href="#" aria-label="What am I looking at?">?</a>
         <a class="exit" href="arcade.html"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.14em"><line x1="12" y1="3" x2="12" y2="12"/><path d="M7.6 6.3a7 7 0 1 0 8.8 0"/></svg> Exit</a>
     </div>
 
@@ -179,6 +221,9 @@
             <button class="btn" id="btnClearPsi">Clear ψ</button>
             <button class="btn" id="btnClearWalls">Clear walls</button>
         </div>
+        <div class="btns">
+            <button class="btn wide" id="btnSheetClose" style="display:none">Close</button>
+        </div>
     </aside>
 
     <div class="about" id="about">
@@ -191,6 +236,16 @@
     </div>
     <div class="hint mono">wheel zoom · right-drag orbit · <kbd>1</kbd>–<kbd>6</kbd> experiments · <kbd>space</kbd> pause</div>
     <div class="logline mono" id="logline"></div>
+
+    <div id="scrim"></div>
+    <nav class="dock" id="dock" aria-label="Tools">
+        <button data-t="orbit" aria-label="Orbit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M20.4 15.2a9 9 0 1 1 0-6.4"/><path d="M20.4 8.8l-2.4.6M20.4 15.2l-2.4-.6"/></svg>ORBIT</button>
+        <button data-t="wall" aria-label="Paint walls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V9l8-5 8 5v11"/><path d="M4 14h16M9 9h6M12 9v11M8 14v6M16 14v6"/></svg>WALL</button>
+        <button data-t="erase" aria-label="Erase walls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M9 19l-4.6-4.6a2 2 0 0 1 0-2.8l7.2-7.2a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L12 19"/></svg>ERASE</button>
+        <button data-t="emit" aria-label="Emit wavepacket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h3M9 8v8M13 5v14M17 8v8M20 12h0.5"/></svg>EMIT</button>
+        <button data-t="observe" class="on" aria-label="Observe, collapse psi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>LOOK</button>
+        <button id="dockMenu" aria-label="Experiments menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>LAB</button>
+    </nav>
 
     <div id="boot">
         <div class="boot-inner mono">
@@ -381,7 +436,7 @@
             document.getElementById('bootlog').textContent = '> WebGL unavailable — this cartridge needs GPU rendering.';
             return;
         }
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050314);
         scene.fog = new THREE.Fog(0x050314, 210, 460);
@@ -510,6 +565,7 @@
         function setTool(t) {
             tool = t;
             document.querySelectorAll('#tools .btn').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+            document.querySelectorAll('#dock [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
             document.getElementById('tMode').textContent = { orbit: 'ORBIT', wall: 'WALL', erase: 'ERASE', emit: 'EMIT ψ', observe: 'OBSERVE' }[t];
         }
         function log(msg) {
@@ -621,6 +677,7 @@
             tp.classList.toggle('on', pathDet);
             syncPathMesh();
             syncDet();
+            if (typeof closeSheets === 'function') closeSheets();
         }
         document.getElementById('presets').addEventListener('click', e => {
             const b = e.target.closest('.btn'); if (b) runPreset(b.dataset.p);
@@ -628,6 +685,37 @@
         document.getElementById('tools').addEventListener('click', e => {
             const b = e.target.closest('.btn'); if (b) setTool(b.dataset.t);
         });
+
+        /* ---------------- mobile sheets + dock ---------------- */
+        const isCoarse = matchMedia('(pointer: coarse)').matches;
+        const panel = document.getElementById('panel');
+        const aboutEl = document.getElementById('about');
+        const scrim = document.getElementById('scrim');
+        function closeSheets() {
+            panel.classList.remove('open'); aboutEl.classList.remove('open');
+            scrim.classList.remove('on');
+            document.getElementById('btnSheetClose').style.display = 'none';
+            document.getElementById('dockMenu').classList.remove('on');
+        }
+        function toggleSheet(el) {
+            const opening = !el.classList.contains('open');
+            closeSheets();
+            if (opening) {
+                el.classList.add('open'); scrim.classList.add('on');
+                if (el === panel) {
+                    document.getElementById('btnSheetClose').style.display = '';
+                    document.getElementById('dockMenu').classList.add('on');
+                }
+            }
+        }
+        document.getElementById('dockMenu').addEventListener('click', () => toggleSheet(panel));
+        document.getElementById('aboutBtn').addEventListener('click', e => { e.preventDefault(); toggleSheet(aboutEl); });
+        document.getElementById('btnSheetClose').addEventListener('click', closeSheets);
+        scrim.addEventListener('click', closeSheets);
+        document.getElementById('dock').addEventListener('click', e => {
+            const b = e.target.closest('button[data-t]'); if (b && !b.classList.contains('on')) setTool(b.dataset.t);
+        });
+        addEventListener('keydown', e => { if (e.key === 'Escape' && (panel.classList.contains('open') || aboutEl.classList.contains('open'))) closeSheets(); });
         document.getElementById('speed').addEventListener('click', e => {
             const b = e.target.closest('button'); if (!b) return;
             speed = +b.dataset.s;
@@ -658,7 +746,10 @@
         document.getElementById('btnClearWalls').addEventListener('click', () => { clearWalls(); rebuildWalls(); log('landscape cleared'); });
         addEventListener('keydown', e => {
             if (e.key === ' ') { e.preventDefault(); document.getElementById('togPause').click(); }
-            else if (e.key === 'Escape') window.location.href = 'arcade.html';
+            else if (e.key === 'Escape') {
+                if (panel.classList.contains('open') || aboutEl.classList.contains('open')) closeSheets();
+                else window.location.href = 'arcade.html';
+            }
             else if (e.key >= '1' && e.key <= '6') runPreset(Object.keys(presets)[+e.key - 1]);
         });
 
@@ -765,6 +856,8 @@
             if (bootDone) return; bootDone = true;
             boot.classList.add('done'); document.body.classList.add('ready');
             setTimeout(() => boot.remove(), 650);
+            if (matchMedia('(pointer: coarse)').matches)
+                setTimeout(() => log('one finger = LOOK, tap to collapse ψ · two fingers = orbit + pinch · LAB = experiments'), 700);
         }
         boot.addEventListener('click', endBoot);
         addEventListener('keydown', function sk() { endBoot(); removeEventListener('keydown', sk); }, { once: true });
