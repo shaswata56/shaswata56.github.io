@@ -15,6 +15,11 @@
       Outside of work I'm into the outdoors, reading, and the occasional
       late-night rabbit hole.
     </p>
+    <p>
+      On the side I do security research — coordinated vulnerability
+      disclosure to open-source maintainers, with advisory reports
+      currently in triage.
+    </p>
     <div class="stats-row" ref="statsRow">
       <div class="stat">
         <span class="stat-num">{{ displayStats[0] }}+</span>
